@@ -13,7 +13,7 @@ the Turdus Merula linux test build will be used.
 If you're looking to downgrade your A7 device to iOS 10.3.3, please use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit)
 instead of w1nterst0rm.
 
-Regarding SEP/BB compatibility, you can restore A7/A8 devices to iOS 11.3 or newer safely, and A11 devices to iOS 16 safely,
+Regarding SEP/BB compatibility, you can restore A7/A8 devices to iOS 11.3 or newer safely, and A11 devices to iOS 16.6-16.6.1 safely,
 but the iOS 16 baseband/SEP is partially incompatible with iOS 14.3-15.x, fully incompatible with iOS 14.2 and lower.
 
 SEP compatibility doesn't matter much with A9/A10, because Turdus Merula is used to downgrade those devices.
