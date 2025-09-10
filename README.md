@@ -21,6 +21,6 @@ BUT BASEBAND COMPATIBILITY still matters, mainly on A10: If you downgrade to iOS
 A9 disclaimer if you're downgrading to iOS 9:
 
 You most likely will get activation problems! It is recommended to downgrade to iOS 10.x instead.
-And also in this script, when downgrading to iOS 9.x, it will automatically downgrade your device to 10.2.1, this is to bypass the FDR error.
+And also in this script, when downgrading to iOS 9.x, it will automatically downgrade your device to 10.2.1 first, then the iOS 9 version, this is to bypass the FDR error.
 
 If there is any issues with w1nterst0rm Downgrade Kit, please let me know.
