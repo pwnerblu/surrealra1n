@@ -6,9 +6,13 @@ So what iOS versions can you downgrade to with surrealra1n? Any version that the
 # Version Compatibility:
 
 A7 devices: iOS 7.0.1 - 12.5.6
+
 A8 devices: iOS 8.0 - 12.5.6
+
 A9 devices: iOS 9.0 - 15.8.4
+
 A10 devices: iOS 10.0.1 - 15.8.4
+
 A11 devices: iOS 11.0 - 16.6.1
 
 # What tools does surrealra1n depend on:
