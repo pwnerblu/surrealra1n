@@ -1,26 +1,17 @@
-# w1nterst0rm Downgrade Kit
+# surrealra1n
 
-An all in one utility for downgrading all 64-bit checkm8 devices.
-Huge thanks to the libimobiledevice team and the people that created the downgrade tools that this utility uses.
+A kit that allows tethered & untethered downgrades of all 64-bit devices vulnerable to checkm8.
+So what iOS versions can you downgrade to with surrealra1n? Any version that the device supported!
 
-DISCLAIMER: w1nterst0rm is a shell script that makes downgrading straightforward, not the downgrade tool itself.
-And the binaries for the tool aren't in this repository, they are downloaded at runtime when you run menu.sh for the first time.
+# Version Compatibility:
 
-This script supports macOS (not tested) and Linux.
-Turdus Merula officially supports macOS and iOS at this time, so if you are downgrading an A9/A10 device on Linux,
-the Turdus Merula linux test build will be used.
+A7 devices: iOS 7.0.1 - 12.5.6
+A8 devices: iOS 8.0 - 12.5.6
+A9 devices: iOS 9.0 - 15.8.4
+A10 devices: iOS 10.0.1 - 15.8.4
+A11 devices: iOS 11.0 - 16.6.1
 
-If you're looking to downgrade your A7 device to iOS 10.3.3, please use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit)
-instead of w1nterst0rm.
+# What tools does surrealra1n depend on:
 
-Regarding SEP/BB compatibility, you can restore A7/A8 devices to iOS 11.3 or newer safely, and A11 devices to iOS 16.6-16.6.1 safely,
-but the iOS 16 baseband/SEP is partially incompatible with iOS 14.3-15.x, fully incompatible with iOS 14.2 and lower.
-
-SEP compatibility doesn't matter much with A9/A10, because Turdus Merula is used to downgrade those devices.
-BUT BASEBAND COMPATIBILITY still matters, mainly on A10: If you downgrade to iOS 10.x on an A10 device, you may get activation issues.
-A9 disclaimer if you're downgrading to iOS 9:
-
-You most likely will get activation problems! It is recommended to downgrade to iOS 10.x instead.
-And also in this script, when downgrading to iOS 9.x, it will automatically downgrade your device to 10.2.1 first, then the iOS 9 version, this is to bypass the FDR error.
-
-If there is any issues with w1nterst0rm Downgrade Kit, please let me know.
+The nightly's version of futurerestore (for untethered downgrades), SSHRD_Script (by Nathan), and other tools.
+These tools may be under a different license than the surrealra1n script itself, which the surrealra1n shell script is under Apache License Version 2.0.
