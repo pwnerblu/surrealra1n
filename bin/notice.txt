@@ -1,0 +1,3 @@
+The binaries that are downloaded when you run the script at runtime or the dependencies are likely licensed under a different license than surrealra1n.
+
+Huge thanks to the libimobiledevice team, tihmstar, and more
