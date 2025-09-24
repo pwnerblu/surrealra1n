@@ -98,6 +98,8 @@ if [[ $IDENTIFIER == iPhone6* ]]; then
     KERNELCACHE="kernelcache.release.iphone6"
     LLB="LLB.iphone6.RELEASE.im4p"
     IBOOT="iBoot.iphone6.RELEASE.im4p"
+    IBSS="iBSS.iphone6.RELEASE.im4p"
+    IBEC="iBEC.iphone6.RELEASE.im4p"
 fi
 
 if [[ $IDENTIFIER == iPhone8* ]]; then
@@ -110,6 +112,15 @@ if [[ $IDENTIFIER == iPhone9* ]]; then
     KERNELCACHE="kernelcache.release.iphone9"
     LLB="LLB.d10.RELEASE.im4p"
     IBOOT="iBoot.d10.RELEASE.im4p"
+    IBSS="iBSS.d10.RELEASE.im4p"
+    IBEC="iBEC.d10.RELEASE.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone9,1 ]]; then
+    DEVICETREE="DeviceTree.d10ap.im4p"
+fi
+if [[ $IDENTIFIER == iPhone9,3 ]]; then
+    DEVICETREE="DeviceTree.d101ap.im4p"
 fi
 
 if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
@@ -129,6 +140,7 @@ fi
 
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
+    DEVICETREE="DeviceTree.n51ap.im4p"
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
     cd tmpmanifest
@@ -300,28 +312,6 @@ case "$1" in
         sudo rm -rf "shsh"
         IOS_VERSION="$2"
         echo "[*] Restoring to iOS $IOS_VERSION..."
-        if [[ "$IOS_VERSION" == 10.3* || "$IOS_VERSION" == 10.2* ]]; then
-            echo "[!] Latest SEP is not compatible"
-            echo "[!] You can downgrade to this version, but it will use 10.3.3 SEP instead of latest SEP"
-            IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3.3 IPSW file" --file-filter="*.ipsw")
-
-            if [[ -z "$IPSW_PATH" ]]; then
-                echo "[!] No IPSW selected. Aborting."
-                exit 1
-            fi
-            read -p "Press any key to continue."
-        fi
-        if [[ "$IOS_VERSION" == 10.1* ]]; then
-            echo "[!] Latest SEP is not compatible"
-            echo "[!] iOS 10.3.3 SEP is partially incompatible with iOS 10.1.x, Touch ID may not work."
-            IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3.3 IPSW file" --file-filter="*.ipsw")
-
-            if [[ -z "$IPSW_PATH" ]]; then
-                echo "[!] No IPSW selected. Aborting."
-                exit 1
-            fi
-            read -p "Press any key to continue."
-        fi
         restoredir="restorefiles/$IDENTIFIER/$IOS_VERSION"
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
         ./bin/gaster pwn
@@ -416,7 +406,15 @@ case "$1" in
         BOOT_DIR="boot/$IDENTIFIER/$IOS_VERSION"
         if [[ ! -d "$BOOT_DIR" ]]; then
             echo "[*] Boot files not found. Creating new boot files at $BOOT_DIR..."
+            IPSW_PATH=$(zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
+            unzip $IPSW_PATH -d tmp
+            mkdir -p to_patch
             mkdir -p "$BOOT_DIR"
+            cp tmp/$KERNELCACHE to_patch/kernelcache
+            cp tmp/Firmware/all_flash/$DEVICETREE to_patch/DeviceTree.im4p
+            cp tmp/Firmware/dfu/$IBSS to_patch/iBSS.im4p
+            cp tmp/Firmware/dfu/$IBEC to_patch/iBEC.im4p
+            rm -rf "tmp"
 
             # Read decryption keys
             KEY_FILE="keys/$IDENTIFIER.txt"
