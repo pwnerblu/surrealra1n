@@ -5,6 +5,58 @@ echo "Tether Downgrader for iPhone 5S - iOS 11.3 - 12.5.6"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "All restores will use the latest baseband firmware. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
+echo "No, you do not need to have Python installed"
+echo "zoe-vb fork of asr64_patcher is used for patching ASR"
+
+# Request sudo password upfront
+echo "Enter your user password when prompted to"
+sudo -v || exit 1
+
+echo "Checking for existing binaries..."
+
+if [[ -f "./bin/img4" && -f "./bin/img4tool" -f "./bin/irecovery" && -f "./bin/kerneldiff" -f "./bin/KPlooshFinder" && -f "./bin/gaster" -f "./bin/iBoot64Patcher" && -f "./bin/asr64_patcher" -f "./bin/hfsplus" && -f "./futurerestore/futurerestore"  ]]; then
+    echo "Found necessary binaries."
+else
+    echo "Binaries do not exist"
+    echo "Downloading binaries"
+    curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4
+    curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4tool
+    curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/KPlooshFinder
+    curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kerneldiff
+    curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery
+    curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iBoot64Patcher
+    curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
+    curl -L -o bin/asr64_patcher https://github.com/zoe-vb/asr64_patcher_linux/releases/download/linux/asr64_patcher
+    curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster
+    curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
+    chmod +x bin
+    cd futurerestore 
+    unzip futurerestore.zip 
+    chmod +x futurerestore
+    cd ..
+fi
+
+# Dependency check
+echo "Checking for required dependencies..."
+
+DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity ideviceinfo)
+MISSING_PACKAGES=()
+
+for pkg in "${DEPENDENCIES[@]}"; do
+    if ! dpkg -s "$pkg" &>/dev/null; then
+        MISSING_PACKAGES+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+    echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
+    echo "Installing missing dependencies..."
+    sudo apt update
+    sudo apt install -y "${MISSING_PACKAGES[@]}"
+else
+    echo "All dependencies are installed." 
+fi
+
 
 # Run ideviceinfo and capture both output and return code
 IDEVICE_INFO=$(ideviceinfo 2>&1)
