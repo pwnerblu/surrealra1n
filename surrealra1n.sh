@@ -56,9 +56,10 @@ else
     ./linux_fix.sh
     rm -rf linux_fix.sh
     chmod +x futurerestore
-    rm -rf *.tar
+    rm -rf *.tar.xz
     rm -rf *.sh
     rm -rf *.zip
+    rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE" 
     cd ..
 fi
 
