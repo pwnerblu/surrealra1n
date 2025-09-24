@@ -14,11 +14,26 @@ sudo -v || exit 1
 
 echo "Checking for existing binaries..."
 
-if [[ -f "./bin/img4" && -f "./bin/img4tool" -f "./bin/irecovery" && -f "./bin/kerneldiff" -f "./bin/KPlooshFinder" && -f "./bin/gaster" -f "./bin/iBoot64Patcher" && -f "./bin/asr64_patcher" -f "./bin/hfsplus" && -f "./futurerestore/futurerestore"  ]]; then
+#!/bin/bash
+
+# Check if all required binaries exist
+if [[ -f "./bin/img4" && \
+      -f "./bin/img4tool" && \
+      -f "./bin/irecovery" && \
+      -f "./bin/kerneldiff" && \
+      -f "./bin/KPlooshFinder" && \
+      -f "./bin/gaster" && \
+      -f "./bin/iBoot64Patcher" && \
+      -f "./bin/asr64_patcher" && \
+      -f "./bin/hfsplus" && \
+      -f "./futurerestore/futurerestore" ]]; then
     echo "Found necessary binaries."
 else
     echo "Binaries do not exist"
-    echo "Downloading binaries"
+    echo "Downloading binaries..."
+
+    mkdir -p bin futurerestore
+
     curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4
     curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4tool
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/KPlooshFinder
@@ -28,10 +43,13 @@ else
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
     curl -L -o bin/asr64_patcher https://github.com/zoe-vb/asr64_patcher_linux/releases/download/linux/asr64_patcher
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster
+
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
-    chmod +x bin
-    cd futurerestore 
-    unzip futurerestore.zip 
+
+    chmod +x bin/*
+
+    cd futurerestore || exit
+    unzip -o futurerestore.zip
     chmod +x futurerestore
     cd ..
 fi
