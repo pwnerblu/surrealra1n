@@ -1,21 +1,21 @@
 # surrealra1n
 
 A kit that allows tethered & untethered downgrades of all 64-bit devices vulnerable to checkm8.
-So what iOS versions can you downgrade to with surrealra1n? Any version that the device supported!
+So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility
 
 # Version Compatibility:
 
-A7 devices: iOS 7.0.1 - 12.5.6
+A7 devices: iOS 10.1.x - 10.3.3, 11.3 - 12.5.6
 
-A8 devices: iOS 8.0 - 12.5.6
+A8 devices: iOS 11.3 - 12.5.6
 
-A9 devices: iOS 9.0 - 15.8.4
+A9 devices: iOS 13.x - 15.8.4 (recommended to use Turdus Merula instead)
 
-A10 devices: iOS 10.0.1 - 15.8.4
+A10 devices: iOS 13.x - 15.8.4 (recommended to use Turdus Merula instead)
 
-A11 devices: iOS 11.0 - 16.6.1
+A11 devices: iOS 14.3 - 15.6.1, 16.6 - 16.6.1
 
 # What tools does surrealra1n depend on:
 
-The nightly's version of futurerestore (for untethered downgrades), SSHRD_Script (by Nathan), and other tools.
-These tools may be under a different license than the surrealra1n script itself, which the surrealra1n shell script is under Apache License Version 2.0.
+The nightly's version of futurerestore and other tools. Some tools may be grabbed from Legacy iOS Kit & Semaphorin
+These tools may be under a different license than the surrealra1n script itself, but the surrealra1n shell script is under Apache License Version 2.0.
