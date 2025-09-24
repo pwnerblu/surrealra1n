@@ -57,7 +57,7 @@ fi
 # Dependency check
 echo "Checking for required dependencies..."
 
-DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity ideviceinfo)
+DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity)
 MISSING_PACKAGES=()
 
 for pkg in "${DEPENDENCIES[@]}"; do
