@@ -1,0 +1,3 @@
+The futurerestore directory is where futurerestore will be installed to.
+
+  Futurerestore is licensed under GNU Lesser General Public License Version 3.0.
