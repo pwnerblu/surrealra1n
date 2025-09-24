@@ -3,19 +3,19 @@
 A script that allows tethered & untethered downgrades of all 64-bit devices vulnerable to checkm8.
 So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility, except for iOS 10 at this time for A7 (except for downgrade with OTA blobs to 10.3.3)
 
-All restores will use the latest baseband firmware.
+All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
 
 # Version Compatibility:
 
-A7 devices: iOS 10.1.x - 10.3.3, 11.3 - 12.5.6
+A7 devices: iOS 10.1.x - 10.3.3 (untethered downgrades with saved blobs, or ota downgrade to 10.3.3), 11.3 - 12.5.6 (tethered & untethered)
 
-A8 devices: iOS 11.3 - 12.5.6
+A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered)
 
 A9 devices: iOS 13.x - 15.8.4 (recommended to use Turdus Merula instead)
 
 A10 devices: iOS 13.x - 15.8.4 (recommended to use Turdus Merula instead)
 
-A11 devices: iOS 14.3 - 15.6.1, 16.6 - 16.6.1
+A11 devices: iOS 14.3 - 15.6.1 (tethered & untethered), 16.6 - 16.6.1 (untethered, must have SHSH blobs)
 
 # What tools does surrealra1n depend on:
 
