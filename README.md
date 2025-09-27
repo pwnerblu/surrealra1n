@@ -52,8 +52,8 @@ To boot tethered right now, run:
 
 ./surrealra1n.sh --boot [iOS version you are on right now, example: 11.4]
 
+Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode. It may ask for an IPSW file if boot files do not exist
+
 # Thanks to:
 
 libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi and more!
-
-Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode. It may ask for an IPSW file if boot files do not exist
