@@ -11,11 +11,7 @@ A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered O
 
 A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered)
 
-A9 devices: iOS 13.x - 15.8.4 (recommended to use Turdus Merula instead)
-
-A10 devices: iOS 13.x - 15.8.4 (recommended to use Turdus Merula instead)
-
-A11 devices: iOS 14.3 - 15.6.1 (tethered & untethered), 16.6 - 16.6.1 (untethered, must have SHSH blobs)
+A9+ devices: No support! Use turdus merula instead if device is A9-A10 (https://sep.lol), or downr1n (for tethered downgrades, https://github.com/edwin170/downr1n) or the nightly's futurerestore if your device is A11
 
 # What tools does surrealra1n depend on:
 
