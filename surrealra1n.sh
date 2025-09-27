@@ -141,6 +141,11 @@ else
     exit 1
 fi
 
+if [[ $IDENTIFIER == iPhone7* ]]; then
+    echo "Firmware key list is not complete, you cannot boot a tethered downgrade at this time for this device"
+    read -p "Press any key to continue, if you are going to do an untethered downgrade instead with shsh blobs."
+fi
+
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
     KERNELCACHE10="kernelcache.release.n51"
@@ -189,14 +194,22 @@ Options:
   --restore [iOS_VERSION]
         Restore the device to a previously created custom IPSW.
         - Requires a custom IPSW already built for the specified iOS version.
+        - PUT YOUR DEVICE INTO DFU MODE before proceeding
 
   --ota-downgrade [IPSW FILE]
         Restore the device to iOS 10.3.3 without saved blobs
         - For certain A7 devices that still have iOS 10.3.3 signed via OTA
+        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+
+  --downgrade [IPSW FILE] [SHSH BLOB]
+        Downgrade a device with SHSH blobs.
+        - NOTE: the shsh blob must be for the iOS version you're downgrading to! 
+        - if you dont have shsh blobs for the version you want to downgrade to, please make a custom ipsw and use the restore flag instead to do a tethered downgrade.
 
   --boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version.
         - You must be on that iOS version already.
+        - PUT YOUR DEVICE INTO DFU MODE before proceeding
    
   -h, --help
         Show this help message and exit.
@@ -411,6 +424,52 @@ case "$1" in
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --use-pwndfu --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
         echo "Restore has finished! Read above if there's any errors"
         echo "Removing tmp folder"
+        sudo rm -rf "tmp"
+        exit 1
+        ;;
+
+    --downgrade)
+        if [[ $# -ne 3 ]]; then
+            echo "[!] Usage: --downgrade [IPSW FILE] [SHSH BLOB]"
+            exit 1
+        fi
+        IPSW="$2"
+        SHSHBLOB="$3"
+        read -p "What is the iOS version you are downgrading to: " vers
+        echo "[*] Restoring to iOS $vers..."
+        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
+        ./bin/gaster pwn
+        ./bin/gaster reset
+        echo "[*] Verifying PWNDFU mode..."
+        irecovery_output=$(./bin/irecovery -q)
+        if echo "$irecovery_output" | grep -q "PWND"; then
+            echo "[*] Device is in PWNDFU mode"
+        else
+            echo "[!] Device is NOT in PWNDFU mode"
+            echo "[!] Aborting restore. Please re-enter DFU and try again."
+            exit 1
+        fi
+
+        echo "[*] Using SHSH blob: $SHSHBLOB"
+        echo "running futurerestore"
+        if [[ $vers == 11.3* || $vers == 11.4* || $vers == 12.* ]]; then
+           echo "Using latest SEP and baseband!"
+           sudo ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --latest-baseband --latest-sep --no-rsep $IPSW
+        elif [[ $IDENTIFIER == iPhone6* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
+           echo "iOS 10 SEP needs to be used"
+           IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)" --file-filter="*.ipsw")
+           mkdir tmp
+           mkdir tmp/Firmware
+           mkdir tmp/Firmware/all_flash
+           unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
+           SEP_PATH="tmp/Firmware/all_flash/$SEP"
+           sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
+        else
+           echo "SEP is incompatible!"
+           exit 1
+        fi
+        echo "Restore has finished! Read above if there's any errors"
+        echo "Removing tmp folder if it exists"
         sudo rm -rf "tmp"
         exit 1
         ;;
