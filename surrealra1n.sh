@@ -443,6 +443,18 @@ case "$1" in
             unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d to_patch
             unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d to_patch
             unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d to_patch
+            if [[ "$IOS_VERSION" == 12.* ]]; then
+                echo "Trustcache will be extracted too!"
+                unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d to_patch
+                # Select the biggest trustcache file
+                BIGGEST_TRUSTCACHE=$(ls -S to_patch/*.trustcache 2>/dev/null | head -n 1)
+                if [[ -n "$BIGGEST_TRUSTCACHE" ]]; then
+                    echo "[*] Using biggest trustcache: $(basename "$BIGGEST_TRUSTCACHE")"
+                    cp "$BIGGEST_TRUSTCACHE" to_patch/trustcache
+                else
+                    echo "[!] No trustcache file found in IPSW."
+                fi
+            fi
             mv to_patch/$IBSS to_patch/iBSS.im4p
             mv to_patch/$IBEC to_patch/iBEC.im4p
             mv to_patch/$DEVICETREE to_patch/DeviceTree.im4p
@@ -487,8 +499,8 @@ case "$1" in
                 ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn
             fi
             ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
-            if [[ "$IOS_VERSION" == 12.* || "$IOS_VERSION" == 13.* || "$IOS_VERSION" == 14.* || "$IOS_VERSION" == 15.* ]]; then
-                ./bin/img4 -i to_patch/Trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
+            if [[ "$IOS_VERSION" == 12.* ]]; then
+                ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
             fi
             rm -rf "to_patch"
         else
@@ -516,6 +528,10 @@ case "$1" in
         fi
         ./bin/irecovery -f "$BOOT_DIR/DeviceTree.img4"
         ./bin/irecovery -c devicetree
+        if [[ "$IOS_VERSION" == 12.* ]]; then
+          ./bin/irecovery -f "$BOOT_DIR/Trustcache.img4"
+          ./bin/irecovery -c firmware
+        fi
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
         echo "Your device should now boot."
