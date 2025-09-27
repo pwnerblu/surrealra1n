@@ -10,9 +10,9 @@ And if there is any issues, PLEASE open one up on the issues tab.
 
 DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it most likely isn't futurerestore's fault.
 
-# Version Compatibility:
+# Compatibility:
 
-A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered OTA downgrade, tethered 10.x restores will not boot currently
+A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered OTA downgrade, tethered 10.x restores will not boot currently and thus not supported.
 
 A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered, but cannot boot yet because I haven't finished the firmware key list)
 
@@ -20,7 +20,7 @@ A9+ devices: No support! Use turdus merula instead if device is A9-A10 (https://
 
 # What tools does surrealra1n depend on:
 
-LukeeGD fork of futurerestore and other tools. Some tools may be downloaded from Legacy iOS Kit & Semaphorin
+LukeeGD fork of futurerestore and other tools. Some tools may be downloaded from Legacy iOS Kit & Semaphorin as these tools are bundled with Legacy iOS Kit and/or Semaphorin.
 
 These tools may be under a different license than the surrealra1n script itself, but the surrealra1n shell script is under Apache License Version 2.0.
 
@@ -51,5 +51,9 @@ Enter your sudo password when prompted to, and follow instructions. You may need
 To boot tethered right now, run:
 
 ./surrealra1n.sh --boot [iOS version you are on right now, example: 11.4]
+
+# Thanks to:
+
+libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi and more!
 
 Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode. It may ask for an IPSW file if boot files do not exist
