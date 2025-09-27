@@ -138,6 +138,7 @@ if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
     DOWNGRADE_RANGE="11.3 to 12.5.6"
 else
     echo "Unsupported device"
+    exit 1
 fi
 
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
