@@ -128,43 +128,7 @@ if [[ $IDENTIFIER == iPhone6* ]]; then
     IBOOT="iBoot.iphone6.RELEASE.im4p"
     IBSS="iBSS.iphone6.RELEASE.im4p"
     IBEC="iBEC.iphone6.RELEASE.im4p"
-fi#!/bin/bash
-
-echo "surrealra1n"
-echo "Tether Downgrader for iPhone 5S - iOS 11.3 - 12.5.6"
-echo ""
-echo "Uses latest SHSH blobs (for tethered downgrades)"
-echo "All restores will use the latest baseband firmware. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
-echo "No, you do not need to have Python installed"
-echo "zoe-vb fork of asr64_patcher is used for patching ASR"
-
-# Request sudo password upfront
-echo "Enter your user password when prompted to"
-sudo -v || exit 1
-
-echo "Checking for existing binaries..."
-
-#!/bin/bash
-
-# Check if all required binaries exist
-if [[ -f "./bin/img4" && \
-      -f "./bin/img4tool" && \
-      -f "./bin/irecovery" && \
-      -f "./bin/kerneldiff" && \
-      -f "./bin/KPlooshFinder" && \
-      -f "./bin/gaster" && \
-      -f "./bin/iBoot64Patcher" && \
-      -f "./bin/asr64_patcher" && \
-      -f "./bin/hfsplus" && \
-      -f "./futurerestore/futurerestore" ]]; then
-    echo "Found necessary binaries."
-else
-    echo "Binaries do not exist"
-    echo "Downloading binaries..."
-
-    mkdir -p bin futurerestore
-
-
+fi
 
 if [[ $IDENTIFIER == iPhone8* ]]; then
     KERNELCACHE="kernelcache.release.n71"
