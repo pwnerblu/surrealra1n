@@ -5,6 +5,8 @@ So what iOS versions can you downgrade to with surrealra1n? Any version with SEP
 
 All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
 
+Alternatively, you can use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit) by LukeZGD to OTA downgrade to iOS 10.3.3 instead of surrealra1n.
+
 If you'd like to contribute to this project, please do so we can make surrealra1n even better!
 And if there is any issues, PLEASE open one up on the issues tab.
 
