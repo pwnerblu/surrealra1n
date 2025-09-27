@@ -3,6 +3,8 @@
 A script that allows tethered & untethered downgrades of A7-A8 iPhones. A7 iPad support will be added eventually, but A8(X) iPad support will not be added.
 So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility, except for iOS 10 at this time for A7 (except for downgrade with OTA blobs to 10.3.3)
 
+This script works on Linux only, no macOS support
+
 All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
 
 Alternatively, you can use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit) by LukeZGD to OTA downgrade to iOS 10.3.3 instead of surrealra1n.
