@@ -5,6 +5,11 @@ So what iOS versions can you downgrade to with surrealra1n? Any version with SEP
 
 All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
 
+If you'd like to contribute to this project, please do so we can make surrealra1n even better!
+And if there is any issues, PLEASE open one up on the issues tab.
+
+DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it most likely isn't futurerestore's fault.
+
 # Version Compatibility:
 
 A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered OTA downgrade, tethered 10.x restores will not boot currently
