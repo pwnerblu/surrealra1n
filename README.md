@@ -9,7 +9,7 @@ All restores will use the latest baseband firmware and possibly the latest SEP, 
 
 A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered OTA downgrade, tethered 10.x restores will not boot currently
 
-A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered)
+A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered, but cannot boot yet because I haven't finished the firmware key list)
 
 A9+ devices: No support! Use turdus merula instead if device is A9-A10 (https://sep.lol), or downr1n (for tethered downgrades, https://github.com/edwin170/downr1n) or the nightly's futurerestore if your device is A11
 
