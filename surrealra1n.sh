@@ -57,7 +57,7 @@ else
     tar -xf futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE.tar.xz
     cp futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE/* .
     chmod +x linux_fix.sh
-    ./linux_fix.sh
+    sudo ./linux_fix.sh
     rm -rf linux_fix.sh
     chmod +x futurerestore
     rm -rf *.tar.xz
