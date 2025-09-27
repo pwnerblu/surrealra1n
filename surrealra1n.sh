@@ -133,46 +133,28 @@ if [[ $IDENTIFIER == iPhone6* ]]; then
     IBEC="iBEC.iphone6.RELEASE.im4p"
 fi
 
-if [[ $IDENTIFIER == iPhone8* ]]; then
-    KERNELCACHE="kernelcache.release.n71"
-    LLB="LLB.n71.RELEASE.im4p"
-    IBOOT="iBoot.n71.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone9* ]]; then
-    KERNELCACHE="kernelcache.release.iphone9"
-    LLB="LLB.d10.RELEASE.im4p"
-    IBOOT="iBoot.d10.RELEASE.im4p"
-    IBSS="iBSS.d10.RELEASE.im4p"
-    IBEC="iBEC.d10.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone9,1 ]]; then
-    DEVICETREE="DeviceTree.d10ap.im4p"
-fi
-if [[ $IDENTIFIER == iPhone9,3 ]]; then
-    DEVICETREE="DeviceTree.d101ap.im4p"
-fi
-
 if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
     LATEST_VERSION="12.5.7"
     DOWNGRADE_RANGE="11.3 to 12.5.6"
-fi
-
-if [[ $IDENTIFIER == iPhone8* || $IDENTIFIER == iPhone9* ]]; then
-    LATEST_VERSION="15.8.5"
-    DOWNGRADE_RANGE="13.7 to 15.8.4"
-fi
-
-if [[ $IDENTIFIER == iPhone10* ]]; then
-    LATEST_VERSION="16.7.12"
-    DOWNGRADE_RANGE="14.3 to 15.6.1"
+else
+    echo "Unsupported device"
 fi
 
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
     KERNELCACHE10="kernelcache.release.n51"
     DEVICETREE="DeviceTree.n51ap.im4p"
+    sudo rm -rf "tmpmanifest"
+    mkdir -p tmpmanifest
+    cd tmpmanifest
+    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPhone6,1_10.3.3.plist
+    cd ..
+fi
+
+if [[ $IDENTIFIER == iPhone6,2 ]]; then
+    SEP="sep-firmware.n53.RELEASE.im4p"
+    KERNELCACHE10="kernelcache.release.n53"
+    DEVICETREE="DeviceTree.n53ap.im4p"
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
     cd tmpmanifest
@@ -241,37 +223,15 @@ case "$1" in
             echo "[!] On this device, you can use --ota-downgrade flag to restore to iOS 10.3.3 without saved blobs"
             exit 1
         fi
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
+            echo "[!] iOS 10 tethered restores do not work at this time."
+            echo "[!] You cannot restore to this version or make a custom IPSW for it"
+            echo "[!] On this device, you can use --ota-downgrade flag to restore to iOS 10.3.3 without saved blobs"
+            exit 1
+        fi
         if [[ "$IDENTIFIER" == iPhone7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
-
-        if [[ "$IDENTIFIER" == iPhone8,* ]] && [[ "$IDENTIFIER" == iPhone9,* ]] && [[ "$IOS_VERSION" == 13.* || "$IOS_VERSION" == 12.* || "$IOS_VERSION" == 11.* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it. You must use Turdus Merula instead."
-            exit 1
-        fi
-
-        if [[ "$IDENTIFIER" == iPhone10,* ]] && [[ "$IOS_VERSION" == 14.2* || "$IOS_VERSION" == 14.1* || "$IOS_VERSION" == 14.0* || "$IOS_VERSION" == 13.* || "$IOS_VERSION" == 12.* || "$IOS_VERSION" == 11.* ]]; then
-            echo "[!] SEP & baseband is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
-
-        if [[ "$IDENTIFIER" == iPhone10,* ]] && [[ "$IOS_VERSION" == 14.3* || "$IOS_VERSION" == 14.4* || "$IOS_VERSION" == 14.5* || "$IOS_VERSION" == 14.6* || "$IOS_VERSION" == 14.7* || "$IOS_VERSION" == 14.8* || "$IOS_VERSION" == 15.* ]]; then
-            echo "[!] SEP & baseband is partially incompatible"
-            echo "[!] YOU MAY FACE ACTIVATION ISSUES, and some things may not work after the restore! you can downgrade untethered to iOS 16.6.x-16.7.x if you have SHSH blobs for those versions instead of 14.3-15.x"
-            read -p "Press any key to continue"
-        fi
-
-        if [[ "$IDENTIFIER" == iPhone10,* ]] && [[ "$IOS_VERSION" == 16.* ]]; then
-            echo "[!] You cannot downgrade tethered to iOS 16, but instead you can downgrade untethered to iOS 16.6.x-16.7.x if you have SHSH blobs for that version"
-            exit 1
-        fi
-
-        if [[ "$IDENTIFIER" == iPhone11* || "$IDENTIFIER" == iPhone12* || "$IDENTIFIER" == iPhone13* || "$IDENTIFIER" == iPhone14* || "$IDENTIFIER" == iPhone15* || "$IDENTIFIER" == iPhone16* || "$IDENTIFIER" == iPhone17* || "$IDENTIFIER" == iPhone18* ]]; then
-            echo "[!] This device is not supported"
             exit 1
         fi
 
@@ -461,7 +421,8 @@ case "$1" in
         fi
         IOS_VERSION="$2"
         echo "[*] Tethered boot of iOS $IOS_VERSION..."
-        echo "[!] Note: Kernel patches are applied for restoring only, not normal booting."
+        echo "[!] Note: Kernel patches are applied for restoring only usually"
+        echo "[!] iOS 10 cannot be tether boooted at this time."
         # Find the .shsh2 file in the shsh directory
         shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
         if [[ -z "$shshpath" ]]; then
@@ -515,15 +476,10 @@ case "$1" in
             ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
             ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
             if [[ "$IOS_VERSION" == 10.* ]]; then
-                ./bin/iBoot64Patcher to_patch/iBEC.dec to_patch/iBEC.patched -b "-v rd=disk0s1s1 amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e PE_i_can_has_debugger=1 amfi_get_out_of_my_way=1 amfi_allow_any_signature=1" -n
-                ./bin/img4 -i to_patch/DeviceTree.im4p -o $BOOT_DIR/DeviceTree.img4 -M "$im4m" -T rdtr
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw 
-                cd to_patch
-                ../bin/KPlooshFinder kernel.raw kernel.patched
-                ../bin/Kernel64Patcher kernel.patched kernel2.patched -f $(echo "$IOS_VERSION" | cut -d '.' -f 1)
-                ../bin/kerneldiff kernel.raw kernel2.patched kernel.bpatch
-                cd ..
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn -P to_patch/kernel.bpatch 
+                echo "iOS 10 tether booting is not supported at this TIME!"
+                rm -rf "to_patch"
+                rm -rf "$BOOT_DIR"
+                exit 1
             else
                 ./bin/iBoot64Patcher to_patch/iBEC.dec to_patch/iBEC.patched -b "rd=disk0s1s1 -v"
                 ./bin/img4 -i to_patch/DeviceTree.im4p -o $BOOT_DIR/DeviceTree.img4 -M "$im4m" -T rdtr
