@@ -15,7 +15,7 @@ A9+ devices: No support! Use turdus merula instead if device is A9-A10 (https://
 
 # What tools does surrealra1n depend on:
 
-The nightly's version of futurerestore and other tools. Some tools may be downloaded from Legacy iOS Kit & Semaphorin
+LukeeGD fork of futurerestore and other tools. Some tools may be downloaded from Legacy iOS Kit & Semaphorin
 
 These tools may be under a different license than the surrealra1n script itself, but the surrealra1n shell script is under Apache License Version 2.0.
 
