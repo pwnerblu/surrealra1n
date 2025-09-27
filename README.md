@@ -50,6 +50,12 @@ NOTE: for certain A7 devices only, to downgrade to iOS 10.3.3, run:
 
 Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode.
 
+NOTE: If you have SHSH blobs and you want to do an untethered downgrade, run:
+
+./surrealra1n.sh --downgrade [IPSW PATH] [SHSH BLOB]
+
+Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode.
+
 To boot tethered right now, run:
 
 ./surrealra1n.sh --boot [iOS version you are on right now, example: 11.4]
