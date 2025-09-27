@@ -27,6 +27,8 @@ if [[ -f "./bin/img4" && \
       -f "./bin/iBoot64Patcher" && \
       -f "./bin/asr64_patcher" && \
       -f "./bin/hfsplus" && \
+      -f "./bin/tsschecker" && \
+      -f "./bin/ldid" && \
       -f "./futurerestore/futurerestore" ]]; then
     echo "Found necessary binaries."
 else
@@ -44,7 +46,8 @@ else
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
     curl -L -o bin/asr64_patcher https://github.com/zoe-vb/asr64_patcher_linux/releases/download/linux/asr64_patcher
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster
-
+    curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/tsschecker
+    curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
 
     chmod +x bin/*
