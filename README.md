@@ -7,7 +7,7 @@ All restores will use the latest baseband firmware and possibly the latest SEP, 
 
 # Version Compatibility:
 
-A7 devices: iOS 10.1.x - 10.3.3 (untethered downgrades with saved blobs, or ota downgrade to 10.3.3), 11.3 - 12.5.6 (tethered & untethered)
+A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered OTA downgrade, tethered 10.x restores will not boot currently
 
 A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered)
 
