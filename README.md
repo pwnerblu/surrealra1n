@@ -5,7 +5,8 @@ So what iOS versions can you downgrade to with surrealra1n? Any version with SEP
 
 This script works on Linux only, no macOS support
 
-Specifically, this is for Ubuntu/Debian, and is for x86_64, not arm64.
+Specifically, this is for Ubuntu/Debian, and any other distros using the dpkg/apt package manager, and is for x86_64, not arm64.
+
 
 All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
 
