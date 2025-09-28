@@ -5,7 +5,7 @@ echo "Tether Downgrader for iPhone 5S - iOS 11.3 - 12.5.6"
 echo "iOS 10.x restores work but for tethered iOS 10.x restores they will not boot with bootchain"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
-echo "All restores will use the latest baseband firmware. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
+echo "All restores will use the latest baseband firmware, except for iOS 10.x downgrades on A7. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
 echo "No, you do not need to have Python installed"
 echo "zoe-vb fork of asr64_patcher is used for patching ASR"
 
@@ -128,6 +128,7 @@ fi
 if [[ $IDENTIFIER == iPhone6* ]]; then
     KERNELCACHE="kernelcache.release.iphone6"
     LLB="LLB.iphone6.RELEASE.im4p"
+    BASEBAND10="Mav7Mav8-7.60.00.Release.bbfw"
     IBOOT="iBoot.iphone6.RELEASE.im4p"
     IBSS="iBSS.iphone6.RELEASE.im4p"
     IBEC="iBEC.iphone6.RELEASE.im4p"
@@ -376,8 +377,10 @@ case "$1" in
             mkdir tmp/Firmware
             mkdir tmp/Firmware/all_flash
             unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
+            unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
-            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+            BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
+            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
             rm -rf "tmp"
             echo "Restore has finished! Read above if there's any errors"
             exit 1
@@ -422,6 +425,8 @@ case "$1" in
         mkdir tmp/Firmware
         mkdir tmp/Firmware/all_flash
         unzip -j "$IPSW" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
+        unzip -j "$IPSW" "Firmware/$BASEBAND10" -d tmp/Firmware
+        BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
         SEP_PATH="tmp/Firmware/all_flash/$SEP"
         echo "Fetching shsh blobs for iOS 10.3.3"
         mkdir -p shsh
@@ -437,7 +442,7 @@ case "$1" in
         echo "[*] Using SHSH blob: $shshpath"
         echo "running futurerestore"
         # required
-        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --use-pwndfu --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --use-pwndfu --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
         echo "Restore has finished! Read above if there's any errors"
         echo "Removing tmp folder"
         sudo rm -rf "tmp"
@@ -486,8 +491,10 @@ case "$1" in
            mkdir tmp/Firmware
            mkdir tmp/Firmware/all_flash
            unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
+           unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
            SEP_PATH="tmp/Firmware/all_flash/$SEP"
-           sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
+           BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
+           sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
         else
            echo "SEP is incompatible!"
            exit 1
