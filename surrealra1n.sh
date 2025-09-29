@@ -1,8 +1,7 @@
 #!/bin/bash
 
-echo "surrealra1n"
+echo "surrealra1n - v1.1"
 echo "Tether Downgrader for iPhone 5S - iOS 11.3 - 12.5.6"
-echo "iOS 10.x restores work but for tethered iOS 10.x restores they will not boot with bootchain"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "All restores will use the latest baseband firmware, except for iOS 10.x downgrades on A7. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
@@ -21,6 +20,7 @@ echo "Checking for existing binaries..."
 if [[ -f "./bin/img4" && \
       -f "./bin/img4tool" && \
       -f "./bin/irecovery" && \
+      -f "./bin/kairos" && \
       -f "./bin/kerneldiff" && \
       -f "./bin/KPlooshFinder" && \
       -f "./bin/gaster" && \
@@ -48,6 +48,7 @@ else
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
+    curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kairos
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
 
     chmod +x bin/*
@@ -136,7 +137,7 @@ fi
 
 if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
     LATEST_VERSION="12.5.7"
-    DOWNGRADE_RANGE="11.3 to 12.5.6"
+    DOWNGRADE_RANGE="11.3 to 12.5.6 - 10.1.1 - 10.3.3 for some A7 devices"
 else
     echo "Unsupported device"
     exit 1
@@ -150,6 +151,7 @@ fi
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
     KERNELCACHE10="kernelcache.release.n51"
+    IBOOT="iBoot.n51.RELEASE.im4p"
     DEVICETREE="DeviceTree.n51ap.im4p"
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
@@ -187,10 +189,16 @@ Usage: $0 [OPTIONS]
 
 Options:
   --make-custom-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]
-        Create a custom IPSW for tethered restore.
+        Create a custom IPSW for tethered restore. iOS version must be 10.3 or later to use this.
         - TARGET_IPSW_PATH: Path for the stock IPSW for target version
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
+  
+  --make-custom-ipsw2 [TARGET IPSW PATH] [iOS 10.3.x IPSW PATH] [BASE IPSW PATH] [iOS version]
+        Create a custom IPSW for tethered restore, this is to build pre-iOS 10.3 tethered IPSW.
+        - TARGET_IPSW_PATH: Path for the stock IPSW for target version
+        - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
+        - iOS_VERSION: Target iOS version to restore (10.1 - 10.2.1)
 
   --restore [iOS_VERSION]
         Restore the device to a previously created custom IPSW.
@@ -209,6 +217,11 @@ Options:
 
   --boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version.
+        - You must be on that iOS version already.
+        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+
+  --boot2 [iOS_VERSION]
+        Perform a tethered boot of the specified iOS version, this is the required option for booting pre-iOS 10.3 restores.
         - You must be on that iOS version already.
         - PUT YOUR DEVICE INTO DFU MODE before proceeding
    
@@ -238,17 +251,24 @@ case "$1" in
             echo "[!] On this device, you can use --ota-downgrade flag to restore to iOS 10.3.3 without saved blobs"
             exit 1
         fi
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
-            echo "[!] iOS 10 tethered restores do not work at this time."
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            echo "[!] On this device, you can use --ota-downgrade flag to restore to iOS 10.3.3 without saved blobs"
-            exit 1
-        fi
         if [[ "$IDENTIFIER" == iPhone7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
         fi
+
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
+            echo "[!] iOS 10.2.x and 10.1.x IPSW cannot be made with --make-custom-ipsw"
+            echo "[!] Use --make-custom-ipsw2 instead"
+            exit 1
+        fi
+
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.3.3 ]]; then
+            echo "[!] iOS 10.3.3 can be restored untethered via OTA downgrade"
+            echo "[!] It is recommended to use --ota-downgrade [iOS 10.3.3 ipsw] to OTA downgrade to 10.3.3"
+            read -p "Press any key to continue with iOS 10.3.3 tethered downgrade"
+        fi
+
 
         echo "[*] Making custom IPSW..."
         savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
@@ -512,6 +532,11 @@ case "$1" in
         fi
         IOS_VERSION="$2"
         echo "[*] Tethered boot of iOS $IOS_VERSION..."
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
+            echo "[!] iOS 10.2.x and 10.1.x boot files cannot be made with --boot"
+            echo "[!] Use --boot2 $IOS_VERSION instead"
+            exit 1
+        fi
         echo "[!] Note: Kernel patches are applied for restoring only usually"
         echo "[!] iOS 10 cannot be tether boooted at this time."
         # Find the .shsh2 file in the shsh directory
@@ -579,15 +604,13 @@ case "$1" in
             ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
             ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
             if [[ "$IOS_VERSION" == 10.* ]]; then
-                echo "iOS 10 tether booting is not supported at this TIME!"
-                rm -rf "to_patch"
-                rm -rf "$BOOT_DIR"
-                exit 1
+                echo "Using kairos to patch iBEC instead of iBoot64Patcher"
+                ./bin/kairos to_patch/iBEC.dec to_patch/iBEC.patched -n -b "-v debug=0x09" -c "go" 0x830000300
             else
                 ./bin/iBoot64Patcher to_patch/iBEC.dec to_patch/iBEC.patched -b "rd=disk0s1s1 -v"
-                ./bin/img4 -i to_patch/DeviceTree.im4p -o $BOOT_DIR/DeviceTree.img4 -M "$im4m" -T rdtr
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn
             fi
+            ./bin/img4 -i to_patch/DeviceTree.im4p -o $BOOT_DIR/DeviceTree.img4 -M "$im4m" -T rdtr
+            ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn
             ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
             if [[ "$IOS_VERSION" == 12.* ]]; then
                 ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
