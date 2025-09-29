@@ -150,6 +150,7 @@ fi
 
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
+    ALLFLASH="all_flash.n51ap.production"
     KERNELCACHE10="kernelcache.release.n51"
     DEVICETREE="DeviceTree.n51ap.im4p"
     sudo rm -rf "tmpmanifest"
@@ -161,6 +162,7 @@ fi
 
 if [[ $IDENTIFIER == iPhone6,2 ]]; then
     SEP="sep-firmware.n53.RELEASE.im4p"
+    ALLFLASH="all_flash.n53ap.production"
     KERNELCACHE10="kernelcache.release.n53"
     DEVICETREE="DeviceTree.n53ap.im4p"
     sudo rm -rf "tmpmanifest"
@@ -378,6 +380,14 @@ case "$1" in
         rm -rf tmp1/Firmware/all_flash/$IBOOT
         cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
         cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
+        # devicetree replacement and add target version DeviceTree to custom IPSW
+        if [[ $IOS_VERSION == 10.1* ]]; then
+            rm -rf tmp1/Firmware/all_flash/$DEVICETREE
+            cp tmp/Firmware/all_flash/$ALLFLASH/$DEVICETREE tmp1/Firmware/all_flash/$DEVICETREE
+        else
+            rm -rf tmp1/Firmware/all_flash/$DEVICETREE
+            cp tmp/Firmware/all_flash/$DEVICETREE tmp1/Firmware/all_flash/$DEVICETREE
+        fi
         largest_dmg=$(find tmp -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
         largest2_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
         rm -rf "$largest2_dmg"
