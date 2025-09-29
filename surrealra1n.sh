@@ -392,7 +392,7 @@ case "$1" in
         # Find smallest .dmg in tmp1 and copy to work/RestoreRamdisk.orig
         smallest_dmg=$(find tmp -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
         mkdir -p work
-        cp tmp1/$KERNELCACHE10 work/kernel.orig      
+        cp tmp/$KERNELCACHE10 work/kernel.orig      
         cd work
         echo "making patched restore chain"
         ../bin/img4 -i kernel.orig -o kernel.raw
