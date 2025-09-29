@@ -165,7 +165,7 @@ if [[ $IDENTIFIER == iPhone6,2 ]]; then
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
     cd tmpmanifest
-    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPhone6,1_10.3.3.plist
+    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPhone6,2_10.3.3.plist
     cd ..
 fi
 
