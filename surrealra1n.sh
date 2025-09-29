@@ -151,7 +151,6 @@ fi
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
     KERNELCACHE10="kernelcache.release.n51"
-    IBOOT="iBoot.n51.RELEASE.im4p"
     DEVICETREE="DeviceTree.n51ap.im4p"
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
