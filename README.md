@@ -1,7 +1,9 @@
 # surrealra1n development branch
 
 The development branch is not meant to be used for normal use.
+
 Please open an issue if there's problems or bugs.
+
 iOS 10.3.x tethered restores work now, 10.2.x and 10.1.x are in progress, after that is done, I will push the update to the main branch
 
 A script that allows tethered & untethered downgrades of A7-A8 iPhones. A7 iPad support will be added eventually, but A8(X) iPad support will not be added.
