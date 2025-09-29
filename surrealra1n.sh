@@ -347,6 +347,91 @@ case "$1" in
         exit 1
         ;;
 
+    --make-custom-ipsw2)
+        if [[ $# -ne 5 ]]; then
+            echo "[!] Usage: --make-custom-ipsw2 [TARGET_IPSW_PATH] [iOS 10.3.x IPSW PATH] [BASE_IPSW_PATH] [iOS_VERSION]"
+            exit 1
+        fi
+        TARGET_IPSW="$2"
+        IPSW_103="$3"
+        BASE_IPSW="$3"
+        IOS_VERSION="$5"
+
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
+            echo "[!] iOS 10.3.x IPSW will be used as a base, but iOS $IOS_VERSION ramdisk will be used"
+            echo "[!] If you are downgrading to iOS 10.1.x, SEP WILL not be fully compatible"
+            read -p "Press any key to continue"
+        else
+            echo "[!] SEP is incompatible, or your device is not supported for --make-custom-ipsw2"
+            echo "[!] This message may also appear because you are trying to make an iOS 10.3+ IPSW for tethered restore. --make-custom-ipsw must be used for iOS 10.3+ tethered restores"
+            exit 1
+        fi 
+
+
+        echo "[*] Making custom IPSW..."
+        savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
+        mkdir -p "$savedir"
+        echo ""
+        unzip "$IPSW_103" -d tmp1
+        unzip "$BASE_IPSW" -d tmp2
+        unzip "$TARGET_IPSW" -d tmp
+        rm -rf tmp1/Firmware/all_flash/$LLB
+        rm -rf tmp1/Firmware/all_flash/$IBOOT
+        cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
+        cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
+        largest_dmg=$(find tmp -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+        largest2_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+        rm -rf "$largest2_dmg"
+        mv "$largest_dmg" "$largest2_dmg"
+        cd tmp1
+        zip -0 -r ../custom.ipsw *
+        cd ..
+        mv custom.ipsw "$savedir/custom.ipsw"
+        rm -rf "tmp1"
+        rm -rf "tmp2"
+        
+        # Find smallest .dmg in tmp1 and copy to work/RestoreRamdisk.orig
+        smallest_dmg=$(find tmp -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
+        mkdir -p work
+        cp tmp1/$KERNELCACHE10 work/kernel.orig      
+        cd work
+        echo "making patched restore chain"
+        ../bin/img4 -i kernel.orig -o kernel.raw
+        ../bin/KPlooshFinder kernel.raw kernel.patched
+        ../bin/kerneldiff kernel.raw kernel.patched kernel.bpatch
+        ../bin/img4 -i kernel.orig -o kernel.im4p -T rkrn -P kernel.bpatch -J
+        mv kernel.im4p ../$savedir/kernel.im4p
+        # build ramdisk
+        cd ..
+        sudo ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
+        rm -rf "tmp" 
+        echo "growing ramdisk"
+        sudo ./bin/hfsplus ramdisk.raw grow 60000000
+        echo "extracting asr to patch"
+        sudo ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
+        echo "patching asr"
+        sudo ./bin/asr64_patcher asr patched_asr
+        sudo ./bin/ldid -e asr > ents.plist
+        sudo ./bin/ldid -Sents.plist patched_asr
+        echo "replacing asr with patched asr"
+        sudo ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
+        sleep 4
+        sudo ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
+        sleep 4
+        sudo ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
+        sleep 4
+        echo "Packing patched Ramdisk as im4p"
+        sudo ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
+        mv ramdisk.im4p $savedir/ramdisk.im4p
+        rm -rf "work"
+        rm -rf asr
+        rm -rf patched_asr
+        rm -rf ents.plist
+        rm -rf ramdisk.raw
+        echo "Custom IPSW + patched restore chain has been made! Use --restore $IOS_VERSION to downgrade to the designated firmware"
+        exit 1
+        ;;
+
 
     --restore)
         if [[ $# -ne 2 ]]; then
