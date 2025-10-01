@@ -1,20 +1,13 @@
-# surrealra1n development branch
-
-The development branch is not meant to be used for normal use.
-
-Please open an issue if there's problems or bugs.
-
-iOS 10.1 - 10.1.1 + 10.3.x tethered restores currently work, but after manifest list is finished for iOS 10.2.x, v1.1 rc will release
+# surrealra1n
 
 A script that allows tethered & untethered downgrades of A7-A8 iPhones. A7 iPad support will be added eventually, but A8(X) iPad support will not be added.
-So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility, except for iOS 10 at this time for A7 (except for downgrade with OTA blobs to 10.3.3)
+So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility!
 
 This script works on Linux only, no macOS support
 
 Specifically, this is for Ubuntu/Debian, and any other distros using the dpkg/apt package manager, and is for x86_64, not arm64.
 
-
-All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
+All restores will use the latest baseband firmware and possibly the latest SEP (iOS 10 restores will use iOS 10 baseband and SEP)
 
 Alternatively, you can use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit) by LukeZGD to OTA downgrade to iOS 10.3.3 instead of surrealra1n.
 
@@ -25,7 +18,7 @@ DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it mos
 
 # Compatibility:
 
-A7 devices: iOS 11.3 - 12.5.6 (tethered & untethered), 10.3.3 as an untethered OTA downgrade, tethered 10.x restores will not boot currently and thus not supported.
+A7 devices: iOS 10.1 - 12.5.6, except for iOS 11.0 - 11.2.6 (tethered & untethered)
 
 A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered, but cannot boot yet because I haven't finished the firmware key list)
 
