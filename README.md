@@ -4,7 +4,7 @@ The development branch is not meant to be used for normal use.
 
 Please open an issue if there's problems or bugs.
 
-iOS 10.3.x tethered restores work now, 10.2.x and 10.1.x are in progress, after that is done, I will push the update to the main branch
+iOS 10.1 - 10.1.1 + 10.3.x tethered restores currently work, but after manifest list is finished for iOS 10.2.x, v1.1 rc will release
 
 A script that allows tethered & untethered downgrades of A7-A8 iPhones. A7 iPad support will be added eventually, but A8(X) iPad support will not be added.
 So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility, except for iOS 10 at this time for A7 (except for downgrade with OTA blobs to 10.3.3)
