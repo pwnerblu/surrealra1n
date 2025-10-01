@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "surrealra1n - v1.1"
-echo "Tether Downgrader for iPhone 5S - iOS 11.3 - 12.5.6"
+echo "Tether Downgrader for iPhone 5S - iOS 10.1 - 12.5.6 (except 11.0 - 11.2.6)"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "All restores will use the latest baseband firmware, except for iOS 10.x downgrades on A7. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
@@ -137,7 +137,7 @@ fi
 
 if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
     LATEST_VERSION="12.5.7"
-    DOWNGRADE_RANGE="11.3 to 12.5.6 - 10.1.1 - 10.3.3 for some A7 devices"
+    DOWNGRADE_RANGE="11.3 to 12.5.6 - 10.1 - 10.3.3 also for some A7 devices"
 else
     echo "Unsupported device"
     exit 1
@@ -150,6 +150,10 @@ fi
 
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
     SEP="sep-firmware.n51.RELEASE.im4p"
+    IBSS10="iBSS.n51.RELEASE.im4p"
+    IBEC10="iBEC.n51.RELEASE.im4p"
+    IBOOT10="iBoot.n51.RELEASE.im4p"
+    LLB10="LLB.n51.RELEASE.im4p"
     ALLFLASH="all_flash.n51ap.production"
     KERNELCACHE10="kernelcache.release.n51"
     DEVICETREE="DeviceTree.n51ap.im4p"
@@ -162,8 +166,12 @@ fi
 
 if [[ $IDENTIFIER == iPhone6,2 ]]; then
     SEP="sep-firmware.n53.RELEASE.im4p"
+    IBOOT10="iBoot.n53.RELEASE.im4p"
+    LLB10="LLB.n53.RELEASE.im4p"
     ALLFLASH="all_flash.n53ap.production"
     KERNELCACHE10="kernelcache.release.n53"
+    IBSS10="iBSS.n53.RELEASE.im4p"
+    IBEC10="iBEC.n53.RELEASE.im4p"
     DEVICETREE="DeviceTree.n53ap.im4p"
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
@@ -190,16 +198,10 @@ Usage: $0 [OPTIONS]
 
 Options:
   --make-custom-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]
-        Create a custom IPSW for tethered restore. iOS version must be 10.3 or later to use this.
+        Create a custom IPSW for tethered restore.
         - TARGET_IPSW_PATH: Path for the stock IPSW for target version
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
-  
-  --make-custom-ipsw2 [TARGET IPSW PATH] [iOS 10.3.x IPSW PATH] [BASE IPSW PATH] [iOS version]
-        Create a custom IPSW for tethered restore, this is to build pre-iOS 10.3 tethered IPSW.
-        - TARGET_IPSW_PATH: Path for the stock IPSW for target version
-        - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
-        - iOS_VERSION: Target iOS version to restore (10.1 - 10.2.1)
 
   --restore [iOS_VERSION]
         Restore the device to a previously created custom IPSW.
@@ -218,11 +220,6 @@ Options:
 
   --boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version.
-        - You must be on that iOS version already.
-        - PUT YOUR DEVICE INTO DFU MODE before proceeding
-
-  --boot2 [iOS_VERSION]
-        Perform a tethered boot of the specified iOS version, this is the required option for booting pre-iOS 10.3 restores.
         - You must be on that iOS version already.
         - PUT YOUR DEVICE INTO DFU MODE before proceeding
    
@@ -258,12 +255,6 @@ case "$1" in
             exit 1
         fi
 
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
-            echo "[!] iOS 10.2.x and 10.1.x IPSW cannot be made with --make-custom-ipsw"
-            echo "[!] Use --make-custom-ipsw2 instead"
-            exit 1
-        fi
-
         if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.3.3 ]]; then
             echo "[!] iOS 10.3.3 can be restored untethered via OTA downgrade"
             echo "[!] It is recommended to use --ota-downgrade [iOS 10.3.3 ipsw] to OTA downgrade to 10.3.3"
@@ -274,17 +265,39 @@ case "$1" in
         echo "[*] Making custom IPSW..."
         savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
         mkdir -p "$savedir"
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
-            echo ""
-            unzip "$TARGET_IPSW" -d tmp1
-            unzip "$BASE_IPSW" -d tmp2
+        echo ""
+        unzip "$TARGET_IPSW" -d tmp1
+        unzip "$BASE_IPSW" -d tmp2
+        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
+            echo "iOS 10.3 iBSS and iBEC will be used."
+            IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3 IPSW file (for iBSS and iBEC)" --file-filter="*.ipsw")
+            rm -rf tmp1/Firmware/dfu/$IBSS10
+            rm -rf tmp1/Firmware/dfu/$IBEC10
+            unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
+            unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d tmp1/Firmware/dfu
+            mv tmp1/Firmware/dfu/$IBSS tmp1/Firmware/dfu/$IBSS10
+            mv tmp1/Firmware/dfu/$IBEC tmp1/Firmware/dfu/$IBEC10
+        fi
+        if [[ "$IOS_VERSION" == 10.1* ]]; then
+            rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
+            rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
+            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
+            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
+            rm -rf tmp1/BuildManifest.plist
+            cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist
+        elif [[ "$IOS_VERSION" == 10.2* ]]; then
+            rm -rf tmp1/Firmware/all_flash/$LLB10
+            rm -rf tmp1/Firmware/all_flash/$IBOOT10
+            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB10
+            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT10
+            rm -rf tmp1/BuildManifest.plist
+            cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist
+        elif [[ "$IOS_VERSION" == 10.3* ]]; then
             rm -rf tmp1/Firmware/all_flash/$LLB
             rm -rf tmp1/Firmware/all_flash/$IBOOT
             cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
             cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
         else
-            unzip "$TARGET_IPSW" -d tmp1
-            unzip "$BASE_IPSW" -d tmp2
             find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
             find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
         fi
@@ -347,100 +360,6 @@ case "$1" in
         echo "Custom IPSW + patched restore chain has been made! Use --restore $IOS_VERSION to downgrade to the designated firmware"
         exit 1
         ;;
-
-    --make-custom-ipsw2)
-        if [[ $# -ne 5 ]]; then
-            echo "[!] Usage: --make-custom-ipsw2 [TARGET_IPSW_PATH] [iOS 10.3.x IPSW PATH] [BASE_IPSW_PATH] [iOS_VERSION]"
-            exit 1
-        fi
-        TARGET_IPSW="$2"
-        IPSW_103="$3"
-        BASE_IPSW="$3"
-        IOS_VERSION="$5"
-
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
-            echo "[!] iOS 10.3.x IPSW will be used as a base, but iOS $IOS_VERSION ramdisk will be used"
-            echo "[!] If you are downgrading to iOS 10.1.x, SEP WILL not be fully compatible"
-            read -p "Press any key to continue"
-        else
-            echo "[!] SEP is incompatible, or your device is not supported for --make-custom-ipsw2"
-            echo "[!] This message may also appear because you are trying to make an iOS 10.3+ IPSW for tethered restore. --make-custom-ipsw must be used for iOS 10.3+ tethered restores"
-            exit 1
-        fi 
-
-
-        echo "[*] Making custom IPSW..."
-        savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
-        mkdir -p "$savedir"
-        echo ""
-        unzip "$IPSW_103" -d tmp1
-        unzip "$BASE_IPSW" -d tmp2
-        unzip "$TARGET_IPSW" -d tmp
-        rm -rf tmp1/Firmware/all_flash/$LLB
-        rm -rf tmp1/Firmware/all_flash/$IBOOT
-        cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
-        cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
-        # devicetree replacement and add target version DeviceTree to custom IPSW
-        if [[ $IOS_VERSION == 10.1* ]]; then
-            rm -rf tmp1/Firmware/all_flash/$DEVICETREE
-            cp tmp/Firmware/all_flash/$ALLFLASH/$DEVICETREE tmp1/Firmware/all_flash/$DEVICETREE
-        else
-            rm -rf tmp1/Firmware/all_flash/$DEVICETREE
-            cp tmp/Firmware/all_flash/$DEVICETREE tmp1/Firmware/all_flash/$DEVICETREE
-        fi
-        largest_dmg=$(find tmp -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
-        largest2_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
-        rm -rf "$largest2_dmg"
-        mv "$largest_dmg" "$largest2_dmg"
-        cd tmp1
-        zip -0 -r ../custom.ipsw *
-        cd ..
-        mv custom.ipsw "$savedir/custom.ipsw"
-        rm -rf "tmp1"
-        rm -rf "tmp2"
-        
-        # Find smallest .dmg in tmp1 and copy to work/RestoreRamdisk.orig
-        smallest_dmg=$(find tmp -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
-        mkdir -p work
-        cp tmp/$KERNELCACHE10 work/kernel.orig      
-        cd work
-        echo "making patched restore chain"
-        ../bin/img4 -i kernel.orig -o kernel.raw
-        ../bin/KPlooshFinder kernel.raw kernel.patched
-        ../bin/kerneldiff kernel.raw kernel.patched kernel.bpatch
-        ../bin/img4 -i kernel.orig -o kernel.im4p -T rkrn -P kernel.bpatch -J
-        mv kernel.im4p ../$savedir/kernel.im4p
-        # build ramdisk
-        cd ..
-        sudo ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
-        rm -rf "tmp" 
-        echo "growing ramdisk"
-        sudo ./bin/hfsplus ramdisk.raw grow 60000000
-        echo "extracting asr to patch"
-        sudo ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
-        echo "patching asr"
-        sudo ./bin/asr64_patcher asr patched_asr
-        sudo ./bin/ldid -e asr > ents.plist
-        sudo ./bin/ldid -Sents.plist patched_asr
-        echo "replacing asr with patched asr"
-        sudo ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
-        sleep 4
-        sudo ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
-        sleep 4
-        sudo ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
-        sleep 4
-        echo "Packing patched Ramdisk as im4p"
-        sudo ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
-        mv ramdisk.im4p $savedir/ramdisk.im4p
-        rm -rf "work"
-        rm -rf asr
-        rm -rf patched_asr
-        rm -rf ents.plist
-        rm -rf ramdisk.raw
-        echo "Custom IPSW + patched restore chain has been made! Use --restore $IOS_VERSION to downgrade to the designated firmware"
-        exit 1
-        ;;
-
 
     --restore)
         if [[ $# -ne 2 ]]; then
@@ -571,6 +490,10 @@ case "$1" in
         IPSW="$2"
         SHSHBLOB="$3"
         read -p "What is the iOS version you are downgrading to: " vers
+        if [[ $vers == 10.2* || $vers == 10.1* ]]; then
+            echo "[!] Unsupported currently"
+            exit 1
+        fi
         echo "[*] Restoring to iOS $vers..."
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
         echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
@@ -626,13 +549,7 @@ case "$1" in
         fi
         IOS_VERSION="$2"
         echo "[*] Tethered boot of iOS $IOS_VERSION..."
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
-            echo "[!] iOS 10.2.x and 10.1.x boot files cannot be made with --boot"
-            echo "[!] Use --boot2 $IOS_VERSION instead"
-            exit 1
-        fi
         echo "[!] Note: Kernel patches are applied for restoring only usually"
-        echo "[!] iOS 10 cannot be tether boooted at this time."
         # Find the .shsh2 file in the shsh directory
         shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
         if [[ -z "$shshpath" ]]; then
@@ -648,10 +565,24 @@ case "$1" in
             IPSW_PATH=$(zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
             mkdir -p to_patch
             mkdir -p "$BOOT_DIR"
-            unzip -j "$IPSW_PATH" "$KERNELCACHE" -d to_patch
-            unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d to_patch
-            unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d to_patch
-            unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d to_patch
+            # move ibss and ibec
+            if [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
+                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS10" -d to_patch
+                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC10" -d to_patch
+                unzip -j "$IPSW_PATH" "$KERNELCACHE10" -d to_patch
+                mv to_patch/$KERNELCACHE10 to_patch/$KERNELCACHE
+                mv to_patch/$IBSS10 to_patch/$IBSS
+                mv to_patch/$IBEC10 to_patch/$IBEC
+            else
+                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d to_patch
+                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d to_patch
+                unzip -j "$IPSW_PATH" "$KERNELCACHE" -d to_patch
+            fi
+            if [[ "$IOS_VERSION" == 10.1* ]]; then
+                unzip -j "$IPSW_PATH" "Firmware/all_flash/$ALLFLASH/$DEVICETREE" -d to_patch
+            else
+                unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d to_patch
+            fi
             if [[ "$IOS_VERSION" == 12.* ]]; then
                 echo "Trustcache will be extracted too!"
                 unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d to_patch
@@ -696,7 +627,11 @@ case "$1" in
             ./bin/img4 -i to_patch/iBSS.im4p -o to_patch/iBSS.dec -k $IBSS_KEY
             ./bin/img4 -i to_patch/iBEC.im4p -o to_patch/iBEC.dec -k $IBEC_KEY
             ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
-            ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
+            if [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
+                ./bin/kairos to_patch/iBSS.dec to_patch/iBSS.patched
+            else
+                ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
+            fi
             if [[ "$IOS_VERSION" == 10.* ]]; then
                 echo "Using kairos to patch iBEC instead of iBoot64Patcher"
                 ./bin/kairos to_patch/iBEC.dec to_patch/iBEC.patched -n -b "-v debug=0x09" -c "go" 0x830000300
@@ -705,6 +640,7 @@ case "$1" in
             fi
             ./bin/img4 -i to_patch/DeviceTree.im4p -o $BOOT_DIR/DeviceTree.img4 -M "$im4m" -T rdtr
             ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn
+            ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
             ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
             if [[ "$IOS_VERSION" == 12.* ]]; then
                 ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
