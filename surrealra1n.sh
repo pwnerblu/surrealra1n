@@ -278,18 +278,11 @@ case "$1" in
             mv tmp1/Firmware/dfu/$IBSS tmp1/Firmware/dfu/$IBSS10
             mv tmp1/Firmware/dfu/$IBEC tmp1/Firmware/dfu/$IBEC10
         fi
-        if [[ "$IOS_VERSION" == 10.1* ]]; then
+        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
             rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
             rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
             cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
             cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
-            rm -rf tmp1/BuildManifest.plist
-            cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist
-        elif [[ "$IOS_VERSION" == 10.2* ]]; then
-            rm -rf tmp1/Firmware/all_flash/$LLB10
-            rm -rf tmp1/Firmware/all_flash/$IBOOT10
-            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB10
-            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT10
             rm -rf tmp1/BuildManifest.plist
             cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist
         elif [[ "$IOS_VERSION" == 10.3* ]]; then
@@ -578,7 +571,7 @@ case "$1" in
                 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d to_patch
                 unzip -j "$IPSW_PATH" "$KERNELCACHE" -d to_patch
             fi
-            if [[ "$IOS_VERSION" == 10.1* ]]; then
+            if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
                 unzip -j "$IPSW_PATH" "Firmware/all_flash/$ALLFLASH/$DEVICETREE" -d to_patch
             else
                 unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d to_patch
@@ -626,7 +619,6 @@ case "$1" in
             im4m="$IDENTIFIER-im4m"
             ./bin/img4 -i to_patch/iBSS.im4p -o to_patch/iBSS.dec -k $IBSS_KEY
             ./bin/img4 -i to_patch/iBEC.im4p -o to_patch/iBEC.dec -k $IBEC_KEY
-            ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
             if [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
                 ./bin/kairos to_patch/iBSS.dec to_patch/iBSS.patched
             else
