@@ -1,16 +1,26 @@
 #!/bin/bash
 
-echo "surrealra1n - v1.1"
-echo "Tether Downgrader for iPhone 5S - iOS 10.1 - 12.5.6 (except 11.0 - 11.2.6)"
+echo "surrealra1n - v1.2 beta"
+echo "Tether Downgrader for iPhone 5S - iOS 10.1 - 12.5.6"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "All restores will use the latest baseband firmware, except for iOS 10.x downgrades on A7. On certain A7 devices, iOS 10.3.3 SEP will be used to do an OTA downgrade to 10.3.3"
 echo "No, you do not need to have Python installed"
 echo "zoe-vb fork of asr64_patcher is used for patching ASR"
+echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation tickets for iOS 11.0 - 11.2.6 restores on iPhone 5S"
 
 # Request sudo password upfront
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
+
+echo "Checking if SSHRD_Script exists..."
+
+if [[ -f "./SSHRD_Script/sshrd.sh" ]]; then
+    echo "SSHRD_Script is installed."
+else
+    echo ""
+    git clone https://github.com/iPh0ne4s/SSHRD_Script --recursive
+fi
 
 echo "Checking for existing binaries..."
 
@@ -139,8 +149,8 @@ if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
     LATEST_VERSION="12.5.7"
     DOWNGRADE_RANGE="11.3 to 12.5.6 - 10.1 - 10.3.3 also for some A7 devices"
 else
-    echo "Unsupported device"
-    exit 1
+    echo "Unsupported device, press any key to continue if you are going to do an untethered downgrade with saved SHSH (use --downgrade [IPSW FILE] [SHSH BLOB])"
+    read -p ""
 fi
 
 if [[ $IDENTIFIER == iPhone7* ]]; then
@@ -243,11 +253,19 @@ case "$1" in
         TARGET_IPSW="$2"
         BASE_IPSW="$3"
         IOS_VERSION="$4"
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             echo "[!] On this device, you can use --ota-downgrade flag to restore to iOS 10.3.3 without saved blobs"
             exit 1
+        fi
+        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* ]]; then
+            echo "[!] SEP is partially compatible"
+            echo "[!] Restoring to iOS $IOS_VERSION will use iOS 10.3.3 SEP (because iOS 12 SEP is fully incompatible with 11.2.6 and below)"
+            echo "[!] The following issues will occur after the restore: Activation issues, Touch ID not working, unable to connect to password-protected Wi-Fi networks, etc. Device passcode may work though."
+            echo "[!] This is ONLY recommended for advanced users, saving activation tickets with an SSH ramdisk is required before restoring to this version"
+            echo "[!] PLEASE. PLEASE! DO NOT use this to bypass iCloud, only save activation tickets on a device you legally own"
+            read -p "Press any key to continue"
         fi
         if [[ "$IDENTIFIER" == iPhone7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
             echo "[!] SEP is incompatible"
@@ -319,7 +337,7 @@ case "$1" in
         cd ..
         sudo ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
         rm -rf "tmp1" 
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
             sudo ./bin/hfsplus ramdisk.raw grow 60000000
         else
@@ -395,8 +413,25 @@ case "$1" in
         fi
 
         echo "[*] Using SHSH blob: $shshpath"
+        if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+            echo "since this restore requires the iOS 10 SEP to restore successfully, and we are restoring iOS 11.0 - 11.2.6, we need to save activation records so we can activate (because of SEP compatibility problems we cannot activate normally)"
+            echo "iPh0ne4s fork of SSHRD_Script will be used"
+            sleep 4
+            ./bin/gaster pwn
+            ./bin/gaster reset
+            cd SSHRD_Script
+            sudo ./sshrd.sh 12.0
+            sudo ./sshrd.sh boot
+            sleep 10
+            sudo ./sshrd.sh --backup-activation
+            sudo ./sshrd.sh reboot
+            cd ..
+            read -p "Press any key after you have placed your device into DFU mode"
+            ./bin/gaster pwn
+            ./bin/gaster reset
+        fi
         echo "running futurerestore"
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "iOS 10 sep will be used"
             IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)" --file-filter="*.ipsw")
             mkdir tmp
@@ -406,6 +441,13 @@ case "$1" in
             unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
             BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
+            if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                rm -rf "tmp"
+                echo "Restore has finished! Read above if there's any errors"
+                echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
+                exit 1
+            fi
             sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
             rm -rf "tmp"
             echo "Restore has finished! Read above if there's any errors"
@@ -511,7 +553,7 @@ case "$1" in
 
         echo "[*] Using SHSH blob: $SHSHBLOB"
         echo "running futurerestore"
-        if [[ $vers == 11.3* || $vers == 11.4* || $vers == 12.* ]]; then
+        if [[ $vers == 11.3* || $vers == 11.4* || $vers == 12.* || $vers == 13.* || $vers == 14.* || $vers == 15.* || $vers == 16.* ]]; then
            echo "Using latest SEP and baseband!"
            sudo ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --latest-baseband --latest-sep --no-rsep $IPSW
         elif [[ $IDENTIFIER == iPhone6* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
@@ -679,6 +721,25 @@ case "$1" in
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
         echo "Your device should now boot."
+        if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+            echo "If it's your first boot after downgrading, wait for the Hello screen, then proceed with the next step"
+            read -p "Is this your first time booting? (y/n): " bootresponse
+            if [[ $bootresponse == y ]]; then
+                read -p "Press any key after your device is in DFU mode, we will need to inject activation"
+                sleep 4
+                ./bin/gaster pwn
+                ./bin/gaster reset
+                cd SSHRD_Script
+                sudo ./sshrd.sh 11.0
+                sudo ./sshrd.sh boot
+                sleep 10
+                sudo ./sshrd.sh --restore-activation
+                sudo ./sshrd.sh reboot
+                cd ..
+                echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
+                exit 1
+            fi
+        fi
         exit 1
         ;;
 
