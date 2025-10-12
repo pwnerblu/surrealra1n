@@ -16,6 +16,8 @@ And if there is any issues, PLEASE open one up on the issues tab.
 
 DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it most likely isn't futurerestore's fault.
 
+If there is any issue with surrealra1n, make a post about the issue in r/surrealra1n
+
 # Compatibility:
 
 A7 devices: iOS 10.1 - 12.5.6, except for iOS 11.0 - 11.2.6 (tethered & untethered)
