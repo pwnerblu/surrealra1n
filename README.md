@@ -3,6 +3,8 @@
 A script that allows tethered & untethered downgrades of A7-A8 iPhones. A7 iPad support will be added eventually, but A8(X) iPad support will not be added.
 So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility!
 
+For a full guide to tether downgrade to a lower iOS, go to: https://github.com/pwnerblu/surrealra1n/wiki/Tethered-Downgrades-with-surrealra1n
+
 This script works on Linux only, no macOS support
 
 Specifically, this is for Ubuntu/Debian, and any other distros using the dpkg/apt package manager, and is for x86_64, not arm64.
