@@ -5,6 +5,8 @@ So what iOS versions can you downgrade to with surrealra1n? Any version with SEP
 
 For a full guide to tether downgrade to a lower iOS, go to: https://github.com/pwnerblu/surrealra1n/wiki/Tethered-Downgrades-with-surrealra1n
 
+For a full guide to OTA downgrade to iOS 10.3.3 (some A7 devices only, surrealra1n downgrade to 10.3.3 is only supported on the 5s): https://github.com/pwnerblu/surrealra1n/wiki/OTA-downgrading-to-iOS-10.3.3-(some-A7-devices-only)
+
 This script works on Linux only, no macOS support
 
 Specifically, this is for Ubuntu/Debian, and any other distros using the dpkg/apt package manager, and is for x86_64, not arm64.
