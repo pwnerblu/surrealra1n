@@ -421,6 +421,12 @@ case "$1" in
             ./bin/gaster reset
             cd SSHRD_Script
             sudo ./sshrd.sh 12.0
+            read -p "Was there an error while making the ramdisk? (y/n) " error_response
+            if [[ $error_response == y ]]; then
+                sudo ./sshrd.sh 12.0
+            else
+                echo ""
+            fi
             sudo ./sshrd.sh boot
             sleep 10
             sudo ./sshrd.sh --backup-activation
@@ -731,6 +737,12 @@ case "$1" in
                 ./bin/gaster reset
                 cd SSHRD_Script
                 sudo ./sshrd.sh 11.0
+                read -p "Was there an error while making the ramdisk? (y/n) " error_response
+                if [[ $error_response == y ]]; then
+                    sudo ./sshrd.sh 11.0
+                else
+                    echo ""
+                fi
                 sudo ./sshrd.sh boot
                 sleep 10
                 sudo ./sshrd.sh --restore-activation
