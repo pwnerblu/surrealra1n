@@ -13,6 +13,27 @@ echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation ti
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
+# Dependency check
+echo "Checking for required dependencies..."
+
+DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git)
+MISSING_PACKAGES=()
+
+for pkg in "${DEPENDENCIES[@]}"; do
+    if ! dpkg -s "$pkg" &>/dev/null; then
+        MISSING_PACKAGES+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+    echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
+    echo "Installing missing dependencies..."
+    sudo apt update
+    sudo apt install -y "${MISSING_PACKAGES[@]}"
+else
+    echo "All dependencies are installed." 
+fi
+
 echo "Checking if SSHRD_Script exists..."
 
 if [[ -f "./SSHRD_Script/sshrd.sh" ]]; then
@@ -76,27 +97,6 @@ else
     rm -rf *.zip
     rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE" 
     cd ..
-fi
-
-# Dependency check
-echo "Checking for required dependencies..."
-
-DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity)
-MISSING_PACKAGES=()
-
-for pkg in "${DEPENDENCIES[@]}"; do
-    if ! dpkg -s "$pkg" &>/dev/null; then
-        MISSING_PACKAGES+=("$pkg")
-    fi
-done
-
-if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
-    echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
-    echo "Installing missing dependencies..."
-    sudo apt update
-    sudo apt install -y "${MISSING_PACKAGES[@]}"
-else
-    echo "All dependencies are installed." 
 fi
 
 
