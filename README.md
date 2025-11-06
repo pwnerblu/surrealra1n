@@ -20,7 +20,7 @@ And if there is any issues, PLEASE open one up on the issues tab.
 
 DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it most likely isn't futurerestore's fault.
 
-If there is any issue with surrealra1n, make a post about the issue in r/surrealra1n
+If there is any issue with surrealra1n, join this discord server: https://discord.gg/kDXVHhTQs2
 
 # Compatibility:
 
