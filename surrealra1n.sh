@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 beta 3"
+CURRENT_VERSION="v1.2 beta 3 re-release"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.7.x"
@@ -130,7 +130,7 @@ else
     cd ..
     rm -rf "restored_external64patcher"
     # install Kernel64Patcher for tether booting iOS 13+
-    curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/blob/main/binaries/Linux/Kernel64Patcher
+    curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/Kernel64Patcher
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
