@@ -1,1 +1,10 @@
-v1.2 beta 3 re-release
+v1.2 beta 4
+
+RELEASE NOTES:
+
+Adds support for iPhone 8/X tethered restores to iOS 14.3 - 15.6.1 (not fully tested though)
+Also with iOS/iPadOS 14.x/15.x restores on devices that got iOS/iPadOS 16 or later (like the iPad 6), now mandates activation tickets to be saved.
+Test mode added! To use test mode, do not connect your device and run ./surrealra1n.sh (you will be asked to input a device identifer, example: iPhone9,1, then you can test boot file creation and/or tethered IPSW creation)
+
+iPhone X may or may not work (but additional patches are used for tethered restores on the X to 14.3 - 15.6.1). 
+The iPhone 8 is more likely to work on tethered restores than the X. This is still a beta release
