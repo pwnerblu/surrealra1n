@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 beta 3 re-release"
+CURRENT_VERSION="v1.2 beta 4"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.7.x"
@@ -36,10 +36,14 @@ fi
 echo "Checking for updates..."
 rm -rf update/latest.txt
 curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
-LATEST_VERSION=$(tr -d '\r\n' < "update/latest.txt")
+LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
+RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
 if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
+    echo "RELEASE NOTES:"
+    echo "$RELEASE_NOTES"
+    echo ""
     echo "It is strongly recommended to update to get the latest features + bug fixes."
     read -p "Would you like to update now? (y/n): " update
     if [[ $update == y || $update == Y ]]; then
@@ -96,6 +100,7 @@ if [[ -f "./bin/img4" && \
       -f "./bin/Kernel64Patcher" && \
       -f "./bin/iBoot64Patcher" && \
       -f "./bin/asr64_patcher" && \
+      -f "./bin/ipx_restored_patcher" && \
       -f "./bin/restored_external64_patcher" && \
       -f "./bin/hfsplus" && \
       -f "./bin/tsschecker" && \
@@ -115,6 +120,8 @@ else
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iBoot64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
+    # install additional restored_external patcher (iPhone X only)
+    curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/ipx_restored_patcher
     # install asr patcher for tethered restores
     git clone https://github.com/iSuns9/asr64_patcher --recursive
     cd asr64_patcher
@@ -187,8 +194,16 @@ else
 
     else
         echo "[!] No device detected in normal or recovery mode."
-        exit 1
+        echo "[!] You can run in no-device/surrealra1n test mode though, but please don't restore devices in no-device/surrealra1n test mode"
+        read -p "Please enter the Identifier you would like to use (example: iPhone10,1): " IDENTIFIER
+        IS_IN_TEST="yes"
     fi
+fi
+
+if [[ $IS_IN_TEST == yes ]]; then
+    echo "[!] surrealra1n is running in no-device/test mode. Please do not restore any devices with this."
+    echo "You may test some functionality though other than restoring."
+    sleep 4
 fi
 
 if [[ $IDENTIFIER == iPhone6* ]]; then
@@ -200,6 +215,45 @@ if [[ $IDENTIFIER == iPhone6* ]]; then
     IBEC="iBEC.iphone6.RELEASE.im4p"
 fi
 
+if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
+    IBSS="iBSS.d20.RELEASE.im4p"
+    IBEC="iBEC.d20.RELEASE.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    IBSS="iBSS.d22.RELEASE.im4p"
+    IBEC="iBEC.d22.RELEASE.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+    IBSS="iBSS.d21.RELEASE.im4p"
+    IBEC="iBEC.d21.RELEASE.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,1 ]]; then
+    DEVICETREE="DeviceTree.d20ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,2 ]]; then
+    DEVICETREE="DeviceTree.d21ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,5 ]]; then
+    DEVICETREE="DeviceTree.d211ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,4 ]]; then
+    DEVICETREE="DeviceTree.d201ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,3 ]]; then
+    DEVICETREE="DeviceTree.d22ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPhone10,6 ]]; then
+    DEVICETREE="DeviceTree.d221ap.im4p"
+fi
+
 if [[ $IDENTIFIER == iPhone* ]]; then
     USE_BASEBAND="--latest-baseband"
 fi 
@@ -207,6 +261,14 @@ fi
 if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
     LATEST_VERSION="12.5.7"
     DOWNGRADE_RANGE="11.3 to 12.5.6 - 10.1 - 10.3.3 also for some A7 devices"
+elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+    LATEST_VERSION="16.7.12"
+    DOWNGRADE_RANGE="14.3 to 15.6.1"
+    KERNELCACHE="kernelcache.release.iphone10"
+elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    LATEST_VERSION="16.7.12"
+    DOWNGRADE_RANGE="14.3 to 15.6.1"
+    KERNELCACHE="kernelcache.release.iphone10b"
 elif [[ $IDENTIFIER == iPad7,5 ]]; then
     LATEST_VERSION="17.7.10"
     DOWNGRADE_RANGE="13.4 to 15.7"
@@ -363,6 +425,18 @@ case "$1" in
             echo "[!] You MUST use turdus merula instead: https://sep.lol"
             exit 1
         fi 
+        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 14.3* || $IOS_VERSION == 14.4* || $IOS_VERSION == 14.5* || $IOS_VERSION == 14.6* || $IOS_VERSION == 14.7* || $IOS_VERSION == 14.8* || $IOS_VERSION == 15.* ]]; then
+            echo "[!] SEP is partially incompatible"
+            echo "[!] The following issues may occur:"
+            echo "[!] You will have activation issues, Touch ID resetting (If you have an iPhone X, Face ID will not work), etc."
+            echo "[!] Sideloading, iMessage, etc. may not work after downgrading with surrealra1n to iOS $IOS_VERSION"
+            read -p "Press any key to continue"
+        fi 
+        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 14.2* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.0* || $IOS_VERSION == 13.* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
+            echo "[!] SEP is incompatible"
+            echo "[!] You cannot restore to this version or make a custom IPSW for it"
+            exit 1
+        fi 
         echo "[*] Making custom IPSW..."
         savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
         mkdir -p "$savedir"
@@ -445,7 +519,14 @@ case "$1" in
         if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
             echo "patching restored_external"
             sudo ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_external 
-            sudo ./bin/restored_external64_patcher restored_external patched_restored_external
+            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                echo "[!] You are trying to restore an iPhone X to iOS $IOS_VERSION"
+                echo "An additional patch is required!"
+                sudo ./bin/ipx_restored_patcher restored_external patched_external
+                sudo ./bin/restored_external64_patcher patched_external patched_restored_external
+            else
+                sudo ./bin/restored_external64_patcher restored_external patched_restored_external
+            fi
             sudo ./bin/ldid -e restored_external > ents.plist
             sudo ./bin/ldid -Sents.plist patched_restored_external
             echo "replacing restored_external with patched restored_external"
@@ -462,6 +543,7 @@ case "$1" in
         rm -rf "work"
         rm -rf asr
         rm -rf restored_external
+        rm -rf patched_external
         rm -rf patched_restored_external
         rm -rf patched_asr
         rm -rf ents.plist
@@ -522,6 +604,48 @@ case "$1" in
             read -p "Was there an error while making the ramdisk? (y/n) " error_response
             if [[ $error_response == y ]]; then
                 sudo ./sshrd.sh 12.0
+            else
+                echo ""
+            fi
+            sudo ./sshrd.sh boot
+            sleep 10
+            sudo ./sshrd.sh --backup-activation
+            sudo ./sshrd.sh reboot
+            cd ..
+            read -p "Press any key after you have placed your device into DFU mode"
+            ./bin/gaster pwn
+            ./bin/gaster reset
+        fi
+        if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+            echo "iPh0ne4s fork of SSHRD_Script will be used"
+            echo "iOS 16.0.3 ramdisk will be used as 16.1+ ramdisks currently cannot be created on linux"
+            sleep 4
+            cd SSHRD_Script
+            sudo ./sshrd.sh 16.0.3
+            read -p "Was there an error while making the ramdisk? (y/n) " error_response
+            if [[ $error_response == y ]]; then
+                sudo ./sshrd.sh 16.0.3
+            else
+                echo ""
+            fi
+            sudo ./sshrd.sh boot
+            sleep 10
+            sudo ./sshrd.sh --backup-activation
+            sudo ./sshrd.sh reboot
+            cd ..
+            read -p "Press any key after you have placed your device into DFU mode"
+            ./bin/gaster pwn
+            ./bin/gaster reset
+        fi
+        if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+            echo "iPh0ne4s fork of SSHRD_Script will be used"
+            read -p "since we are on linux, we cannot make iPadOS 16+ ramdisks. press any key to continue saving activation records (very low chance of success if you're not on iPadOS 15 or lower)"
+            sleep 4
+            cd SSHRD_Script
+            sudo ./sshrd.sh 14.5.1
+            read -p "Was there an error while making the ramdisk? (y/n) " error_response
+            if [[ $error_response == y ]]; then
+                sudo ./sshrd.sh 14.5.1
             else
                 echo ""
             fi
@@ -855,6 +979,29 @@ case "$1" in
                 read -p "Was there an error while making the ramdisk? (y/n) " error_response
                 if [[ $error_response == y ]]; then
                     sudo ./sshrd.sh 11.0
+                else
+                    echo ""
+                fi
+                sudo ./sshrd.sh boot
+                sleep 10
+                sudo ./sshrd.sh --restore-activation
+                sudo ./sshrd.sh reboot
+                cd ..
+                echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
+                exit 1
+            fi
+        fi
+        if [[ $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+            echo "If it's your first boot after downgrading, wait for the Hello screen, then proceed with the next step"
+            read -p "Is this your first time booting? (y/n): " bootresponse
+            if [[ $bootresponse == y ]]; then
+                read -p "Press any key after your device is in DFU mode, we will need to inject activation"
+                sleep 4
+                cd SSHRD_Script
+                sudo ./sshrd.sh $IOS_VERSION
+                read -p "Was there an error while making the ramdisk? (y/n) " error_response
+                if [[ $error_response == y ]]; then
+                    sudo ./sshrd.sh $IOS_VERSION
                 else
                     echo ""
                 fi
