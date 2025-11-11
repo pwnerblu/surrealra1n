@@ -1,6 +1,7 @@
 #!/bin/bash
+CURRENT_VERSION="v1.1.2"
 
-echo "surrealra1n - v1.1"
+echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for iPhone 5S - iOS 10.1 - 12.5.6 (except 11.0 - 11.2.6)"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
@@ -11,6 +12,49 @@ echo "zoe-vb fork of asr64_patcher is used for patching ASR"
 # Request sudo password upfront
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
+
+echo "Checking for updates..."
+rm -rf update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/update/latest.txt
+LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
+RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
+
+if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+    echo "A new version of surrealra1n is available: $LATEST_VERSION"
+    echo "RELEASE NOTES:"
+    echo "$RELEASE_NOTES"
+    echo ""
+    echo "It is strongly recommended to update to get the latest features + bug fixes."
+    read -p "Would you like to update now? (y/n): " update
+    if [[ $update == y || $update == Y ]]; then
+        mkdir updatefiles
+        rm -rf bin
+        rm -rf futurerestore
+        rm -rf "keys"
+        rm -rf "manifest"
+        curl -L -o updatefiles/surrealra1n.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/surrealra1n.sh
+        rm -rf surrealra1n.sh
+        mv updatefiles/surrealra1n.sh surrealra1n.sh
+        chmod +x surrealra1n.sh
+        cd updatefiles
+        git clone --branch main https://github.com/pwnerblu/surrealra1n --recursive
+        mv surrealra1n/keys keys
+        mv surrealra1n/manifest manifest
+        cd ..
+        mv updatefiles/manifest manifest
+        mv updatefiles/keys keys
+        rm -rf "updatefiles"
+        echo "surrealra1n has been updated! Please run the script again"
+        exit 1
+    else
+        echo "You have declined the update."
+        echo "Until you update, you will continue to get the update prompt every time you use surrealra1n."
+        sleep 4
+    fi
+else
+    echo "surrealra1n is up to date."
+    sleep 1
+fi
 
 echo "Checking for existing binaries..."
 
@@ -624,7 +668,7 @@ case "$1" in
             else
                 ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
             fi
-            if [[ "$IOS_VERSION" == 10.* ]]; then
+            if [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.* || "$IOS_VERSION" == 12.* ]]; then
                 echo "Using kairos to patch iBEC instead of iBoot64Patcher"
                 ./bin/kairos to_patch/iBEC.dec to_patch/iBEC.patched -n -b "-v debug=0x09" -c "go" 0x830000300
             else
