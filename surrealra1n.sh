@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 beta 4"
+CURRENT_VERSION="v1.2 beta 4 re-release"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.7.x"
@@ -894,7 +894,7 @@ case "$1" in
             else
                 ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
             fi
-            if [[ "$IOS_VERSION" == 10.* ]]; then
+            if [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.* || "$IOS_VERSION" == 12.* ]]; then
                 echo "Using kairos to patch iBEC instead of iBoot64Patcher"
                 ./bin/kairos to_patch/iBEC.dec to_patch/iBEC.patched -n -b "-v debug=0x09" -c "go" 0x830000300
             elif [[ "$IOS_VERSION" == 13.* || "$IOS_VERSION" == 14.* || "$IOS_VERSION" == 15.* ]]; then
