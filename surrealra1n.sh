@@ -1,8 +1,8 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 beta 4 re-release"
+CURRENT_VERSION="v1.2 beta 5"
 
 echo "surrealra1n - $CURRENT_VERSION"
-echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.7.x"
+echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "iSuns9 fork of asr64_patcher is used for patching ASR"
@@ -230,6 +230,8 @@ if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
     IBEC="iBEC.d21.RELEASE.im4p"
 fi
 
+# devicetree determiner, for iPhone 8 and X
+
 if [[ $IDENTIFIER == iPhone10,1 ]]; then
     DEVICETREE="DeviceTree.d20ap.im4p"
 fi
@@ -254,8 +256,35 @@ if [[ $IDENTIFIER == iPhone10,6 ]]; then
     DEVICETREE="DeviceTree.d221ap.im4p"
 fi
 
+# devicetree determiner, for iPad air 2 and mini 4
+
+if [[ $IDENTIFIER == iPad5,1 ]]; then
+    DEVICETREE="DeviceTree.j96ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPad5,2 ]]; then
+    DEVICETREE="DeviceTree.j97ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPad5,3 ]]; then
+    DEVICETREE="DeviceTree.j81ap.im4p"
+fi
+
+if [[ $IDENTIFIER == iPad5,4 ]]; then
+    DEVICETREE="DeviceTree.j82ap.im4p"
+fi
+
 if [[ $IDENTIFIER == iPhone* ]]; then
     USE_BASEBAND="--latest-baseband"
+fi 
+
+# important, for iPad air 2 and mini 4 tethered restores
+if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
+    USE_BASEBAND="--latest-baseband"
+fi 
+
+if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
+    USE_BASEBAND="--no-baseband"
 fi 
 
 if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
@@ -277,6 +306,18 @@ elif [[ $IDENTIFIER == iPad7,5 ]]; then
     IBEC="iBEC.ipad7b.RELEASE.im4p"
     DEVICETREE="DeviceTree.j71bap.im4p"
     USE_BASEBAND="--no-baseband"
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]]; then
+    LATEST_VERSION="15.8.5"
+    DOWNGRADE_RANGE="13.4 to 15.8.4"
+    IBSS="iBSS.ipad5.RELEASE.im4p"
+    IBEC="iBEC.ipad5.RELEASE.im4p"
+    KERNELCACHE="kernelcache.release.ipad5"
+elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
+    LATEST_VERSION="15.8.5"
+    DOWNGRADE_RANGE="13.4 to 15.8.4"
+    IBSS="iBSS.ipad5b.RELEASE.im4p"
+    IBEC="iBEC.ipad5b.RELEASE.im4p"
+    KERNELCACHE="kernelcache.release.ipad5b"
 else
     echo "Unsupported device, press any key to continue if you are going to do an untethered downgrade with saved SHSH (use --downgrade [IPSW FILE] [SHSH BLOB])"
     read -p ""
@@ -417,6 +458,14 @@ case "$1" in
             echo "[!] Touch ID will cease to function fully on 13.x, but it is broken on iPadOS 14-15. And setting a passcode may cause the device to crash."
             echo "[!] And if you are restoring to iPadOS 13.4 - 13.7, you will be stuck in a blank screen after the restore. Put the device into real DFU mode and boot it normally."
             echo "[!] It is recommended to use turdus merula instead: https://sep.lol"
+            read -p "Press any key to continue"
+        fi 
+        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.4* || $IOS_VERSION == 13.5* || $IOS_VERSION == 13.6* || $IOS_VERSION == 13.7* ]]; then
+            echo "[!] SEP is partially incompatible"
+            echo "[!] The iPadOS $LATEST_VERSION SEP is not fully compatible with this version."
+            echo "[!] The following issues may occur:"
+            echo "[!] Touch ID will cease to function fully."
+            echo "[!] And if you are restoring to iPadOS 13.4 - 13.7, you will be stuck in a blank screen after the restore. Put the device into real DFU mode and boot it normally."
             read -p "Press any key to continue"
         fi 
         if [[ "$IDENTIFIER" == iPad7,5 ]] && [[ $IOS_VERSION == 13.3* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
@@ -1008,9 +1057,36 @@ case "$1" in
                 sudo ./sshrd.sh boot
                 sleep 10
                 sudo ./sshrd.sh --restore-activation
+                read -p "would you like to install TrollStore (strongly recommended, if you want to sideload on this version)? (Y/n): " install_troll
+                if [[ $install_troll == Y || $install_troll == y ]]; then
+                    sudo ./sshrd.sh --install-trollstore
+                fi
                 sudo ./sshrd.sh reboot
                 cd ..
                 echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
+                exit 1
+            fi
+        fi
+        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+            echo "This iOS/iPadOS version supports TrollStore"
+            read -p "Would you like to install TrollStore (recommended, ignore if you've already installed TrollStore)? (y/n): " troll
+            if [[ $troll == y ]]; then
+                read -p "Press any key after your device is in DFU mode"
+                sleep 4
+                cd SSHRD_Script
+                sudo ./sshrd.sh 14.3
+                read -p "Was there an error while making the ramdisk? (y/n) " error_response
+                if [[ $error_response == y ]]; then
+                    sudo ./sshrd.sh 14.3
+                else
+                    echo ""
+                fi
+                sudo ./sshrd.sh boot
+                sleep 10
+                sudo ./sshrd.sh --install-trollstore
+                sudo ./sshrd.sh reboot
+                cd ..
+                echo "TrollStore has been installed! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
                 exit 1
             fi
         fi
