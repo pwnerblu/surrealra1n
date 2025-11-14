@@ -1,7 +1,8 @@
-v1.2 beta 4 re-release
+v1.2 beta 5
 
 RELEASE NOTES:
 
-Fixes a bug where iOS 11-12 tethered restores cannot jailbreak with Chimera/Electra, this issue is likely because of how iBoot was patched for tethered booting.
-The symptoms of the jailbreak issue is usually the jailbreak freezing.
+Adds iPad Air 2 and iPad mini 4 support (untested, if anyone has an iPad mini 4 or Air 2, please test this)
+These devices should be able to downgrade to iPadOS 13.4 - 15.8.4.
+Also adds a prompt for installing TrollStore if you've tether downgraded to iOS/iPadOS 14-15.
 This is still a beta release
