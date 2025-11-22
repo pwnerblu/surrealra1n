@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 beta 5"
+CURRENT_VERSION="v1.2 beta 6"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -278,6 +278,22 @@ if [[ $IDENTIFIER == iPhone* ]]; then
     USE_BASEBAND="--latest-baseband"
 fi 
 
+# iBSS and iBEC specification for iPhone 6, and DeviceTree. finish A8 support
+
+if [[ $IDENTIFIER == iPhone7,2 ]]; then
+    IBSS="iBSS.n61.RELEASE.im4p"
+    IBEC="iBEC.n61.RELEASE.im4p"
+    DEVICETREE="DeviceTree.n61ap.im4p"
+fi
+
+# iBSS and iBEC specification for iPhone 6 Plus, and DeviceTree. finish A8 support
+
+if [[ $IDENTIFIER == iPhone7,1 ]]; then
+    IBSS="iBSS.n56.RELEASE.im4p"
+    IBEC="iBEC.n56.RELEASE.im4p"
+    DEVICETREE="DeviceTree.n56ap.im4p"
+fi
+
 # important, for iPad air 2 and mini 4 tethered restores
 if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
     USE_BASEBAND="--latest-baseband"
@@ -287,9 +303,13 @@ if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
     USE_BASEBAND="--no-baseband"
 fi 
 
-if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* ]]; then
+if [[ $IDENTIFIER == iPhone6* ]]; then
     LATEST_VERSION="12.5.7"
-    DOWNGRADE_RANGE="11.3 to 12.5.6 - 10.1 - 10.3.3 also for some A7 devices"
+    DOWNGRADE_RANGE="10.1 to 12.5.6"
+elif [[ $IDENTIFIER == iPhone7* ]]; then
+    LATEST_VERSION="12.5.7"
+    DOWNGRADE_RANGE="11.3 to 12.5.6"
+    KERNELCACHE="kernelcache.release.iphone7"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
     LATEST_VERSION="16.7.12"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
@@ -321,11 +341,6 @@ elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
 else
     echo "Unsupported device, press any key to continue if you are going to do an untethered downgrade with saved SHSH (use --downgrade [IPSW FILE] [SHSH BLOB])"
     read -p ""
-fi
-
-if [[ $IDENTIFIER == iPhone7* ]]; then
-    echo "Firmware key list is not complete, you cannot boot a tethered downgrade at this time for this device"
-    read -p "Press any key to continue, if you are going to do an untethered downgrade instead with shsh blobs."
 fi
 
 if [[ $IDENTIFIER == iPhone6,1 ]]; then
@@ -360,6 +375,12 @@ if [[ $IDENTIFIER == iPhone6,2 ]]; then
     cd ..
 fi
 
+if [[ $IDENTIFIER == iPhone7,1 ]]; then
+    echo "[!] This device is technically supported, but the firmware key list hasn't been finished."
+    echo "The iPhone 6 (not the 6 Plus) is fully supported for tethered restores."
+    exit 1
+fi
+
 mnifst="tmpmanifest/Manifest.plist"
 
 echo "Using:"
@@ -385,6 +406,7 @@ Options:
 
   --restore [iOS_VERSION]
         Restore the device to a previously created custom IPSW.
+        - You can also choose to tethered update (no data loss, but may only work if going from a lower version to a newer version (13.6 to 15.4.1 for example)
         - Requires a custom IPSW already built for the specified iOS version.
         - PUT YOUR DEVICE INTO DFU MODE before proceeding
 
@@ -468,6 +490,11 @@ case "$1" in
             echo "[!] And if you are restoring to iPadOS 13.4 - 13.7, you will be stuck in a blank screen after the restore. Put the device into real DFU mode and boot it normally."
             read -p "Press any key to continue"
         fi 
+        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.3* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
+            echo "[!] SEP is incompatible"
+            echo "[!] You cannot restore to this version or make a custom IPSW for it"
+            exit 1
+        fi 
         if [[ "$IDENTIFIER" == iPad7,5 ]] && [[ $IOS_VERSION == 13.3* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] The iPadOS $LATEST_VERSION SEP is not compatible with this version."
@@ -524,8 +551,17 @@ case "$1" in
         mv custom.ipsw "$savedir/custom.ipsw"
         rm -rf "tmp2"
         
-        # Find smallest .dmg in tmp1 and copy to work/RestoreRamdisk.orig
+        # determine restore ramdisk
         smallest_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
+        # determine update ramdisk (experimental tethered updates?)
+        update_dmg=$(
+    find tmp1 -type f -name '*.dmg' ! -name '._*' \
+        -printf '%s %p\n' \
+    | awk '$1 < 1073741824' \
+    | sort -nr \
+    | head -n 1 \
+    | cut -d' ' -f2-
+)
         mkdir -p work
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
             cp tmp1/$KERNELCACHE10 work/kernel.orig 
@@ -542,7 +578,6 @@ case "$1" in
         # build ramdisk
         cd ..
         sudo ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
-        rm -rf "tmp1" 
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
             sudo ./bin/hfsplus ramdisk.raw grow 60000000
@@ -597,6 +632,64 @@ case "$1" in
         rm -rf patched_asr
         rm -rf ents.plist
         rm -rf ramdisk.raw
+        # build update ramdisk
+        echo "building patched update ramdisk..."
+        sudo ./bin/img4 -i "$update_dmg" -o ramdisk.raw
+        rm -rf "tmp1" 
+        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
+            echo "growing ramdisk"
+            sudo ./bin/hfsplus ramdisk.raw grow 70000000
+        else
+            echo "skipping ramdisk grow"
+        fi
+        echo "extracting asr to patch"
+        sudo ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
+        echo "patching asr"
+        sudo ./bin/asr64_patcher asr patched_asr
+        sudo ./bin/ldid -e asr > ents.plist
+        sudo ./bin/ldid -Sents.plist patched_asr
+        echo "replacing asr with patched asr"
+        sudo ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
+        sleep 4
+        sudo ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
+        sleep 4
+        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
+            sudo ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
+        else
+            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
+        fi
+        # restored_external in update ramdisk is restored_update
+        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+            echo "patching restored_update"
+            sudo ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_update 
+            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                echo "[!] You are trying to restore an iPhone X to iOS $IOS_VERSION"
+                echo "An additional patch is required!"
+                sudo ./bin/ipx_restored_patcher restored_update patched_external
+                sudo ./bin/restored_external64_patcher patched_external patched_restored_external
+            else
+                sudo ./bin/restored_external64_patcher restored_update patched_restored_external
+            fi
+            sudo ./bin/ldid -e restored_update > ents.plist
+            sudo ./bin/ldid -Sents.plist patched_restored_external
+            echo "replacing restored_update with patched restored_update"
+            sudo ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_update
+            sleep 4 
+            sudo ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_update
+            sleep 4
+            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_update
+        fi
+        sleep 4
+        echo "Packing patched Ramdisk as im4p"
+        sudo ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
+        mv ramdisk.im4p $savedir/updateramdisk.im4p
+        rm -rf asr
+        rm -rf restored_update
+        rm -rf patched_external
+        rm -rf patched_restored_external
+        rm -rf patched_asr
+        rm -rf ents.plist
+        rm -rf ramdisk.raw
         echo "Custom IPSW + patched restore chain has been made! Use --restore $IOS_VERSION to downgrade to the designated firmware"
         exit 1
         ;;
@@ -612,6 +705,7 @@ case "$1" in
         restoredir="restorefiles/$IDENTIFIER/$IOS_VERSION"
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
         echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
+        echo "You can ignore this message if you are restoring an A8(X) device or newer."
         read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
         if [[ $response == y ]]; then
             ./bin/gaster pwn
@@ -642,7 +736,8 @@ case "$1" in
         fi
 
         echo "[*] Using SHSH blob: $shshpath"
-        if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+        read -p "Do you want to do an update install? (y/n): " update_prompt
+        if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "since this restore requires the iOS 10 SEP to restore successfully, and we are restoring iOS 11.0 - 11.2.6, we need to save activation records so we can activate (because of SEP compatibility problems we cannot activate normally)"
             echo "iPh0ne4s fork of SSHRD_Script will be used"
             sleep 4
@@ -665,7 +760,7 @@ case "$1" in
             ./bin/gaster pwn
             ./bin/gaster reset
         fi
-        if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+        if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "iPh0ne4s fork of SSHRD_Script will be used"
             echo "iOS 16.0.3 ramdisk will be used as 16.1+ ramdisks currently cannot be created on linux"
             sleep 4
@@ -686,7 +781,7 @@ case "$1" in
             ./bin/gaster pwn
             ./bin/gaster reset
         fi
-        if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
+        if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "iPh0ne4s fork of SSHRD_Script will be used"
             read -p "since we are on linux, we cannot make iPadOS 16+ ramdisks. press any key to continue saving activation records (very low chance of success if you're not on iPadOS 15 or lower)"
             sleep 4
@@ -719,10 +814,23 @@ case "$1" in
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
             BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
             if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+                read -p "Would you like to do an update install instead of an erase install (y/N): " update_tethered
+                if [[ $update_tethered == y || $update_tethered == Y ]]; then
+                    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                    echo "Restore has finished! Read above if there's any errors"
+                    echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
+                    exit 1
+                fi
                 sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
                 rm -rf "tmp"
                 echo "Restore has finished! Read above if there's any errors"
                 echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
+                exit 1
+            fi
+            read -p "Would you like to do an update install instead of an erase install (y/N): " update_tethered
+            if [[ $update_tethered == y || $update_tethered == Y ]]; then
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                echo "Restore has finished! Read above if there's any errors"
                 exit 1
             fi
             sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
@@ -730,6 +838,12 @@ case "$1" in
             echo "Restore has finished! Read above if there's any errors"
             exit 1
         else
+            read -p "Would you like to do an update install instead of an erase install (y/N): " update_tethered
+            if [[ $update_tethered == y || $update_tethered == Y ]]; then
+                sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep --no-rsep $restoredir/custom.ipsw
+                echo "Restore has finished! Read above if there's any errors"
+                exit 1
+            fi
             sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep --no-rsep $restoredir/custom.ipsw
         fi
         echo "Restore has finished! Read above if there's any errors"
