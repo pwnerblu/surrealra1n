@@ -1,7 +1,7 @@
-v1.2 beta 6
+v1.2 RC 1
 
 RELEASE NOTES:
 
-Adds iPhone 6 support (6 Plus isn't fully supported yet).
+Adds iPhone 6 Plus (including 6) support.
 Also adds a tethered updating feature for surrealra1n, to tether update to a newer (not latest) version without saved blobs without data loss.
 A7 iPads aren't supported yet.
