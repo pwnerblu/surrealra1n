@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 beta 6"
+CURRENT_VERSION="v1.2 RC 1"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -373,12 +373,6 @@ if [[ $IDENTIFIER == iPhone6,2 ]]; then
     cd tmpmanifest
     curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPhone6,2_10.3.3.plist
     cd ..
-fi
-
-if [[ $IDENTIFIER == iPhone7,1 ]]; then
-    echo "[!] This device is technically supported, but the firmware key list hasn't been finished."
-    echo "The iPhone 6 (not the 6 Plus) is fully supported for tethered restores."
-    exit 1
 fi
 
 mnifst="tmpmanifest/Manifest.plist"
