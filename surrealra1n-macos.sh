@@ -12,6 +12,122 @@ echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation ti
 echo "this is currently a work IN progress. do not use this yet"
 exit 1
 
+echo "Checking for updates..."
+rm -rf update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/1.3-development-(macos)/update/latest.txt
+LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
+RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
+
+if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+    echo "A new version of surrealra1n is available: $LATEST_VERSION"
+    echo "RELEASE NOTES:"
+    echo "$RELEASE_NOTES"
+    echo ""
+    echo "It is strongly recommended to update to get the latest features + bug fixes."
+    read -p "Would you like to update now? (y/n): " update
+    if [[ $update == y || $update == Y ]]; then
+        mkdir updatefiles
+        rm -rf bin
+        rm -rf futurerestore
+        rm -rf "keys"
+        rm -rf "manifest"
+        curl -L -o updatefiles/surrealra1n.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/1.3-development-(macos)/surrealra1n.sh
+        rm -rf surrealra1n.sh
+        mv updatefiles/surrealra1n.sh surrealra1n.sh
+        chmod +x surrealra1n.sh
+        cd updatefiles
+        git clone --branch 1.3-development-(macos) https://github.com/pwnerblu/surrealra1n --recursive
+        mv surrealra1n/keys keys
+        mv surrealra1n/manifest manifest
+        cd ..
+        mv updatefiles/manifest manifest
+        mv updatefiles/keys keys
+        rm -rf "updatefiles"
+        echo "surrealra1n has been updated! Please run the script again"
+        exit 1
+    else
+        echo "You have declined the update."
+        echo "Until you update, you will continue to get the update prompt every time you use surrealra1n."
+        sleep 4
+    fi
+else
+    echo "surrealra1n is up to date."
+    sleep 1
+fi
+
+echo "Checking for existing binaries (intel mac)..."
+
+# Check if all required binaries exist
+if [[ -f "./bin/img4" && \
+      -f "./bin/img4tool" && \
+      -f "./bin/irecovery" && \
+      -f "./bin/kairos" && \
+      -f "./bin/kerneldiff" && \
+      -f "./bin/KPlooshFinder" && \
+      -f "./bin/gaster" && \
+      -f "./bin/Kernel64Patcher" && \
+      -f "./bin/iBoot64Patcher" && \
+      -f "./bin/asr64_patcher" && \
+      -f "./bin/ipx_restored_patcher" && \
+      -f "./bin/restored_external64_patcher" && \
+      -f "./bin/hfsplus" && \
+      -f "./bin/tsschecker" && \
+      -f "./bin/ldid" && \
+      -f "./futurerestore/futurerestore" ]]; then
+    echo "Found necessary binaries."
+else
+    echo "Binaries do not exist"
+    echo "Downloading binaries..."
+
+    mkdir -p bin futurerestore
+
+    curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/img4
+    curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/img4tool
+    curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
+    curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
+    curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
+    curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iBoot64Patcher
+    curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/hfsplus
+    # install additional restored_external patcher (iPhone X only)
+    curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipx_restored_patcher
+    # install asr patcher for tethered restores
+    git clone https://github.com/iSuns9/asr64_patcher --recursive
+    cd asr64_patcher
+    make
+    mv asr64_patcher ../bin/asr64_patcher
+    cd ..
+    rm -rf "asr64_patcher"
+    # install restored_external patcher for tethered restores to iOS 14+
+    git clone https://github.com/iSuns9/restored_external64patcher --recursive
+    cd restored_external64patcher
+    make
+    mv restored_external64_patcher ../bin/restored_external64_patcher
+    cd ..
+    rm -rf "restored_external64patcher"
+    # install Kernel64Patcher for tether booting iOS 13+
+    curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
+    curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
+    curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
+    curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
+    curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-macOS-RELEASE-main.zip
+
+    chmod +x bin/*
+
+    cd futurerestore || exit
+    unzip -o futurerestore.zip
+    tar -xf futurerestore-macOS-v2.0.0-Build_326-RELEASE.tar.xz
+    cp futurerestore-macOS-v2.0.0-Build_326-RELEASE/* .
+    chmod +x futurerestore
+    rm -rf *.tar.xz
+    rm -rf *.zip
+    rm -rf "futurerestore-macOS-v2.0.0-Build_326-RELEASE" 
+    cd ..
+fi
+
+read -p "Device Identifier: " IDENTIFIER
+read -p "ECID: " ECID
+
 if [[ $IDENTIFIER == iPhone6* ]]; then
     KERNELCACHE="kernelcache.release.iphone6"
     LLB="LLB.iphone6.RELEASE.im4p"
