@@ -1,6 +1,6 @@
-v1.2 RC 2
+v1.2 RC 2 re-release
 
 RELEASE NOTES:
 
 This update is recommended for all users.
-Adds make to dependency install list.
+Adds gcc to dependency install list.
