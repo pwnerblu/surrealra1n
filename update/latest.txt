@@ -1,6 +1,6 @@
-v1.2 RC 1 re-release
+v1.2 RC 2
 
 RELEASE NOTES:
 
 This update is recommended for all users.
-Fixes dependency installation issue on Ubuntu, also adds curl to dependency install list.
+Adds make to dependency install list.
