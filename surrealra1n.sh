@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 1 re-release"
+CURRENT_VERSION="v1.2 RC 2"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -15,7 +15,7 @@ sudo -v || exit 1
 # Dependency check
 echo "Checking for required dependencies..."
 
-DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl)
+DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl make)
 MISSING_PACKAGES=()
 
 for pkg in "${DEPENDENCIES[@]}"; do
