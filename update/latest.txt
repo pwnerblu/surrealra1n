@@ -1,6 +1,6 @@
-v1.1.2
+v1.1.4
 
 RELEASE NOTES:
 
-Fixes a bug that causes the Electra jailbreak to stop working on tethered downgrades to iOS 11.
-Adds the update checker originally introduced in v1.2 beta 3.
+This update is recommended for all users.
+Fixes a dependency install issue on Ubuntu (25.10).
