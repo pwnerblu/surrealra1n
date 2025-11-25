@@ -1,7 +1,6 @@
-v1.2 RC 1
+v1.2 RC 1 re-release
 
 RELEASE NOTES:
 
-Adds iPhone 6 Plus (including 6) support.
-Also adds a tethered updating feature for surrealra1n, to tether update to a newer (not latest) version without saved blobs without data loss.
-A7 iPads aren't supported yet.
+This update is recommended for all users.
+Fixes dependency installation issue on Ubuntu, also adds curl to dependency install list.
