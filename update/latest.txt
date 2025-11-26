@@ -1,6 +1,6 @@
-v1.2 RC 2 re-release
+v1.2 RC 3
 
 RELEASE NOTES:
 
-This update is recommended for all users.
-Adds gcc to dependency install list.
+Fixes potential issues with dependencies on Linux Mint.
+This update is strongly recommended for all users.
