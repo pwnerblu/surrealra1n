@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 2 re-release"
+CURRENT_VERSION="v1.2 RC 3"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -12,10 +12,16 @@ echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation ti
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
+read -p "Are you running this on Ubuntu (25.10)? (y/n): " is_ubuntu
+
 # Dependency check
 echo "Checking for required dependencies..."
 
-DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl make gcc)
+if [[ $is_ubuntu == Y || $is_ubuntu == y ]]; then
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl make gcc)
+else
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
+fi
 MISSING_PACKAGES=()
 
 for pkg in "${DEPENDENCIES[@]}"; do
