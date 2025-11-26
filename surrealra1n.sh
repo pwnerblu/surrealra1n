@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.1.4"
+CURRENT_VERSION="v1.1.6"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for iPhone 5S - iOS 10.1 - 12.5.6 (except 11.0 - 11.2.6)"
@@ -13,10 +13,16 @@ echo "zoe-vb fork of asr64_patcher is used for patching ASR"
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
+read -p "Are you running this on Ubuntu (25.10)? (y/n): " is_ubuntu
+
 # Dependency check
 echo "Checking for required dependencies..."
 
-DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl)
+if [[ $is_ubuntu == Y || $is_ubuntu == y ]]; then
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl)
+else
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl)
+fi
 MISSING_PACKAGES=()
 
 for pkg in "${DEPENDENCIES[@]}"; do
