@@ -1,6 +1,6 @@
-v1.1.4
+v1.1.6
 
 RELEASE NOTES:
 
 This update is recommended for all users.
-Fixes a dependency install issue on Ubuntu (25.10).
+Fixes a dependency issue on Linux Mint in v1.1.4.
