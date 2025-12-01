@@ -1,6 +1,7 @@
-v1.2 RC 3
+v1.2 RC 4
 
 RELEASE NOTES:
 
-Fixes potential issues with dependencies on Linux Mint.
+Fixes an issue where SSHRD runs on an already pwned device, which might cause errors.
+Adds additional steps beforehand when running SSHRD to back up activation tickets.
 This update is strongly recommended for all users.
