@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 3"
+CURRENT_VERSION="v1.2 RC 4"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -763,6 +763,8 @@ case "$1" in
         if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "iPh0ne4s fork of SSHRD_Script will be used"
             echo "iOS 16.0.3 ramdisk will be used as 16.1+ ramdisks currently cannot be created on linux"
+            echo "Warning: If your device is on iOS 16.4+, it will boot loop afterwards!"
+            read -p "Press enter to continue after this: Exit DFU mode, boot to lock screen, then boot back into DFU"
             sleep 4
             cd SSHRD_Script
             sudo ./sshrd.sh 16.0.3
