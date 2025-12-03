@@ -1,7 +1,7 @@
-v1.2 RC 4
+v1.2 RC 5
 
 RELEASE NOTES:
 
-Fixes an issue where SSHRD runs on an already pwned device, which might cause errors.
-Adds additional steps beforehand when running SSHRD to back up activation tickets.
-This update is strongly recommended for all users.
+Adds support for the iPod touch 6th Generation!
+iOS 11.3-12.5.6 tethered restores are supported on this device.
+Huge thanks to bodyc1m for the iPod touch 6 support
