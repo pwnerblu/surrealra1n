@@ -1,7 +1,7 @@
 #!/bin/bash
 CURRENT_VERSION="v1.2 RC 5"
 
-echo "surrealra1n - $CURRENT_VERSION"
+echo "surrealra1n - $CURRENT_VERSION (Arch Linux version)"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
@@ -13,20 +13,21 @@ echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation ti
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
-read -p "Are you running this on Ubuntu (25.10)? (y/n): " is_ubuntu
+read -p "Are you running this on SteamOS (Tested on SteamOS only)? (y/n): " is_ubuntu
 
 # Dependency check
 echo "Checking for required dependencies..."
 
 if [[ $is_ubuntu == Y || $is_ubuntu == y ]]; then
-    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl make gcc)
+    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel)
 else
-    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
+    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel)
 fi
 MISSING_PACKAGES=()
 
+
 for pkg in "${DEPENDENCIES[@]}"; do
-    if ! dpkg -s "$pkg" &>/dev/null; then
+    if ! pacman -Qi "$pkg" &>/dev/null; then
         MISSING_PACKAGES+=("$pkg")
     fi
 done
@@ -34,17 +35,16 @@ done
 if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
     echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
     echo "Installing missing dependencies..."
-    sudo apt update
-    sudo apt install -y "${MISSING_PACKAGES[@]}"
+    sudo pacman -Syu --needed "${MISSING_PACKAGES[@]}"
 else
-    echo "All dependencies are installed." 
+    echo "All dependencies are already installed."
 fi
 
 echo "Checking for updates..."
-rm -rf update/latest.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
-LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
-RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
+rm -rf update/latest-arch.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest-arch.txt
+LATEST_VERSION=$(head -n 1 "update/latest-arch.txt" | tr -d '\r\n')
+RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest-arch.txt")
 
 if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
@@ -59,10 +59,10 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
         rm -rf futurerestore
         rm -rf "keys"
         rm -rf "manifest"
-        curl -L -o updatefiles/surrealra1n.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/surrealra1n.sh
-        rm -rf surrealra1n.sh
-        mv updatefiles/surrealra1n.sh surrealra1n.sh
-        chmod +x surrealra1n.sh
+        curl -L -o updatefiles/surrealra1n-arch.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/surrealra1n-arch.sh
+        rm -rf surrealra1n-arch.sh
+        mv updatefiles/surrealra1n-arch.sh surrealra1n-arch.sh
+        chmod +x surrealra1n-arch.sh
         cd updatefiles
         git clone --branch development https://github.com/pwnerblu/surrealra1n --recursive
         mv surrealra1n/keys keys
