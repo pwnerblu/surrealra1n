@@ -42,7 +42,7 @@ fi
 
 echo "Checking for updates..."
 rm -rf update/latest-arch.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest-arch.txt
+curl -L -o update/latest-arch.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest-arch.txt
 LATEST_VERSION=$(head -n 1 "update/latest-arch.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest-arch.txt")
 
