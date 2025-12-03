@@ -1,11 +1,12 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 4"
+CURRENT_VERSION="v1.2 RC 5"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "iSuns9 fork of asr64_patcher is used for patching ASR"
+echo "Huge thanks to bodyc1m (discord username: cashcart1capone) for iPod touch 6 support, including the Arch Linux port they did."
 echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation tickets for iOS 11.0 - 11.2.6 restores on iPhone 5S"
 
 # Request sudo password upfront
@@ -324,6 +325,15 @@ elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
     LATEST_VERSION="16.7.12"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10b"
+elif [[ $IDENTIFIER == iPod7,1 ]]; then
+    # ipod touch 6 support, huge thanks to bodyc1m
+    LATEST_VERSION="12.5.7"
+    DOWNGRADE_RANGE="11.3 to 12.5.6"
+    KERNELCACHE="kernelcache.release.n102"
+    IBSS="iBSS.n102.RELEASE.im4p"
+    IBEC="iBEC.n102.RELEASE.im4p"
+    DEVICETREE="DeviceTree.n102ap.im4p"
+    USE_BASEBAND="--no-baseband"
 elif [[ $IDENTIFIER == iPad7,5 ]]; then
     LATEST_VERSION="17.7.10"
     DOWNGRADE_RANGE="13.4 to 15.7"
@@ -460,6 +470,12 @@ case "$1" in
             read -p "Press any key to continue"
         fi
         if [[ "$IDENTIFIER" == iPhone7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
+            echo "[!] SEP is incompatible"
+            echo "[!] You cannot restore to this version or make a custom IPSW for it"
+            exit 1
+        fi
+
+        if [[ "$IDENTIFIER" == iPod7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
