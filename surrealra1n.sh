@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 6"
+CURRENT_VERSION="v1.2 RC 6 re-release"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -796,6 +796,7 @@ case "$1" in
             else
                 echo "Put your device from Normal mode into DFU mode! Press any key after you have done so"
                 read -p ""
+                cd SSHRD_Script
                 sudo ./sshrd.sh $version
                 read -p "Was there an error while making the ramdisk? (y/n) " error_response
                 if [[ $error_response == y ]]; then
@@ -807,6 +808,7 @@ case "$1" in
                 sleep 10
                 sudo ./sshrd.sh --backup-activation
                 sudo ./sshrd.sh reboot
+                cd ..
             fi
         fi
         if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
@@ -825,6 +827,7 @@ case "$1" in
             else
                 echo "Put your device from Normal mode into DFU mode! Press any key after you have done so"
                 read -p ""
+                cd SSHRD_Script
                 sudo ./sshrd.sh $version
                 read -p "Was there an error while making the ramdisk? (y/n) " error_response
                 if [[ $error_response == y ]]; then
@@ -836,6 +839,7 @@ case "$1" in
                 sleep 10
                 sudo ./sshrd.sh --backup-activation
                 sudo ./sshrd.sh reboot
+                cd ..
             fi
         fi
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
