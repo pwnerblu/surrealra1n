@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 5"
+CURRENT_VERSION="v1.2 RC 6"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 10.1 - 15.8.x"
@@ -13,16 +13,11 @@ echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation ti
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
-read -p "Are you running this on Ubuntu (25.10)? (y/n): " is_ubuntu
 
 # Dependency check
 echo "Checking for required dependencies..."
 
-if [[ $is_ubuntu == Y || $is_ubuntu == y ]]; then
-    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice-1.0-6 zenity git curl make gcc)
-else
-    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
-fi
+DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
 MISSING_PACKAGES=()
 
 for pkg in "${DEPENDENCIES[@]}"; do
@@ -112,6 +107,8 @@ if [[ -f "./bin/img4" && \
       -f "./bin/hfsplus" && \
       -f "./bin/tsschecker" && \
       -f "./bin/ldid" && \
+      -f "./activate.sh" && \
+      -f "./backup.sh" && \
       -f "./futurerestore/futurerestore" ]]; then
     echo "Found necessary binaries."
 else
@@ -149,9 +146,13 @@ else
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kairos
+    # download activate.sh and backup.sh from hiylx's eclipsera1n, for backing up and restoring iOS 16+ activation files on 14.0-15.7(.2)
+    curl -L -o activate.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/activate.sh
+    curl -L -o backup.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/backup.sh
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
 
     chmod +x bin/*
+    chmod +x *.sh
 
     cd futurerestore || exit
     unzip -o futurerestore.zip
@@ -517,14 +518,27 @@ case "$1" in
             echo "[!] You MUST use turdus merula instead: https://sep.lol"
             exit 1
         fi 
-        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 14.3* || $IOS_VERSION == 14.4* || $IOS_VERSION == 14.5* || $IOS_VERSION == 14.6* || $IOS_VERSION == 14.7* || $IOS_VERSION == 14.8* || $IOS_VERSION == 15.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
             echo "[!] SEP is partially incompatible"
             echo "[!] The following issues may occur:"
             echo "[!] You will have activation issues, Touch ID resetting (If you have an iPhone X, Face ID will not work), etc."
             echo "[!] Sideloading, iMessage, etc. may not work after downgrading with surrealra1n to iOS $IOS_VERSION"
+            if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]]; then
+                # Additional warnings when restoring 14.0-14.2 on A11 (with 14.3 iBoot method by Nathan)    
+                echo "[!] Additionally, since we are restoring 14.0-14.2, this will have all of the issues of 14.3-15.6.1, but it may have additional issues, especially on versions below 14.2."
+                echo "[!] 14.0-14.2 on A11 MUST use 14.3 iBSS/iBEC to successfully restore and boot."    
+            fi
+            if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 || $IDENTIFIER == iPhone10,6 || $IDENTIFIER == iPhone10,3 ]] && [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]]; then   
+                echo "[!] The 14.3 iBoot method is technically supported on this device, but the custom buildmanifests required for this method do not exist for your device yet!"   
+                echo "[!] A future update will add the required buildmanifests to do this method on iPhone 8 Plus, and X." 
+                exit 1
+            fi
+            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                echo "[!] The iPhone X may or may not work with surrealra1n, your mileage may vary! Please use at your own risk. Mineek's restored_external patcher will be used."
+            fi
             read -p "Press any key to continue"
         fi 
-        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 14.2* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.0* || $IOS_VERSION == 13.* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 13.* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
@@ -558,14 +572,25 @@ case "$1" in
             cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
             cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
         else
+            if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
+                # A11 hax to tether restore 14.0-14.2 on 16 SEP, 14.3 iBoot method (thanks to verygenericname for pointing that out)
+                IPSW_PATH=$(zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)" --file-filter="*.ipsw")
+                rm -rf tmp1/Firmware/dfu/$IBSS
+                rm -rf tmp1/Firmware/dfu/$IBEC 
+                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
+                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d tmp1/Firmware/dfu
+                # hardcode custom buildmanifest, so it redirects to getting 14.3 keys instead of 14.0-14.2's
+                sudo rm -rf tmp1/BuildManifest.plist
+                cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist            
+            fi
             find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
             find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
         fi
+        rm -rf "tmp2"
         cd tmp1
         zip -0 -r ../custom.ipsw *
         cd ..
         mv custom.ipsw "$savedir/custom.ipsw"
-        rm -rf "tmp2"
         
         # determine restore ramdisk
         smallest_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
@@ -719,27 +744,6 @@ case "$1" in
         IOS_VERSION="$2"
         echo "[*] Restoring to iOS $IOS_VERSION..."
         restoredir="restorefiles/$IDENTIFIER/$IOS_VERSION"
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        echo "You can ignore this message if you are restoring an A8(X) device or newer."
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
         echo "Fetching shsh blobs for iOS $LATEST_VERSION, this is just so it will restore. skip-blob flag is used"
         mkdir -p shsh
         sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
@@ -777,48 +781,83 @@ case "$1" in
             ./bin/gaster reset
         fi
         if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
-            echo "iPh0ne4s fork of SSHRD_Script will be used"
-            echo "iOS 16.0.3 ramdisk will be used as 16.1+ ramdisks currently cannot be created on linux"
-            echo "Warning: If your device is on iOS 16.4+, it will boot loop afterwards!"
-            read -p "Press enter to continue after this: Exit DFU mode, boot to lock screen, then boot back into DFU"
-            sleep 4
-            cd SSHRD_Script
-            sudo ./sshrd.sh 16.0.3
-            read -p "Was there an error while making the ramdisk? (y/n) " error_response
-            if [[ $error_response == y ]]; then
-                sudo ./sshrd.sh 16.0.3
+            echo "We must save activation tickets in order to activate on this version. Please read what is below."
+            echo "If you are on iOS 16.0 or later, note the following:"
+            echo "eclipsera1n from hiylx will be used to save activation tickets. Make sure you are jailbroken with palera1n (or Dopamine if you're on 16.6.1 or earlier), and that OpenSSH is installed."
+            echo "If you are on iOS 15 or earlier, the SSHRD method will be used instead."
+            echo ""
+            echo "Press any key to continue, or press Ctrl + C to cancel."
+            read -p ""
+            echo "What is the iOS version of this device?"
+            read -p " " version
+            if [[ $version == 16.* ]]; then
+                echo "Assuming device is jailbroken with palera1n and OpenSSH installed"
+                sudo ./backup.sh
             else
-                echo ""
+                echo "Put your device from Normal mode into DFU mode! Press any key after you have done so"
+                read -p ""
+                sudo ./sshrd.sh $version
+                read -p "Was there an error while making the ramdisk? (y/n) " error_response
+                if [[ $error_response == y ]]; then
+                    sudo ./sshrd.sh $version
+                else
+                    echo ""
+                fi
+                sudo ./sshrd.sh boot
+                sleep 10
+                sudo ./sshrd.sh --backup-activation
+                sudo ./sshrd.sh reboot
             fi
-            sudo ./sshrd.sh boot
-            sleep 10
-            sudo ./sshrd.sh --backup-activation
-            sudo ./sshrd.sh reboot
-            cd ..
-            read -p "Press any key after you have placed your device into DFU mode"
-            ./bin/gaster pwn
-            ./bin/gaster reset
         fi
         if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
-            echo "iPh0ne4s fork of SSHRD_Script will be used"
-            read -p "since we are on linux, we cannot make iPadOS 16+ ramdisks. press any key to continue saving activation records (very low chance of success if you're not on iPadOS 15 or lower)"
-            sleep 4
-            cd SSHRD_Script
-            sudo ./sshrd.sh 14.5.1
-            read -p "Was there an error while making the ramdisk? (y/n) " error_response
-            if [[ $error_response == y ]]; then
-                sudo ./sshrd.sh 14.5.1
+            echo "We must save activation tickets in order to activate on this version. Please read what is below."
+            echo "If you are on iPadOS 16.0 or later, note the following:"
+            echo "eclipsera1n from hiylx will be used to save activation tickets. Make sure you are jailbroken with palera1n (or Dopamine if you're on 16.6.1 or earlier), and that OpenSSH is installed."
+            echo "If you are on iPadOS 15 or earlier, the SSHRD method will be used instead."
+            echo ""
+            echo "Press any key to continue, or press Ctrl + C to cancel."
+            read -p ""
+            echo "What is the iOS version of this device?"
+            read -p " " version
+            if [[ $version == 16.* || $version == 17.* ]]; then
+                echo "Assuming device is jailbroken with palera1n and OpenSSH installed"
+                sudo ./backup.sh
             else
-                echo ""
+                echo "Put your device from Normal mode into DFU mode! Press any key after you have done so"
+                read -p ""
+                sudo ./sshrd.sh $version
+                read -p "Was there an error while making the ramdisk? (y/n) " error_response
+                if [[ $error_response == y ]]; then
+                    sudo ./sshrd.sh $version
+                else
+                    echo ""
+                fi
+                sudo ./sshrd.sh boot
+                sleep 10
+                sudo ./sshrd.sh --backup-activation
+                sudo ./sshrd.sh reboot
             fi
-            sudo ./sshrd.sh boot
-            sleep 10
-            sudo ./sshrd.sh --backup-activation
-            sudo ./sshrd.sh reboot
-            cd ..
-            read -p "Press any key after you have placed your device into DFU mode"
+        fi
+        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
+        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
+        echo "You can ignore this message if you are restoring an A8(X) device or newer."
+        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
+        if [[ $response == y ]]; then
             ./bin/gaster pwn
-            ./bin/gaster reset
+        else
+            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
+            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
+            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
+        fi
+        ./bin/gaster reset
+        echo "[*] Verifying PWNDFU mode..."
+        irecovery_output=$(./bin/irecovery -q)
+        if echo "$irecovery_output" | grep -q "PWND"; then
+            echo "[*] Device is in PWNDFU mode"
+        else
+            echo "[!] Device is NOT in PWNDFU mode"
+            echo "[!] Aborting restore. Please re-enter DFU and try again."
+            exit 1
         fi
         echo "running futurerestore"
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
@@ -832,8 +871,7 @@ case "$1" in
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
             BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
             if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
-                read -p "Would you like to do an update install instead of an erase install (y/N): " update_tethered
-                if [[ $update_tethered == y || $update_tethered == Y ]]; then
+                if [[ $update_prompt == y || $update_prompt == Y ]]; then
                     sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
                     echo "Restore has finished! Read above if there's any errors"
                     echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
@@ -845,8 +883,7 @@ case "$1" in
                 echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
                 exit 1
             fi
-            read -p "Would you like to do an update install instead of an erase install (y/N): " update_tethered
-            if [[ $update_tethered == y || $update_tethered == Y ]]; then
+            if [[ $update_prompt == y || $update_prompt == Y ]]; then
                 sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
                 echo "Restore has finished! Read above if there's any errors"
                 exit 1
@@ -856,8 +893,7 @@ case "$1" in
             echo "Restore has finished! Read above if there's any errors"
             exit 1
         else
-            read -p "Would you like to do an update install instead of an erase install (y/N): " update_tethered
-            if [[ $update_tethered == y || $update_tethered == Y ]]; then
+            if [[ $update_prompt == y || $update_prompt == Y ]]; then
                 sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep --no-rsep $restoredir/custom.ipsw
                 echo "Restore has finished! Read above if there's any errors"
                 exit 1
@@ -1006,7 +1042,11 @@ case "$1" in
         BOOT_DIR="boot/$IDENTIFIER/$IOS_VERSION"
         if [[ ! -d "$BOOT_DIR" ]]; then
             echo "[*] Boot files not found. Creating new boot files at $BOOT_DIR..."
-            IPSW_PATH=$(zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
+            if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.2* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.0* ]]; then
+                IPSW_PATH="restorefiles/$IDENTIFIER/$IOS_VERSION/custom.ipsw"
+            else
+                IPSW_PATH=$(zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
+            fi
             mkdir -p to_patch
             mkdir -p "$BOOT_DIR"
             # move ibss and ibec
@@ -1088,17 +1128,23 @@ case "$1" in
             if [[ $IOS_VERSION == 14.* ]]; then
                 ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
                 ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b
-                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J     
+                ./bin/KPlooshFinder to_patch/kernel.patched to_patch/kernel.patched2
+                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J    
+                ./bin/img4 -i to_patch/kernel.patched2 -o $BOOT_DIR/Kernel_noAMFI.img4 -M "$im4m" -A -T rkrn -J     
             fi
             if [[ $IOS_VERSION == 13.* ]]; then
                 ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
                 ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b13 -n
-                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J     
+                ./bin/KPlooshFinder to_patch/kernel.patched to_patch/kernel.patched2
+                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J    
+                ./bin/img4 -i to_patch/kernel.patched2 -o $BOOT_DIR/Kernel_noAMFI.img4 -M "$im4m" -A -T rkrn -J     
             fi
             if [[ $IOS_VERSION == 15.* ]]; then
                 ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
                 ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -e -o -r -b15 
+                ./bin/KPlooshFinder to_patch/kernel.patched to_patch/kernel.patched2
                 ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J    
+                ./bin/img4 -i to_patch/kernel.patched2 -o $BOOT_DIR/Kernel_noAMFI.img4 -M "$im4m" -A -T rkrn -J 
             fi
             ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
             ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
@@ -1132,6 +1178,7 @@ case "$1" in
             echo "[!] You cannot send the bootchain in regular DFU"
             exit 1
         fi
+        read -p "Boot with AMFI on (iOS 13+)? (y/n): " boot_amfi
         ./bin/irecovery -f "$BOOT_DIR/iBSS.img4"
         ./bin/irecovery -f "$BOOT_DIR/iBEC.img4"
         if [[ $IDENTIFIER == iPhone9* || $IDENTIFIER == iPhone10* || $IDENTIFIER == iPad7* ]]; then
@@ -1144,7 +1191,11 @@ case "$1" in
           ./bin/irecovery -f "$BOOT_DIR/Trustcache.img4"
           ./bin/irecovery -c firmware
         fi
-        ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
+        if [[ $boot_amfi == N || $boot_amfi == n ]]; then
+            ./bin/irecovery -f "$BOOT_DIR/Kernel_noAMFI.img4"
+        else
+            ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
+        fi
         ./bin/irecovery -c bootx
         echo "Your device should now boot."
         if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
@@ -1176,19 +1227,36 @@ case "$1" in
             echo "If it's your first boot after downgrading, wait for the Hello screen, then proceed with the next step"
             read -p "Is this your first time booting? (y/n): " bootresponse
             if [[ $bootresponse == y ]]; then
+                if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.2* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.0* ]]; then
+                    # Use 14.3 ramdisk to send activation files, on 14.0-14.2 restores on A11
+                    ramdisk_version="14.3"
+                else
+                    ramdisk_version="$IOS_VERSION"                 
+                fi
                 read -p "Press any key after your device is in DFU mode, we will need to inject activation"
                 sleep 4
                 cd SSHRD_Script
-                sudo ./sshrd.sh $IOS_VERSION
+                sudo ./sshrd.sh $ramdisk_version
                 read -p "Was there an error while making the ramdisk? (y/n) " error_response
                 if [[ $error_response == y ]]; then
-                    sudo ./sshrd.sh $IOS_VERSION
+                    sudo ./sshrd.sh $ramdisk_version
                 else
                     echo ""
                 fi
                 sudo ./sshrd.sh boot
                 sleep 10
-                sudo ./sshrd.sh --restore-activation
+                echo "What is the iOS version that you saved activation records with?"
+                read -p " " version
+                if [[ $version == 16.* || $version == 17.* ]]; then
+                    echo "Open another terminal window in the SSHRD directory and type: sudo ./sshrd.sh ssh (then press any key to continue)"
+                    read -p ""
+                    cd ..
+                    sudo ./activate.sh --skip-rdboot
+                    echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
+                    exit 1
+                else
+                    sudo ./sshrd.sh --restore-activation
+                fi
                 read -p "would you like to install TrollStore (strongly recommended, if you want to sideload on this version)? (Y/n): " install_troll
                 if [[ $install_troll == Y || $install_troll == y ]]; then
                     sudo ./sshrd.sh --install-trollstore
