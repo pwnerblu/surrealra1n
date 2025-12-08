@@ -1,4 +1,4 @@
-v1.2 RC 6
+v1.2 RC 6 re-release
 
 RELEASE NOTES:
 
