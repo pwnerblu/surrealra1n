@@ -1,23 +1,10 @@
-# surrealra1n development branch
+# surrealra1n 
 
-The development branch is not meant to be used for normal use. Use at your own risk.
-
-Please open an issue if there's problems or bugs.
-
-This script works on Linux only, no macOS support
-
-Specifically, this is for Ubuntu/Debian, and any other distros using the dpkg/apt package manager, and is for x86_64, not arm64.
-
-
-All restores will use the latest baseband firmware and possibly the latest SEP, except for ota downgrade to 10.3.3 on A7 devices, which will use 10.3.3 SEP instead of latest SEP.
-
-Alternatively, you can use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit) by LukeZGD to OTA downgrade to iOS 10.3.3 instead of surrealra1n.
-
-If you'd like to contribute to this project, please do so we can make surrealra1n even better!
-And if there is any issues, PLEASE open one up on the issues tab.
-
-DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it most likely isn't futurerestore's fault.
+A tethered downgrade tool for iPhone 5S, all A8(X), iPad 6 (one A10 device), and A11 devices
+SEPless downgrades to iOS 7.x, 8.x, and 9.x are supported on the iPhone 5S (GSM) and iPod touch 6 at this moment.
+iPod touch 6 downgrades: 11.3-12.5.6 with SEP, 8.4-9.0 without SEP (firmware key list for 9.0.1-9.3.5 will be finished)
+iPhone 5S downgrades: 10.1-12.5.6 with SEP, 7.0-7.1.2, 8.1, 8.3, 8.4.1, 9.0, 9.3, 9.3.1 without SEP (firmware keys for the full range will be finished soon)
 
 # Thanks to:
 
-libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi and more!
+libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi and more! (for the tools it has to download)
