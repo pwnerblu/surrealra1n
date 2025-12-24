@@ -1,6 +1,5 @@
-v1.2 RC 7
+v1.2 RC 8
 
 RELEASE NOTES:
 
-Adds sepless downgrade support for iOS 7.0-7.1.2, 8.1, 8.3, 8.4.1, 9.0 and 9.3 on the iPhone 5S.
-Adds sepless downgrade support for iOS 8.4-9.0 on the iPod touch 6. 9.0.1-9.3.5 support coming soon!
+adds experimental tethered downgrade support for ios 11.2.x on the ipod touch 6 (untested)
