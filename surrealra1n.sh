@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 7"
+CURRENT_VERSION="v1.2 RC 8"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.4"
@@ -14,25 +14,50 @@ echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
 
+echo "Please select the Distro you are on:"
+echo "1. Ubuntu"
+echo "2. Arch"
+read -p "Please enter an answer (1-2): " dist 
+
 # Dependency check
 echo "Checking for required dependencies..."
 
-DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
-MISSING_PACKAGES=()
+if [[ $dist == 1 ]]; then
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
+    MISSING_PACKAGES=()
 
-for pkg in "${DEPENDENCIES[@]}"; do
-    if ! dpkg -s "$pkg" &>/dev/null; then
-        MISSING_PACKAGES+=("$pkg")
+    for pkg in "${DEPENDENCIES[@]}"; do
+        if ! dpkg -s "$pkg" &>/dev/null; then
+            MISSING_PACKAGES+=("$pkg")
+        fi
+    done
+
+    if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+        echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
+        echo "Installing missing dependencies..."
+        sudo apt update
+        sudo apt install -y "${MISSING_PACKAGES[@]}"
+    else
+        echo "All dependencies are installed." 
     fi
-done
+elif [[ $dist == 2 ]]; then
+    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel)
+    MISSING_PACKAGES=()
 
-if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
-    echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
-    echo "Installing missing dependencies..."
-    sudo apt update
-    sudo apt install -y "${MISSING_PACKAGES[@]}"
-else
-    echo "All dependencies are installed." 
+
+    for pkg in "${DEPENDENCIES[@]}"; do
+        if ! pacman -Qi "$pkg" &>/dev/null; then
+            MISSING_PACKAGES+=("$pkg")
+        fi
+    done
+
+    if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+        echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
+        echo "Installing missing dependencies..."
+        sudo pacman -Syu --needed "${MISSING_PACKAGES[@]}"
+    else
+        echo "All dependencies are already installed."
+    fi
 fi
 
 echo "Checking for updates..."
@@ -930,7 +955,7 @@ case "$1" in
             exit 1
         fi
 
-        if [[ "$IDENTIFIER" == iPod7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
+        if [[ "$IDENTIFIER" == iPod7* ]] && [[ "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
@@ -1039,6 +1064,16 @@ case "$1" in
             fi
             find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
             find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
+            if [[ $IDENTIFIER == iPod7* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+                echo "content-protect haxx lol (to maybe fix 11.2.x restores on 12 sep?)"
+                ./bin/img4 -i "tmp1/Firmware/all_flash/$DEVICETREE" -o dtre.raw
+                perl -pi -e 's/content-protect/content-protecV/g' dtre.raw
+                echo "Devicetree haxx complete!"
+                sleep 4
+                echo "Packing devicetree into im4p!"
+                ./bin/img4 -i dtre.raw -o "tmp1/Firmware/all_flash/$DEVICETREE" -A -T rdtr
+                rm -rf dtre.raw
+            fi
         fi
         rm -rf "tmp2"
         cd tmp1
@@ -1073,7 +1108,7 @@ case "$1" in
         # build ramdisk
         cd ..
         sudo ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
             sudo ./bin/hfsplus ramdisk.raw grow 60000000
         else
@@ -1131,7 +1166,7 @@ case "$1" in
         echo "building patched update ramdisk..."
         sudo ./bin/img4 -i "$update_dmg" -o ramdisk.raw
         rm -rf "tmp1" 
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
             sudo ./bin/hfsplus ramdisk.raw grow 70000000
         else
