@@ -1,5 +1,7 @@
-v1.2 RC 8
+v1.2 RC 9
 
 RELEASE NOTES:
 
-adds experimental tethered downgrade support for ios 11.2.x on the ipod touch 6 (untested)
+Adds the --fix-ios8 option.
+This can fix issues like being stuck at slide to upgrade when booting, etc.
+This does not fix FDR issues when restoring to 8.x or 9.x seprmvr64 on A8 and newer devices (yet).
