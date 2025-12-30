@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 8"
+CURRENT_VERSION="v1.2 RC 9"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.4"
@@ -134,6 +134,7 @@ if [[ -f "./bin/img4" && \
       -f "./bin/hfsplus" && \
       -f "./bin/tsschecker" && \
       -f "./bin/ipatcher" && \
+      -f "./bin/dsc64patcher" && \
       -f "./bin/idevicerestore" && \
       -f "./bin/ldid" && \
       -f "./activate.sh" && \
@@ -149,6 +150,7 @@ else
     curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4
     curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4tool
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/KPlooshFinder
+    curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kerneldiff
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iBoot64Patcher
@@ -480,22 +482,27 @@ Options:
         Restore the device to a previously created custom IPSW.
         - You can also choose to tethered update (no data loss, but may only work if going from a lower version to a newer version (13.6 to 15.4.1 for example)
         - Requires a custom IPSW already built for the specified iOS version.
-        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+        - Put your device into DFU mode before proceeding.
+        
+  --fix-ios8
+        Fix slide to upgrade, springboard and other issues with 8.0-8.4.1 seprmvr64.
+        - Your device MUST be freshly restored and never booted to 8.0-8.4.1 seprmvr64.
+        - Put your device into DFU mode before proceeding.
 
   --seprmvr64-restore [iOS_VERSION]
         Restore the device to a previously created custom IPSW for seprmvr64.
         - Requires a custom IPSW already built for the specified iOS version.
-        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+        - Put your device into DFU mode before proceeding.
 
   --seprmvr64-boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version with seprmvr64.
         - You must be on that iOS version already.
-        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+        - Put your device into DFU mode before proceeding.
 
   --ota-downgrade [IPSW FILE]
         Restore the device to iOS 10.3.3 without saved blobs
         - For certain A7 devices that still have iOS 10.3.3 signed via OTA
-        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+        - Put your device into DFU mode before proceeding.
 
   --downgrade [IPSW FILE] [SHSH BLOB]
         Downgrade a device with SHSH blobs.
@@ -505,7 +512,7 @@ Options:
   --boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version.
         - You must be on that iOS version already.
-        - PUT YOUR DEVICE INTO DFU MODE before proceeding
+        - Put your device into DFU mode before proceeding.
    
   -h, --help
         Show this help message and exit.
@@ -519,6 +526,55 @@ if [[ $# -eq 0 ]]; then
 fi
 
 case "$1" in
+    --fix-ios8)
+        echo "[!] WARNING: Your device must be freshly restored to iOS 8.0-8.4.1 with the seprmvr64 restore, and NEVER booted!"
+        sleep 5
+        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
+        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
+        echo "You can ignore this message if you are restoring an A8(X) device or newer."
+        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
+        if [[ $response == y ]]; then
+            ./bin/gaster pwn
+        else
+            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
+            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
+            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
+        fi
+        ./bin/gaster reset
+        echo "[*] Verifying PWNDFU mode..."
+        irecovery_output=$(./bin/irecovery -q)
+        if echo "$irecovery_output" | grep -q "PWND"; then
+            echo "[*] Device is in PWNDFU mode"
+        else
+            echo "[!] Device is NOT in PWNDFU mode"
+            echo "[!] Aborting restore. Please re-enter DFU and try again."
+            exit 1
+        fi
+        cd SSHRD_Script
+        sudo ./sshrd.sh 12.0
+        read -p "Was there an error while making the ramdisk? (y/n) " error_response
+        if [[ $error_response == y ]]; then
+            sudo ./sshrd.sh 12.0
+        else
+            echo ""
+        fi
+        sudo ./sshrd.sh boot
+        sleep 17
+        sudo gnome-terminal -- bash -c "sudo ./sshrd.sh ssh"
+        sleep 3
+        echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
+        ./Linux/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+        sleep 6
+        ./Linux/sshpass -p "alpine" scp -P2222 -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+        ../bin/dsc64patcher dyld.raw dyld.patched -8
+        ./Linux/sshpass -p "alpine" scp -P2222 -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+        sleep 12
+        rm -rf dyld.raw
+        rm -rf dyld.patched
+        sudo ./sshrd.sh reboot
+        echo "All done! You can now boot your fixed iOS 8 install with: ./surrealra1n.sh --seprmvr64-boot [your ios 8 version]"
+        exit 0
+        ;;
     --seprmvr64-ipsw)
         if [[ $# -ne 4 ]]; then
             echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]"
