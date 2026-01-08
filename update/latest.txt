@@ -1,7 +1,5 @@
-v1.2 RC 9
+v1.2 RC 10
 
 RELEASE NOTES:
 
-Adds the --fix-ios8 option.
-This can fix issues like being stuck at slide to upgrade when booting, etc.
-This does not fix FDR issues when restoring to 8.x or 9.x seprmvr64 on A8 and newer devices (yet).
+Fixes FDR issues (hopefully) on iPod touch 6 8.4-9.3.5 seprmvr64 restores.
