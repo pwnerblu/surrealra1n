@@ -11,3 +11,5 @@ iPhone 5S downgrades: 10.1-12.5.6 with SEP, 7.0-7.1.2, 8.1, 8.3, 8.4.1, 9.0, 9.3
 # Thanks to:
 
 libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi, etc! (for the tools it has to download)
+
+Mineek - iPhone X restored patcher, used for ipx restores 14.3-15.6.1 (my fork of the patcher is used for seprmvr64 restores on A8+)
