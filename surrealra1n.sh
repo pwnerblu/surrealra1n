@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 9"
+CURRENT_VERSION="v1.2 RC 10"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.4"
@@ -131,6 +131,7 @@ if [[ -f "./bin/img4" && \
       -f "./bin/asr64_patcher" && \
       -f "./bin/ipx_restored_patcher" && \
       -f "./bin/restored_external64_patcher" && \
+      -f "./bin/restoredpatcher" && \
       -f "./bin/hfsplus" && \
       -f "./bin/tsschecker" && \
       -f "./bin/ipatcher" && \
@@ -160,6 +161,10 @@ else
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/ipatcher
     # install additional restored_external patcher (iPhone X only)
     curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/ipx_restored_patcher
+    # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/8a9d987be5e028391f9d8ec348f87facce04f72e/main.c
+    gcc main.c -o bin/restoredpatcher
+    rm -rf main.c
     # install asr patcher for tethered restores
     git clone https://github.com/iSuns9/asr64_patcher --recursive
     cd asr64_patcher
@@ -649,6 +654,15 @@ case "$1" in
                 ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
                 ./bin/hfsplus "work/ramdisk.raw" add asr_patched usr/sbin/asr
                 ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
+                if [[ $IDENTIFIER == iPod7* ]]; then
+                    ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
+                    ./bin/restoredpatcher restored_external restored_patch
+                    ./bin/ldid -e restored_external > ents.plist
+                    ./bin/ldid -Sents.plist restored_patch
+                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
+                    ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
+                    ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
+                fi
                 ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
                 rm -rf "asr asr_patched ents.plist"
                 ./bin/img4 -i "tmp3/Firmware/all_flash/$ALLFLASH/$DEVICETREE" -o "work/dtre.raw" -k $DTRE_KEY
@@ -750,6 +764,18 @@ case "$1" in
         rm -rf "$rootfs12_dmg"
         mv "$rootfs_dmg" "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
+        if [[ $IDENTIFIER == iPod7* ]]; then
+            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
+            ./bin/hfsplus "work/ramdisk.raw" grow 30000000
+            ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
+            ./bin/restoredpatcher restored_external restored_patch
+            ./bin/ldid -e restored_external > ents.plist
+            ./bin/ldid -Sents.plist restored_patch
+            ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
+            ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
+            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
+            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
+        fi
         ./bin/img4 -i "tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE" -o "work/dtre.raw" -k $DTRE_KEY
         # patch content-protect string devicetree, to prevent restore freezes at keybag step
         perl -pi -e 's/content-protect/content-protecV/g' work/dtre.raw 
