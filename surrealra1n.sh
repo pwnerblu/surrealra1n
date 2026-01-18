@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 10"
+CURRENT_VERSION="v1.2 RC 11"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.4"
@@ -1434,6 +1434,12 @@ case "$1" in
             echo "[!] Aborting restore. Please re-enter DFU and try again."
             exit 1
         fi
+        # Potential future iOS 16.x tethered support, send rsep always if restoring iPhone X to fix FDR SEP panic
+        if [[ $IOS_VERSION == 16.* || $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+            use_rsep=""
+        else
+            use_rsep="--no-rsep"
+        fi
         echo "running futurerestore"
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "iOS 10 sep will be used"
@@ -1469,11 +1475,11 @@ case "$1" in
             exit 1
         else
             if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep --no-rsep $restoredir/custom.ipsw
+                sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw
                 echo "Restore has finished! Read above if there's any errors"
                 exit 1
             fi
-            sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep --no-rsep $restoredir/custom.ipsw 
+            sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw 
         fi
         echo "Restore has finished! Read above if there's any errors"
         exit 1
