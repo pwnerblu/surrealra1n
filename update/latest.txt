@@ -1,5 +1,6 @@
-v1.2 RC 10
+v1.2 RC 11
 
 RELEASE NOTES:
 
-Fixes FDR issues (hopefully) on iPod touch 6 8.4-9.3.5 seprmvr64 restores.
+Fixes iPhone X restores by always sending an RSEP.
+This is not currently tested at the moment.
