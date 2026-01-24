@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 11"
+CURRENT_VERSION="v1.2 RC 12"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.4"
@@ -162,7 +162,7 @@ else
     # install additional restored_external patcher (iPhone X only)
     curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/ipx_restored_patcher
     # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
-    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/8a9d987be5e028391f9d8ec348f87facce04f72e/main.c
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/c8ca1a75847a16e6a1bbc20894750a20d3b33097/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
     # install asr patcher for tethered restores
@@ -190,12 +190,12 @@ else
     curl -L -o backup.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/backup.sh
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
     # fetch idevicerestore for 7.0-9.3.5 restores 
-    curl -L -o bin/tmp.tar.gz https://sep.lol/files/releases/v1.1/e347dc7c217d389a27461aab90cccf4afaddf6e9d24d1835571adba45868c0d9c70ce48526bb68f456fb1f7816c0118e/turdus_m3rula_1.1_b0ea3ee7_linux-amd64.tar.gz
-    cd bin
-    tar -xf tmp.tar.gz
-    mv bin/turdus_merula idevicerestore
-    rm -rf tmp.tar.gz
-    cd ..
+    curl -L -o bin/idevicerestore https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/idevicerestore2
+    # libs
+    rm -rf "lib"
+    mkdir lib
+    curl -L -o lib/libcrypto.so.35 https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/lib/libcrypto.so.35
+    curl -L -o lib/libssl.so.35 https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/lib/libssl.so.35
     chmod +x bin/*
     chmod +x *.sh
 
@@ -599,8 +599,12 @@ case "$1" in
             echo "[!] iOS $IOS_VERSION detected."
             echo "[!] The restore ramdisk from this version might cause issues with restoring the device (especially if the mART is corrupt)"
             echo "[!] It is STRONGLY recommended to use iOS 8.4 - 8.4.1 ramdisk option when restoring to this version."
-            read -p "Use iOS 8.4.x ramdisk method? (y/n): " ios8ramdisk
-            if [[ $ios8ramdisk == y || $ios8ramdisk == Y ]]; then
+            if [[ $IDENTIFIER == iPod7* ]]; then
+                echo "Using 8.4.x ramdisk method regardless because of issues when restoring with 9 ramdisk."
+            else
+                read -p "Use iOS 8.4.x ramdisk method? (y/n): " ios8ramdisk
+            fi
+            if [[ $ios8ramdisk == y || $ios8ramdisk == Y || $IDENTIFIER == iPod7* ]]; then
                 read -p "iOS version for ramdisk? " ramdiskversion
                 rdskipsw=$(zenity --file-selection --title="Select the iOS $ramdiskversion IPSW file" --file-filter="*.ipsw")
 
@@ -656,7 +660,7 @@ case "$1" in
                 ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
                 if [[ $IDENTIFIER == iPod7* ]]; then
                     ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
-                    ./bin/restoredpatcher restored_external restored_patch
+                    ./bin/restoredpatcher restored_external restored_patch -b
                     ./bin/ldid -e restored_external > ents.plist
                     ./bin/ldid -Sents.plist restored_patch
                     ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
@@ -743,6 +747,7 @@ case "$1" in
         DTRE_KEY=$(grep "dtre-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
         RDSK_KEY=$(grep "rdsk-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
         KRNL_KEY=$(grep "krnl-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+        ROOT_KEY=$(grep "fstm-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 
         if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
             echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in $KEY_FILE. Aborting."
@@ -762,19 +767,55 @@ case "$1" in
         rootfs12_dmg=$(find tmp2 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
         mkdir work
         rm -rf "$rootfs12_dmg"
-        mv "$rootfs_dmg" "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
-        if [[ $IDENTIFIER == iPod7* ]]; then
+        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* ]]; then
+            # patch asr, and if A8, patch restored_external FDR step
             ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
             ./bin/hfsplus "work/ramdisk.raw" grow 30000000
-            ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
-            ./bin/restoredpatcher restored_external restored_patch
-            ./bin/ldid -e restored_external > ents.plist
-            ./bin/ldid -Sents.plist restored_patch
-            ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
-            ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
-            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
-            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
+            ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
+            ./bin/asr64_patcher asr asr_patch 
+            ./bin/ldid -e asr > ents.plist
+            ./bin/ldid -Sents.plist asr_patch
+            ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
+            ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
+            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
+            if [[ $IDENTIFIER == iPod7* ]]; then
+                ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
+                ./bin/restoredpatcher restored_external restored_patch -b
+                ./bin/ldid -e restored_external > ents.plist
+                ./bin/ldid -Sents.plist restored_patch
+                ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
+                ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
+                ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
+                ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
+            fi
+            ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+            ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
+        elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* ]]; then
+            # patch asr, and if A8, patch restored_external FDR step
+            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
+            ./bin/hfsplus "work/ramdisk.raw" grow 40000000
+            ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
+            ./bin/asr64_patcher asr asr_patch 
+            ./bin/ldid -e asr > ents.plist
+            ./bin/ldid -Sents.plist asr_patch
+            ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
+            ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
+            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
+            if [[ $IDENTIFIER == iPod7* ]]; then
+                ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
+                ./bin/restoredpatcher restored_external restored_patch -b
+                ./bin/ldid -e restored_external > ents.plist
+                ./bin/ldid -Sents.plist restored_patch
+                ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
+                ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
+                ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
+                ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
+            fi
+            ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+            ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
+        else
+            mv "$rootfs_dmg" "$rootfs12_dmg"
         fi
         ./bin/img4 -i "tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE" -o "work/dtre.raw" -k $DTRE_KEY
         # patch content-protect string devicetree, to prevent restore freezes at keybag step
@@ -867,7 +908,7 @@ case "$1" in
             echo "[!] Aborting restore. Please re-enter DFU and try again."
             exit 1
         fi
-        sudo ./bin/idevicerestore -e $savedir/custom.ipsw -y
+        sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -e $savedir/custom.ipsw -y
         echo "Restore has completed! If it's successful, you can boot with: ./surrealra1n.sh --seprmvr64-boot $IOS_VERSION"
         exit 0
         ;;
@@ -1037,7 +1078,7 @@ case "$1" in
             exit 1
         fi
 
-        if [[ "$IDENTIFIER" == iPod7* ]] && [[ "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
+        if [[ "$IDENTIFIER" == iPod7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
