@@ -1,6 +1,6 @@
-v1.2 RC 11
+v1.2 RC 12
 
 RELEASE NOTES:
 
-Fixes iPhone X restores by always sending an RSEP.
-This is not currently tested at the moment.
+Fixes iPod touch 6 iOS 8 and 9 seprmvr64 restores.
+Also adds 8.4.x ramdisk always for 9.x restores seprmvr64 on iPod touch 6.
