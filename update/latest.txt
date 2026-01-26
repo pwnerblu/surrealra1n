@@ -1,6 +1,7 @@
-v1.2 RC 12
+v1.2 RC 13
 
 RELEASE NOTES:
 
-Fixes iPod touch 6 iOS 8 and 9 seprmvr64 restores.
-Also adds 8.4.x ramdisk always for 9.x restores seprmvr64 on iPod touch 6.
+Updates latest iOS detection to the current latest iOS for certain devices.
+Eg: 12.5.7 to 12.5.8, 15.8.5 to 15.8.6, 16.7.12 to 16.7.13.
+12.5.7 and 15.8.5 tethered downgrade support will be added soon.
