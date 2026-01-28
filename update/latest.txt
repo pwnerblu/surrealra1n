@@ -1,4 +1,4 @@
-v1.2 RC 14
+v1.2 RC 15
 
 RELEASE NOTES:
-Revert Latest iOS to previous as latest is unsigned...
+Revert back to 15.8.6, 12.5.8...
