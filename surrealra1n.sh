@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 13"
+CURRENT_VERSION="v1.2 RC 14"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.4"
@@ -360,26 +360,26 @@ if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
 fi 
 
 if [[ $IDENTIFIER == iPhone6* ]]; then
-    LATEST_VERSION="12.5.8"
-    DOWNGRADE_RANGE="10.1 to 12.5.6"
+    LATEST_VERSION="12.5.7"
+    DOWNGRADE_RANGE="10.1 to 12.5.7"
     NOSEP_DOWNGRADE="7.0.1 to 9.3.5"
 elif [[ $IDENTIFIER == iPhone7* ]]; then
-    LATEST_VERSION="12.5.8"
-    DOWNGRADE_RANGE="11.3 to 12.5.6"
+    LATEST_VERSION="12.5.7"
+    DOWNGRADE_RANGE="11.3 to 12.5.7"
     NOSEP_DOWNGRADE="8.0 to 9.3.5"
     KERNELCACHE="kernelcache.release.iphone7"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-    LATEST_VERSION="16.7.13"
+    LATEST_VERSION="16.7.12"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10"
 elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-    LATEST_VERSION="16.7.13"
+    LATEST_VERSION="16.7.12"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10b"
 elif [[ $IDENTIFIER == iPod7,1 ]]; then
     # ipod touch 6 support, huge thanks to bodyc1m
-    LATEST_VERSION="12.5.8"
-    DOWNGRADE_RANGE="11.3 to 12.5.6"
+    LATEST_VERSION="12.5.7"
+    DOWNGRADE_RANGE="11.3 to 12.5.7"
     NOSEP_DOWNGRADE="8.4 to 9.3.5"
     KERNELCACHE="kernelcache.release.n102"
     KERNELCACHE10="kernelcache.release.n102"
@@ -402,15 +402,15 @@ elif [[ $IDENTIFIER == iPad7,5 ]]; then
     DEVICETREE="DeviceTree.j71bap.im4p"
     USE_BASEBAND="--no-baseband"
 elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]]; then
-    LATEST_VERSION="15.8.6"
-    DOWNGRADE_RANGE="13.4 to 15.8.4"
+    LATEST_VERSION="15.8.5"
+    DOWNGRADE_RANGE="13.4 to 15.8.5"
     NOSEP_DOWNGRADE="8.1 to 9.3.5"
     IBSS="iBSS.ipad5.RELEASE.im4p"
     IBEC="iBEC.ipad5.RELEASE.im4p"
     KERNELCACHE="kernelcache.release.ipad5"
 elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
-    LATEST_VERSION="15.8.6"
-    DOWNGRADE_RANGE="13.4 to 15.8.4"
+    LATEST_VERSION="15.8.5"
+    DOWNGRADE_RANGE="13.4 to 15.8.5"
     NOSEP_DOWNGRADE="8.1 to 9.3.5"
     IBSS="iBSS.ipad5b.RELEASE.im4p"
     IBEC="iBEC.ipad5b.RELEASE.im4p"
