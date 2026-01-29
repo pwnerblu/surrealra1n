@@ -1,4 +1,4 @@
-v1.2 RC 15
+v1.2 RC 16
 
 RELEASE NOTES:
-Revert back to 15.8.6, 12.5.8...
+Pwn after making ramdisk to fix A8 ramdisk creation issues. (--fix-ios8).
