@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 15"
+CURRENT_VERSION="v1.2 RC 16"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -534,6 +534,15 @@ case "$1" in
     --fix-ios8)
         echo "[!] WARNING: Your device must be freshly restored to iOS 8.0-8.4.1 with the seprmvr64 restore, and NEVER booted!"
         sleep 5
+        cd SSHRD_Script
+        sudo ./sshrd.sh 12.0
+        read -p "Was there an error while making the ramdisk? (y/n) " error_response
+        if [[ $error_response == y ]]; then
+            sudo ./sshrd.sh 12.0
+        else
+            echo ""
+        fi
+        cd ..
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
         echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
         echo "You can ignore this message if you are restoring an A8(X) device or newer."
@@ -556,13 +565,6 @@ case "$1" in
             exit 1
         fi
         cd SSHRD_Script
-        sudo ./sshrd.sh 12.0
-        read -p "Was there an error while making the ramdisk? (y/n) " error_response
-        if [[ $error_response == y ]]; then
-            sudo ./sshrd.sh 12.0
-        else
-            echo ""
-        fi
         sudo ./sshrd.sh boot
         sleep 17
         sudo gnome-terminal -- bash -c "sudo ./sshrd.sh ssh"
