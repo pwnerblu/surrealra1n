@@ -1,0 +1,6 @@
+v1.2 RC 8
+
+RELEASE NOTES:
+
+Surrealra1n-arch.sh is deprecated.
+Please use surrealra1n.sh instead as of RC 8 as it has arch support.

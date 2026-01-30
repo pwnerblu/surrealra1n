@@ -1,77 +1,89 @@
-# surrealra1n
+# surrealra1n 
 
-A script that allows tethered & untethered downgrades of A7-A8 iPhones. A8+ devices and all checkm8 devices should be supported when v1.2 releases.
-So what iOS versions can you downgrade to with surrealra1n? Any version with SEP compatibility!
+A tethered downgrade tool for iPhone 5S, all A8(X), iPad 6 (one A10 device), and A11 devices
 
-For a full guide to tether downgrade to a lower iOS, go to: https://github.com/pwnerblu/surrealra1n/wiki/Tethered-Downgrades-with-surrealra1n
+# Compatible devices and versions:
 
-For a full guide to OTA downgrade to iOS 10.3.3 (some A7 devices only, surrealra1n downgrade to 10.3.3 is only supported on the 5s): https://github.com/pwnerblu/surrealra1n/wiki/OTA-downgrading-to-iOS-10.3.3-(some-A7-devices-only)
+iPod touch 6:
 
-This script works on Linux only, no macOS support
+8.4 - 9.3.5 (seprmvr64 restore)
 
-Specifically, this is for Ubuntu/Debian, and any other distros using the dpkg/apt package manager, and is for x86_64, not arm64.
+10.0 - 11.2.6 (no support)
 
-All restores will use the latest baseband firmware and possibly the latest SEP (iOS 10 restores will use iOS 10 baseband and SEP)
+11.3 - 12.5.7 (supported with SEP)
 
-Alternatively, you can use Legacy iOS Kit (https://github.com/LukeZGD/Legacy-iOS-Kit) by LukeZGD to OTA downgrade to iOS 10.3.3 instead of surrealra1n.
+iPhone 6 and 6 Plus:
 
-If you'd like to contribute to this project, please do so we can make surrealra1n even better!
-And if there is any issues, PLEASE open one up on the issues tab.
+8.0 - 11.2.6 (no support)
 
-DO NOT OPEN ISSUES at Futurerestore if there's an issue with surrealra1n, it most likely isn't futurerestore's fault.
+11.3 - 12.5.7 (supported with SEP)
 
-If there is any issue with surrealra1n, join this discord server: https://discord.gg/kDXVHhTQs2
+iPad Air 2:
 
-# Compatibility:
+8.1 - 13.3.1 (no support)
 
-A7 devices: iOS 10.1 - 12.5.6, except for iOS 11.0 - 11.2.6 (tethered & untethered)
+13.4 - 15.8.5 (supported with SEP, 13 will not have Touch ID though)
 
-A8 devices: iOS 11.3 - 12.5.6 (tethered & untethered, but cannot boot yet because I haven't finished the firmware key list)
+iPad mini 4:
 
-A9+ devices: No support! Use turdus merula instead if device is A9-A10 (https://sep.lol), or downr1n (for tethered downgrades, https://github.com/edwin170/downr1n) or the nightly's futurerestore if your device is A11
+9.0 - 13.3.1 (no support)
 
-# What tools does surrealra1n depend on:
+13.4 - 15.8.5 (supported with SEP, 13 will not have Touch ID though)
 
-LukeeGD fork of futurerestore and other tools. Some tools may be downloaded from Legacy iOS Kit & Semaphorin as these tools are bundled with Legacy iOS Kit and/or Semaphorin.
+iPhone 5S:
 
-These tools may be under a different license than the surrealra1n script itself, but the surrealra1n shell script is under Apache License Version 2.0.
+7.0 - 9.3.5 (seprmvr64 restore, not yet supported on iPhone6,2)
+
+10.0 (no support yet)
+
+10.1 - 12.5.7 (supported with SEP, 10.1 will not have Touch ID, 11.0 - 11.2.6 has broken features)
+
+iPhone 8:
+
+11.0 - 13.7 (no support)
+
+14.0 - 14.2 (supported with SEP, though 14.3 iBoot is used with those restores, broken features)
+
+14.3 - 15.6.1 (supported with SEP, broken features)
+
+iPhone 8 Plus and iPhone X:
+
+11.0 - 14.2 (no support)
+
+14.3 - 15.6.1 (supported with SEP, broken features)
 
 # Usage:
 
-If you're running it for the first time, go into the surrealra1n folder, then run: chmod +x surrealra1n.sh
+Make a custom IPSW for tethered restore:
 
-To run the script, type ./surrealra1n.sh into the terminal
+Example: `./surrealra1n.sh --make-custom-ipsw [target ipsw] [latest ipsw] 11.4`
 
-To create a custom IPSW + restore chain to downgrade your device tethered, run:
+Make a custom IPSW for tethered restore with seprmvr64 (7.0-9.3.5):
 
-./surrealra1n.sh --make-custom-ipsw [path to target IPSW, aka the version you are downgrading to] [path to latest signed IPSW, required so the device will not get stuck in DFU afterwards] [iOS version you are downgrading to, example: 11.4]
+Example: `./surrealra1n.sh --seprmvr64-ipsw [target ipsw] [latest ipsw] 8.4.1`
 
-Enter your sudo password when prompted to.
+Make a custom IPSW for tethered restore with seprmvr64, and attempt activation record stitching (7.0-9.2.1), note that this IPSW type is device-specific:
 
-To downgrade your device with an existing custom IPSW & restore chain, run:
+Example: `./surrealra1n.sh --seprmvr64-ipsw [target ipsw] [latest ipsw] 9.2.1 --stitch-activation`
 
-./surrealra1n.sh --restore [iOS version you are downgrading to, example: 11.4]
+Restore the device with an existing custom IPSW:
 
-Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode.
+Example: `./surrealra1n.sh --restore 11.4`
 
-NOTE: for certain A7 devices only, to downgrade to iOS 10.3.3, run:
+Restore the device with an existing custom iPSW (seprmvr64):
 
-./surrealra1n.sh --ota-downgrade [iOS 10.3.3 IPSW path]
+Example: `./surrealra1n.sh --seprmvr64-restore 8.4.1`
 
-Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode.
+Boot the device after tethered downgrade:
 
-NOTE: If you have SHSH blobs and you want to do an untethered downgrade, run:
+Example: `./surrealra1n.sh --boot 11.4`
 
-./surrealra1n.sh --downgrade [IPSW PATH] [SHSH BLOB]
+Boot the device after seprmvr64 tethered downgrade:
 
-Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode.
-
-To boot tethered right now, run:
-
-./surrealra1n.sh --boot [iOS version you are on right now, example: 11.4]
-
-Enter your sudo password when prompted to, and follow instructions. You may need to put your device into DFU mode. It may ask for an IPSW file if boot files do not exist
+Example: `./surrealra1n.sh --seprmvr64-boot 8.4.1`
 
 # Thanks to:
 
-libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi and more!
+libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi, etc! (for the tools it has to download)
+
+Mineek - iPhone X restored patcher, used for ipx restores 14.3-15.6.1 (my fork of the patcher is used for seprmvr64 restores on A8+)

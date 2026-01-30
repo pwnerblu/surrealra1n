@@ -1,3 +1,5 @@
 These are modified BuildManifests meant for iOS 10.1.x - 10.2.1 restores on iPhone 5S and some A7 devices
 
 This is so it can use iOS 10.3 iBSS and iBEC and properly get firmware keys, because of iBSS and iBEC patching on futurerestore not working on anything below 10.3
+
+Also they include modified BuildManifests for iOS 14.0-14.2 restores on A11 devices, because 14.3 iBSS/iBEC is required for 14.0-14.2 to boot on 16 SEP
