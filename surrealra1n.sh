@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 16"
+CURRENT_VERSION="v1.2 RC 17"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -216,7 +216,7 @@ fi
 
 
 # Run ideviceinfo and capture both output and return code
-IDEVICE_INFO=$(ideviceinfo -s 2>&1)
+IDEVICE_INFO=$(ideviceinfo 2>&1)
 IDEVICE_STATUS=$?
 
 if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
@@ -225,6 +225,7 @@ if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
     # Extract ProductType and UniqueChipID
     IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
     ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
+    SERIAL=$(echo "$IDEVICE_INFO" | grep "^SerialNumber:" | cut -d ':' -f2 | xargs)
 
     echo "[+] Device Identifier: $IDENTIFIER"
     echo "[+] ECID: $ECID"
@@ -477,11 +478,12 @@ Options:
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
 
-  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]
-        Create a custom IPSW for tethered restore, with seprmvr64.
+  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --stitch-activation]
+        Create a custom IPSW for tethered restore, with seprmvr64. If you're going to 9.2.1 and lower, you can choose to attempt stitching activation records to pre-activate the seprmvr64 restore.
         - TARGET_IPSW_PATH: Path for the stock IPSW for target version
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($NOSEP_DOWNGRADE)
+        - [--stitch-activation]: Attempt to stitch activation records into rootfs to pre-activate a restore (7.0 - 9.2.1 only). Device must be legitimately activated to save activation records, it can't be iCloud/MDM bypassed.
 
   --restore [iOS_VERSION]
         Restore the device to a previously created custom IPSW.
@@ -583,13 +585,79 @@ case "$1" in
         exit 0
         ;;
     --seprmvr64-ipsw)
-        if [[ $# -ne 4 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]"
+        if [[ $# -lt 4 || $# -gt 5 ]]; then
+            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation]"
             exit 1
         fi
+
         TARGET_IPSW="$2"
         BASE_IPSW="$3"
         IOS_VERSION="$4"
+
+        FORCE_ACTIVATE=""
+
+        if [[ "$5" == "--stitch-activation" ]]; then
+            case "$IOS_VERSION" in
+                7.*|8.*|9.0*|9.1*|9.2*)
+                    FORCE_ACTIVATE=1
+                    ;;
+                9.3*)
+                    FORCE_ACTIVATE=0
+                    ;;
+                *)
+                    echo "[!] Unsupported iOS version for stitch-activation: $IOS_VERSION"
+                    exit 1
+                    ;;
+            esac
+        fi
+
+        if [[ "$FORCE_ACTIVATE" == "0" ]]; then
+            echo "[*] iOS version is not supported for stitch-activation. Skipping pre-activation of IPSW."
+        elif [[ "$FORCE_ACTIVATE" == "1" ]]; then
+            echo "[!] Before you can proceed, make sure your device is legitimately activated via Apple's servers on the Latest iOS (activated, not iCloud/MDM bypassed)."
+            # normalize ECID (hex -> decimal if needed)
+            if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
+                ECID_CLEAN="${ECID#0x}"
+                ECID_CLEAN="${ECID_CLEAN#0X}"
+                ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
+            else
+                ECID_CLEAN="$ECID"
+                ECID_DEC="$ECID"
+            fi
+            CACHE_FILE="cache/$ECID_DEC"
+
+            # check cached serial
+            if [[ -f "$CACHE_FILE" ]]; then
+                CACHED_SERIAL=$(cat "$CACHE_FILE")
+            else
+                CACHED_SERIAL=""
+            fi
+
+            # save serial to cache if empty
+            if [[ -z "$CACHED_SERIAL" ]]; then
+                mkdir -p cache
+                echo "$SERIAL" > "$CACHE_FILE"
+            fi
+        fi
+        if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
+            echo "[!] Put your device into DFU mode."
+            read -p "After putting your device into DFU, press any key to continue."
+            cd SSHRD_Script
+            sudo ./sshrd.sh 12.0
+            read -p "Was there an error while making the ramdisk? (y/n) " error_response
+            if [[ $error_response == y ]]; then
+                sudo ./sshrd.sh 12.0
+            else
+                echo ""
+            fi
+            ../bin/gaster pwn
+            ../bin/gaster reset
+            sudo ./sshrd.sh boot
+            sleep 10
+            sudo ./sshrd.sh --backup-activation
+            sudo ./sshrd.sh reboot
+            cd ..
+        fi
         echo "[!] IMPORTANT: This feature is only supported on iOS 7.0 - 9.3.5. DO NOT TRY THIS on 10.0 or later"
         echo "[!] Warning: Before you proceed with a seprmvr64 restore, please understand the following issues you will have afterwards:"
         echo "[!] 1. Touch ID will NOT work, at all."
@@ -603,10 +671,12 @@ case "$1" in
             echo "[!] It is STRONGLY recommended to use iOS 8.4 - 8.4.1 ramdisk option when restoring to this version."
             if [[ $IDENTIFIER == iPod7* ]]; then
                 echo "Using 8.4.x ramdisk method regardless because of issues when restoring with 9 ramdisk."
+            elif [[ $FORCE_ACTIVATE == 1 ]]; then
+                echo "Using 8.4.x ramdisk method for this restore."
             else
                 read -p "Use iOS 8.4.x ramdisk method? (y/n): " ios8ramdisk
             fi
-            if [[ $ios8ramdisk == y || $ios8ramdisk == Y || $IDENTIFIER == iPod7* ]]; then
+            if [[ $ios8ramdisk == y || $ios8ramdisk == Y || $IDENTIFIER == iPod7* || $FORCE_ACTIVATE == 1 ]]; then
                 read -p "iOS version for ramdisk? " ramdiskversion
                 rdskipsw=$(zenity --file-selection --title="Select the iOS $ramdiskversion IPSW file" --file-filter="*.ipsw")
 
@@ -649,8 +719,24 @@ case "$1" in
                 mkdir work
                 rm -rf "$rootfs12_dmg"
                 ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+                if [[ $FORCE_ACTIVATE == 1 ]]; then
+                    echo "Preparing activation files..."
+                    sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
+                    sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
+                    echo "Making dirs..."
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+                    echo "Injecting activation files into rootfs..."
+                    ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
+                    ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                    echo "Setting permissions..."
+                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
+                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                    echo "Cleaning up..."
+                    sudo rm -rf activation.plist
+                    sudo rm -rf IC-Info.sisv
+                fi
                 ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
-
                 ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
                 ./bin/hfsplus "work/ramdisk.raw" grow 30000000
                 ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
@@ -770,7 +856,7 @@ case "$1" in
         mkdir work
         rm -rf "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
-        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* ]]; then
+        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
             ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
             ./bin/hfsplus "work/ramdisk.raw" grow 30000000
@@ -789,9 +875,56 @@ case "$1" in
                 ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
-                ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             fi
+            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+            if [[ $FORCE_ACTIVATE == 1 ]]; then
+                echo "Preparing activation files..."
+                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
+                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
+                echo "Making dirs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+                echo "Injecting activation files into rootfs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                echo "Setting permissions..."
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                echo "Cleaning up..."
+                sudo rm -rf activation.plist
+                sudo rm -rf IC-Info.sisv
+            fi
+            ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
+        elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 ]]; then
+            # patch asr...
+            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
+            ./bin/hfsplus "work/ramdisk.raw" grow 30000000
+            ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
+            ./bin/asr64_patcher asr asr_patch 
+            ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
+            ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
+            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
+            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
+            ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+            ./bin/hfsplus "tmp1/rootfs.raw" grow 2500000000
+            if [[ $FORCE_ACTIVATE == 1 ]]; then
+                echo "Preparing activation files..."
+                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
+                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
+                echo "Making dirs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+                echo "Injecting activation files into rootfs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                echo "Setting permissions..."
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                echo "Cleaning up..."
+                sudo rm -rf activation.plist
+                sudo rm -rf IC-Info.sisv
+            fi
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
         elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* ]]; then
             # patch asr, and if A8, patch restored_external FDR step
