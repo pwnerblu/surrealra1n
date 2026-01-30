@@ -1,5 +1,9 @@
-v1.2 RC 17
+v1.2
 
 RELEASE NOTES:
 
+Adds iOS 11.0-11.2.6 downgrade support to the 5S. 
 Adds the activation stitching option for seprmvr64 restores to 7.0-9.2.1 to restore activated (iPhone 5S and iPod touch 6).
+Adds support for iPhone X and iPhone 8 and 8 Plus.
+Adds support for iPad Air 2 and iPad mini 4, including iPod touch 6.
+Adds seprmvr64 support for 7.0-9.3.5 on iPhone 5S (GSM) and iPod touch 6, including FDR fix for iPod touch 6.
