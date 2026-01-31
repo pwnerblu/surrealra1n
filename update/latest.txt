@@ -1,5 +1,5 @@
-v1.2 RC 17
+v1.3 beta
 
 RELEASE NOTES:
 
-Adds the activation stitching option for seprmvr64 restores to 7.0-9.2.1 to restore activated (iPhone 5S and iPod touch 6).
+Work in progress macOS support (may or may not break Linux, hope Linux works too).
