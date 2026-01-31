@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2 RC 17"
+CURRENT_VERSION="v1.3 beta"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -14,10 +14,11 @@ echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
 
-echo "Please select the Distro you are on:"
+echo "Please select the Distro/OS you are on:"
 echo "1. Ubuntu"
 echo "2. Arch"
-read -p "Please enter an answer (1-2): " dist 
+echo "3. macOS (arm64)"
+read -p "Please enter an answer (1-3): " dist 
 
 # Dependency check
 echo "Checking for required dependencies..."
@@ -58,7 +59,46 @@ elif [[ $dist == 2 ]]; then
     else
         echo "All dependencies are already installed."
     fi
+elif [[ $dist == 3 ]]; then
+    echo "You are running surrealra1n on a Apple Silicon. Make sure you have rosetta installed, xcode command line tools installed before proceeding."
+    read -p "Press any key to continue"
 fi
+
+#
+stat_size() {
+    if stat -c %s "$1" >/dev/null 2>&1; then
+        stat -c %s "$1"     # Linux (GNU)
+    else
+        stat -f %z "$1"     # macOS / BSD
+    fi
+}
+
+find_dmg() {
+    dir="$1"          # directory to search
+    mode="$2"         # smallest | largest
+    max_size="$3"     # optional (bytes)
+
+    find "$dir" -type f -name '*.dmg' ! -name '._*' -print |
+    while IFS= read -r f; do
+        size=$(stat_size "$f") || continue
+        if [[ -n "$max_size" && "$size" -ge "$max_size" ]]; then
+            continue
+        fi
+        printf '%s %s\n' "$size" "$f"
+    done |
+    if [[ "$mode" == "smallest" ]]; then
+        sort -n
+    else
+        sort -nr
+    fi |
+    head -n 1 |
+    cut -d' ' -f2-
+}
+
+
+
+
+#
 
 echo "Checking for updates..."
 rm -rf update/latest.txt
@@ -142,6 +182,71 @@ if [[ -f "./bin/img4" && \
       -f "./backup.sh" && \
       -f "./futurerestore/futurerestore" ]]; then
     echo "Found necessary binaries."
+elif [[ $dist == 3 ]]; then
+    echo "Binaries do not exist"
+    echo "Downloading binaries..."
+
+    mkdir -p bin futurerestore
+
+    curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/img4
+    curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/img4tool
+    curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
+    curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dsc64patcher
+    curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
+    curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
+    curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iBoot64Patcher
+    curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
+    curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dmg
+    curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iPatcher
+    # install additional restored_external patcher (iPhone X only)
+    curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/arm64/ipx_restored_patcher
+    # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/c8ca1a75847a16e6a1bbc20894750a20d3b33097/main.c
+    gcc main.c -o bin/restoredpatcher
+    rm -rf main.c
+    # install asr patcher for tethered restores
+    git clone https://github.com/iSuns9/asr64_patcher --recursive
+    cd asr64_patcher
+    make
+    mv asr64_patcher ../bin/asr64_patcher
+    cd ..
+    rm -rf "asr64_patcher"
+    # install restored_external patcher for tethered restores to iOS 14+
+    git clone https://github.com/iSuns9/restored_external64patcher --recursive
+    cd restored_external64patcher
+    make
+    mv restored_external64_patcher ../bin/restored_external64_patcher
+    cd ..
+    rm -rf "restored_external64patcher"
+    # install Kernel64Patcher for tether booting iOS 13+
+    curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
+    curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
+    curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_arm64
+    curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
+    # download activate.sh and backup.sh from hiylx's eclipsera1n, for backing up and restoring iOS 16+ activation files on 14.0-15.7(.2)
+    curl -L -o activate.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/activate.sh
+    curl -L -o backup.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/backup.sh
+    curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-macOS-RELEASE-main.zip
+    # fetch idevicerestore for 7.0-9.3.5 restores 
+    curl -L -o bin/idevicerestore https://github.com/NyanSatan/SundanceInH2A/raw/refs/heads/master/executables/idevicerestore
+    # libs
+    chmod +x bin/*
+    chmod +x *.sh
+
+    cd futurerestore || exit
+    unzip -o futurerestore.zip
+    tar -xf futurerestore-macOS-v2.0.0-Build_326-RELEASE.tar.xz
+    cp futurerestore-macOS-v2.0.0-Build_326-RELEASE/* .
+    chmod +x futurerestore
+    rm -rf *.tar.xz
+    rm -rf *.sh
+    rm -rf *.zip
+    rm -rf "futurerestore-macOS-v2.0.0-Build_326-RELEASE" 
+    cd ..
+    xattr -c bin/*
+    xattr -c futurerestore/futurerestore
 else
     echo "Binaries do not exist"
     echo "Downloading binaries..."
@@ -711,10 +816,10 @@ case "$1" in
                 echo "    iBSS Key: $IBSS_KEY"
                 echo "    iBEC Key: $IBEC_KEY"
 
-                smallest_dmg=$(find tmp3 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
-                smallest12_dmg=$(find tmp2 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
-                rootfs_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
-                rootfs12_dmg=$(find tmp2 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+                smallest_dmg=$(find_dmg tmp1 smallest)
+                smallest12_dmg=$(find_dmg tmp2 smallest)
+                rootfs_dmg=$(find_dmg tmp1 largest)
+                rootfs12_dmg=$(find_dmg tmp2 largest)
 
                 mkdir work
                 rm -rf "$rootfs12_dmg"
@@ -846,13 +951,13 @@ case "$1" in
         echo "    iBSS Key: $IBSS_KEY"
         echo "    iBEC Key: $IBEC_KEY"
         if [[ $IOS_VERSION == 7.1* || $IOS_VERSION == 8.* || $IOS_VERSION == 9.* ]]; then
-            smallest_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
+            smallest_dmg=$(find_dmg tmp1 smallest)
         else
-            smallest_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -size -10370000c -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+            smallest_dmg=$(find_dmg tmp1 largest 10370000)
         fi
-        smallest12_dmg=$(find tmp2 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
-        rootfs_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
-        rootfs12_dmg=$(find tmp2 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)
+        smallest12_dmg=$(find_dmg tmp2 smallest)
+        rootfs_dmg=$(find_dmg tmp1 largest)
+        rootfs12_dmg=$(find_dmg tmp2 largest)
         mkdir work
         rm -rf "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
@@ -1340,16 +1445,9 @@ case "$1" in
         mv custom.ipsw "$savedir/custom.ipsw"
         
         # determine restore ramdisk
-        smallest_dmg=$(find tmp1 -type f -name '*.dmg' ! -name '._*' -printf '%s %p\n' | sort -n | head -n 1 | cut -d' ' -f2-)
+        smallest_dmg=$(find_dmg tmp1 smallest)
         # determine update ramdisk (experimental tethered updates?)
-        update_dmg=$(
-    find tmp1 -type f -name '*.dmg' ! -name '._*' \
-        -printf '%s %p\n' \
-    | awk '$1 < 1073741824' \
-    | sort -nr \
-    | head -n 1 \
-    | cut -d' ' -f2-
-)
+        update_dmg=$(find_dmg tmp1 largest 1073741824)
         mkdir -p work
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
             cp tmp1/$KERNELCACHE10 work/kernel.orig 
@@ -1365,28 +1463,28 @@ case "$1" in
         mv kernel.im4p ../$savedir/kernel.im4p
         # build ramdisk
         cd ..
-        sudo ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
+        ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
         if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
-            sudo ./bin/hfsplus ramdisk.raw grow 60000000
+            ./bin/hfsplus ramdisk.raw grow 60000000
         else
             echo "skipping ramdisk grow"
         fi
         echo "extracting asr to patch"
-        sudo ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
+        ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
         echo "patching asr"
-        sudo ./bin/asr64_patcher asr patched_asr
-        sudo ./bin/ldid -e asr > ents.plist
-        sudo ./bin/ldid -Sents.plist patched_asr
+        ./bin/asr64_patcher asr patched_asr
+        ./bin/ldid -e asr > ents.plist
+        ./bin/ldid -Sents.plist patched_asr
         echo "replacing asr with patched asr"
-        sudo ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
+        ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
         sleep 4
-        sudo ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
+        ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
         sleep 4
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
-            sudo ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
+            ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
         else
-            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
+            ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
         fi
         if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
             echo "patching restored_external"
@@ -1394,23 +1492,23 @@ case "$1" in
             if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
                 echo "[!] You are trying to restore an iPhone X to iOS $IOS_VERSION"
                 echo "An additional patch is required!"
-                sudo ./bin/ipx_restored_patcher restored_external patched_external
-                sudo ./bin/restored_external64_patcher patched_external patched_restored_external
+                ./bin/ipx_restored_patcher restored_external patched_external
+                ./bin/restored_external64_patcher patched_external patched_restored_external
             else
-                sudo ./bin/restored_external64_patcher restored_external patched_restored_external
+                ./bin/restored_external64_patcher restored_external patched_restored_external
             fi
-            sudo ./bin/ldid -e restored_external > ents.plist
-            sudo ./bin/ldid -Sents.plist patched_restored_external
+            ./bin/ldid -e restored_external > ents.plist
+            ./bin/ldid -Sents.plist patched_restored_external
             echo "replacing restored_external with patched restored_external"
-            sudo ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_external
+            ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_external
             sleep 4 
-            sudo ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_external
+            ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_external
             sleep 4
-            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_external
+            ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_external
         fi
         sleep 4
         echo "Packing patched Ramdisk as im4p"
-        sudo ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
+        ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
         mv ramdisk.im4p $savedir/ramdisk.im4p
         rm -rf "work"
         rm -rf asr
@@ -1422,54 +1520,54 @@ case "$1" in
         rm -rf ramdisk.raw
         # build update ramdisk
         echo "building patched update ramdisk..."
-        sudo ./bin/img4 -i "$update_dmg" -o ramdisk.raw
+        ./bin/img4 -i "$update_dmg" -o ramdisk.raw
         rm -rf "tmp1" 
         if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
-            sudo ./bin/hfsplus ramdisk.raw grow 70000000
+            ./bin/hfsplus ramdisk.raw grow 70000000
         else
             echo "skipping ramdisk grow"
         fi
         echo "extracting asr to patch"
-        sudo ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
+        ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
         echo "patching asr"
-        sudo ./bin/asr64_patcher asr patched_asr
-        sudo ./bin/ldid -e asr > ents.plist
-        sudo ./bin/ldid -Sents.plist patched_asr
+        ./bin/asr64_patcher asr patched_asr
+        ./bin/ldid -e asr > ents.plist
+        ./bin/ldid -Sents.plist patched_asr
         echo "replacing asr with patched asr"
-        sudo ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
+        ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
         sleep 4
-        sudo ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
+        ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
         sleep 4
         if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
-            sudo ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
+            ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
         else
-            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
+            ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
         fi
         # restored_external in update ramdisk is restored_update
         if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
             echo "patching restored_update"
-            sudo ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_update 
+            ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_update 
             if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
                 echo "[!] You are trying to restore an iPhone X to iOS $IOS_VERSION"
                 echo "An additional patch is required!"
-                sudo ./bin/ipx_restored_patcher restored_update patched_external
-                sudo ./bin/restored_external64_patcher patched_external patched_restored_external
+                ./bin/ipx_restored_patcher restored_update patched_external
+                ./bin/restored_external64_patcher patched_external patched_restored_external
             else
-                sudo ./bin/restored_external64_patcher restored_update patched_restored_external
+                ./bin/restored_external64_patcher restored_update patched_restored_external
             fi
-            sudo ./bin/ldid -e restored_update > ents.plist
-            sudo ./bin/ldid -Sents.plist patched_restored_external
+            ./bin/ldid -e restored_update > ents.plist
+            ./bin/ldid -Sents.plist patched_restored_external
             echo "replacing restored_update with patched restored_update"
-            sudo ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_update
+            ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_update
             sleep 4 
-            sudo ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_update
+            ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_update
             sleep 4
-            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_update
+            ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_update
         fi
         sleep 4
         echo "Packing patched Ramdisk as im4p"
-        sudo ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
+        ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
         mv ramdisk.im4p $savedir/updateramdisk.im4p
         rm -rf asr
         rm -rf restored_update
