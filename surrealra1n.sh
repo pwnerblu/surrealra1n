@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta"
+CURRENT_VERSION="v1.3 beta 2"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -94,8 +94,6 @@ find_dmg() {
     head -n 1 |
     cut -d' ' -f2-
 }
-
-
 
 
 #
@@ -674,14 +672,21 @@ case "$1" in
         cd SSHRD_Script
         sudo ./sshrd.sh boot
         sleep 17
-        sudo gnome-terminal -- bash -c "sudo ./sshrd.sh ssh"
+        if [[ $dist == 3 ]]; then
+            sudo osascript -e 'tell application "Terminal" to do script "cd \"'"$(pwd)"'\" && ./sshrd.sh ssh"'
+            SSHPASS="./Darwin/sshpass"
+        else
+            sudo gnome-terminal -- bash -c "sudo ./sshrd.sh ssh"
+            SSHPASS="./Linux/sshpass"
+        fi
+
         sleep 3
         echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
-        ./Linux/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+        $SSHPASS -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
         sleep 6
-        ./Linux/sshpass -p "alpine" scp -P2222 -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+        $SSHPASS -p "alpine" scp -P2222 -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
         ../bin/dsc64patcher dyld.raw dyld.patched -8
-        ./Linux/sshpass -p "alpine" scp -P2222 -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+        $SSHPASS -p "alpine" scp -P2222 -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
         sleep 12
         rm -rf dyld.raw
         rm -rf dyld.patched
@@ -742,6 +747,8 @@ case "$1" in
             if [[ -z "$CACHED_SERIAL" ]]; then
                 mkdir -p cache
                 echo "$SERIAL" > "$CACHE_FILE"
+                # temporary workaround
+                CACHED_SERIAL="$SERIAL"
             fi
         fi
         if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
@@ -816,7 +823,7 @@ case "$1" in
                 echo "    iBSS Key: $IBSS_KEY"
                 echo "    iBEC Key: $IBEC_KEY"
 
-                smallest_dmg=$(find_dmg tmp1 smallest)
+                smallest_dmg=$(find_dmg tmp3 smallest)
                 smallest12_dmg=$(find_dmg tmp2 smallest)
                 rootfs_dmg=$(find_dmg tmp1 largest)
                 rootfs12_dmg=$(find_dmg tmp2 largest)
@@ -1606,8 +1613,6 @@ case "$1" in
             echo "since this restore requires the iOS 10 SEP to restore successfully, and we are restoring iOS 11.0 - 11.2.6, we need to save activation records so we can activate (because of SEP compatibility problems we cannot activate normally)"
             echo "iPh0ne4s fork of SSHRD_Script will be used"
             sleep 4
-            ./bin/gaster pwn
-            ./bin/gaster reset
             cd SSHRD_Script
             sudo ./sshrd.sh 12.0
             read -p "Was there an error while making the ramdisk? (y/n) " error_response
@@ -1616,6 +1621,8 @@ case "$1" in
             else
                 echo ""
             fi
+            ../bin/gaster pwn
+            ../bin/gaster reset
             sudo ./sshrd.sh boot
             sleep 10
             sudo ./sshrd.sh --backup-activation
