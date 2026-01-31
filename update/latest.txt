@@ -1,5 +1,6 @@
-v1.3 beta
+v1.3 beta 2
 
 RELEASE NOTES:
 
-Work in progress macOS support (may or may not break Linux, hope Linux works too).
+Fixes the fix-ios8 option in macOS.
+Fixes iOS 9 restores with 8.4.x ramdisk option in macOS.
