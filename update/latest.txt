@@ -1,6 +1,5 @@
-v1.3 beta 2
+v1.3 beta 3
 
 RELEASE NOTES:
 
-Fixes the fix-ios8 option in macOS.
-Fixes iOS 9 restores with 8.4.x ramdisk option in macOS.
+Updates hardcoded latest from 16.7.12 to actual latest: 16.7.14.
