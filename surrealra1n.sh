@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2"
+CURRENT_VERSION="v1.2.1"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -370,11 +370,11 @@ elif [[ $IDENTIFIER == iPhone7* ]]; then
     NOSEP_DOWNGRADE="8.0 to 9.3.5"
     KERNELCACHE="kernelcache.release.iphone7"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-    LATEST_VERSION="16.7.12"
+    LATEST_VERSION="16.7.14"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10"
 elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-    LATEST_VERSION="16.7.12"
+    LATEST_VERSION="16.7.14"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10b"
 elif [[ $IDENTIFIER == iPod7,1 ]]; then
