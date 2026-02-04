@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2.1"
+CURRENT_VERSION="v1.2.2"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -637,6 +637,7 @@ case "$1" in
             if [[ -z "$CACHED_SERIAL" ]]; then
                 mkdir -p cache
                 echo "$SERIAL" > "$CACHE_FILE"
+                CACHED_SERIAL="$SERIAL"
             fi
         fi
         if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
@@ -1892,10 +1893,25 @@ case "$1" in
                 ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b13 -n
                 ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J        
             fi
+            if [[ $IOS_VERSION == 13.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
+                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -n
+                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
+                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J        
+            fi
             if [[ $IOS_VERSION == 15.* ]]; then
                 ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
                 ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -e -o -r -b15 
                 ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J    
+            fi
+            if [[ $IOS_VERSION == 15.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
+                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -e -o -r -b15
+                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
+                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J        
+            fi
+            if [[ $IOS_VERSION == 14.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn       
             fi
             ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
             ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
