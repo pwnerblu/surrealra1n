@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 3 re-release"
+CURRENT_VERSION="v1.3 beta 4"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1999,7 +1999,7 @@ case "$1" in
             fi
             if [[ $IOS_VERSION == 13.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
                 ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -n
+                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b13 -n
                 ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
                 ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J        
             fi
@@ -2015,7 +2015,10 @@ case "$1" in
                 ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J        
             fi
             if [[ $IOS_VERSION == 14.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn       
+                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
+                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b
+                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
+                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J       
             fi
             ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
             ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
