@@ -1,5 +1,5 @@
-v1.3 beta 3
+v1.3 beta 3 re-release
 
 RELEASE NOTES:
 
-Updates hardcoded latest from 16.7.12 to actual latest: 16.7.14.
+Adds fixes to iPad Air 2/mini 4 kernelcache when booting.
