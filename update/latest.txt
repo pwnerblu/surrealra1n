@@ -1,4 +1,4 @@
-v1.3 beta 3 re-release
+v1.3 beta 4
 
 RELEASE NOTES:
 
