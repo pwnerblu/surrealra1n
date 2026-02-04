@@ -1,5 +1,5 @@
-v1.2.1
+v1.2.2
 
 RELEASE NOTES:
 
-Updates hardcoded latest from 16.7.12 to 16.7.14 on iPhone 8 (Plus) and X
+Fixes iPad Air 2 and mini 4 booting issues.
