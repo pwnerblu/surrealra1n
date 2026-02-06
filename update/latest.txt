@@ -1,5 +1,8 @@
-v1.3 beta 4
+v1.3 beta 5
 
 RELEASE NOTES:
 
-Adds fixes to iPad Air 2/mini 4 kernelcache when booting.
+Adds iPad mini 2 support (untested).
+The china variant will only be able to go to 11.3+ tethered at the current moment.
+Tethered downgrades that are not on the iPad mini 2 (China, iPad4,6) are down to 10.3 at the moment, 10.1-10.2.1 will be added soon
+7.0.3-9.3.5 seprmvr64 support is not added yet for this device.
