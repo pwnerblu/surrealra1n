@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 4"
+CURRENT_VERSION="v1.3 beta 5"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -463,6 +463,80 @@ if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
     USE_BASEBAND="--no-baseband"
 fi 
 
+# ipad mini 2 support
+
+if [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]]; then
+    DOWNGRADE_RANGE="10.3 to 12.5.7"
+    NOSEP_DOWNGRADE="7.0.3 to 9.3.5 (seprmvr64 downgrades to these versions not added yet)"
+    IBSS="iBSS.ipad4b.RELEASE.im4p"
+    IBEC="iBEC.ipad4b.RELEASE.im4p"
+    if [[ $IDENTIFIER == iPad4,4 ]]; then
+        DEVICETREE="DeviceTree.j85ap.im4p"
+        USE_BASEBAND="--no-baseband"
+    else
+        DEVICETREE="DeviceTree.j86ap.im4p"
+        USE_BASEBAND="--latest-baseband"
+    fi
+    KERNELCACHE="kernelcache.release.ipad4b"
+fi
+
+if [[ $IDENTIFIER == iPad4,6 ]]; then
+    DOWNGRADE_RANGE="11.3 to 12.5.7"
+    NOSEP_DOWNGRADE="7.1 to 9.3.5 (seprmvr64 downgrades to these versions not added yet)"
+    USE_BASEBAND="--latest-baseband"
+    DEVICETREE="DeviceTree.j87ap.im4p"
+    IBSS="iBSS.ipad4b.RELEASE.im4p"
+    IBEC="iBEC.ipad4b.RELEASE.im4p"
+    KERNELCACHE="kernelcache.release.ipad4b"
+fi
+
+if [[ $IDENTIFIER == iPad4,4 ]]; then
+    SEP="sep-firmware.j85.RELEASE.im4p"
+    IBSS10="iBSS.j85.RELEASE.im4p"
+    IBEC10="iBEC.j85.RELEASE.im4p"
+    IBSS7="iBSS.j85ap.RELEASE.im4p"
+    IBEC7="iBEC.j85ap.RELEASE.im4p"
+    IBOOT10="iBoot.j85.RELEASE.im4p"
+    LLB10="LLB.j85.RELEASE.im4p"
+    ALLFLASH="all_flash.j85ap.production"
+    KERNELCACHE10="kernelcache.release.j85"
+    sudo rm -rf "tmpmanifest"
+    mkdir -p tmpmanifest
+    cd tmpmanifest
+    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPad4,4_10.3.3.plist
+    cd ..
+fi
+
+if [[ $IDENTIFIER == iPad4,5 ]]; then
+    SEP="sep-firmware.j86.RELEASE.im4p"
+    IBSS10="iBSS.j86.RELEASE.im4p"
+    IBEC10="iBEC.j86.RELEASE.im4p"
+    IBSS7="iBSS.j86ap.RELEASE.im4p"
+    IBEC7="iBEC.j86ap.RELEASE.im4p"
+    IBOOT10="iBoot.j86.RELEASE.im4p"
+    LLB10="LLB.j86.RELEASE.im4p"
+    ALLFLASH="all_flash.j86ap.production"
+    KERNELCACHE10="kernelcache.release.j86"
+    sudo rm -rf "tmpmanifest"
+    mkdir -p tmpmanifest
+    cd tmpmanifest
+    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPad4,5_10.3.3.plist
+    cd ..
+fi
+
+if [[ $IDENTIFIER == iPad4,6 ]]; then
+    IBSS10="iBSS.j87.RELEASE.im4p"
+    IBEC10="iBEC.j87.RELEASE.im4p"
+    IBSS7="iBSS.j87ap.RELEASE.im4p"
+    IBEC7="iBEC.j87ap.RELEASE.im4p"
+    IBOOT10="iBoot.j87.RELEASE.im4p"
+    LLB10="LLB.j87.RELEASE.im4p"
+    ALLFLASH="all_flash.j87ap.production"
+    KERNELCACHE10="kernelcache.release.j87"
+fi
+
+# other stuff
+
 if [[ $IDENTIFIER == iPhone6* ]]; then
     LATEST_VERSION="12.5.8"
     DOWNGRADE_RANGE="10.1 to 12.5.7"
@@ -519,6 +593,8 @@ elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
     IBSS="iBSS.ipad5b.RELEASE.im4p"
     IBEC="iBEC.ipad5b.RELEASE.im4p"
     KERNELCACHE="kernelcache.release.ipad5b"
+elif [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 ]]; then
+    LATEST_VERSION="12.5.8"
 else
     echo "Unsupported device, press any key to continue if you are going to do an untethered downgrade with saved SHSH (use --downgrade [IPSW FILE] [SHSH BLOB])"
     read -p ""
@@ -607,11 +683,6 @@ Options:
   --seprmvr64-boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version with seprmvr64.
         - You must be on that iOS version already.
-        - Put your device into DFU mode before proceeding.
-
-  --ota-downgrade [IPSW FILE]
-        Restore the device to iOS 10.3.3 without saved blobs
-        - For certain A7 devices that still have iOS 10.3.3 signed via OTA
         - Put your device into DFU mode before proceeding.
 
   --downgrade [IPSW FILE] [SHSH BLOB]
@@ -1308,13 +1379,35 @@ case "$1" in
         if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            echo "[!] On this device, you can use --ota-downgrade flag to restore to iOS 10.3.3 without saved blobs"
+            exit 1
+        fi
+        if [[ "$IDENTIFIER" == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
+            echo "[!] SEP is incompatible"
+            echo "[!] You cannot restore to this version or make a custom IPSW for it"
+            exit 1
+        fi
+        if [[ "$IDENTIFIER" == iPad4,6 ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
+            echo "[!] SEP is incompatible"
+            echo "[!] You cannot restore to this version or make a custom IPSW for it"
+            exit 1
+        fi
+        if [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $IOS_VERSION == 10.1* || $IOS_VERSION == 10.2* ]]; then
+            echo "[!] 10.1-10.2.1 tethered support is not added yet to the iPad mini 2"
+            echo "[!] We may add this support in a future update. For now, please do 10.3 or later"
             exit 1
         fi
         if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* ]]; then
             echo "[!] SEP is partially compatible"
             echo "[!] Restoring to iOS $IOS_VERSION will use iOS 10.3.3 SEP (because iOS 12 SEP is fully incompatible with 11.2.6 and below)"
             echo "[!] The following issues will occur after the restore: Activation issues, Touch ID not working, unable to connect to password-protected Wi-Fi networks, etc. Device passcode may work though."
+            echo "[!] This is ONLY recommended for advanced users, saving activation tickets with an SSH ramdisk is required before restoring to this version"
+            echo "[!] PLEASE. PLEASE! DO NOT use this to bypass iCloud, only save activation tickets on a device you legally own"
+            read -p "Press any key to continue"
+        fi
+        if [[ "$IDENTIFIER" == iPad4,5 || $IDENTIFIER == iPad4,4 ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* ]]; then
+            echo "[!] SEP is partially compatible"
+            echo "[!] Restoring to iOS $IOS_VERSION will use iOS 10.3.3 SEP (because iOS 12 SEP is fully incompatible with 11.2.6 and below)"
+            echo "[!] The following issues will occur after the restore: Activation issues, unable to connect to password-protected Wi-Fi networks, etc. Device passcode may work though."
             echo "[!] This is ONLY recommended for advanced users, saving activation tickets with an SSH ramdisk is required before restoring to this version"
             echo "[!] PLEASE. PLEASE! DO NOT use this to bypass iCloud, only save activation tickets on a device you legally own"
             read -p "Press any key to continue"
@@ -1333,7 +1426,7 @@ case "$1" in
 
         if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.3.3 ]]; then
             echo "[!] iOS 10.3.3 can be restored untethered via OTA downgrade"
-            echo "[!] It is recommended to use --ota-downgrade [iOS 10.3.3 ipsw] to OTA downgrade to 10.3.3"
+            echo "[!] It is recommended to use Legacy iOS Kit to downgrade to 10.3.3 untethered (https://github.com/LukeZGD/Legacy-iOS-Kit)"
             read -p "Press any key to continue with iOS 10.3.3 tethered downgrade"
         fi
 
@@ -1632,6 +1725,29 @@ case "$1" in
             ./bin/gaster pwn
             ./bin/gaster reset
         fi
+        if [[ $IDENTIFIER == iPad4* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
+            echo "since this restore requires the iOS 10 SEP to restore successfully, and we are restoring iOS 11.0 - 11.2.6, we need to save activation records so we can activate (because of SEP compatibility problems we cannot activate normally)"
+            echo "iPh0ne4s fork of SSHRD_Script will be used"
+            sleep 4
+            cd SSHRD_Script
+            sudo ./sshrd.sh 12.0
+            read -p "Was there an error while making the ramdisk? (y/n) " error_response
+            if [[ $error_response == y ]]; then
+                sudo ./sshrd.sh 12.0
+            else
+                echo ""
+            fi
+            ../bin/gaster pwn
+            ../bin/gaster reset
+            sudo ./sshrd.sh boot
+            sleep 10
+            sudo ./sshrd.sh --backup-activation
+            sudo ./sshrd.sh reboot
+            cd ..
+            read -p "Press any key after you have placed your device into DFU mode"
+            ./bin/gaster pwn
+            ./bin/gaster reset
+        fi
         if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "We must save activation tickets in order to activate on this version. Please read what is below."
             echo "If you are on iOS 16.0 or later, note the following:"
@@ -1722,35 +1838,33 @@ case "$1" in
             use_rsep="--no-rsep"
         fi
         echo "running futurerestore"
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "iOS 10 sep will be used"
             IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)" --file-filter="*.ipsw")
             mkdir tmp
             mkdir tmp/Firmware
             mkdir tmp/Firmware/all_flash
             unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
-            unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
-            BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
             if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
                 if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
                     echo "Restore has finished! Read above if there's any errors"
                     echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
                     exit 1
                 fi
-                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache --latest-baseband --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
                 rm -rf "tmp"
                 echo "Restore has finished! Read above if there's any errors"
                 echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
                 exit 1
             fi
             if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
                 echo "Restore has finished! Read above if there's any errors"
                 exit 1
             fi
-            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
             rm -rf "tmp"
             echo "Restore has finished! Read above if there's any errors"
             exit 1
@@ -1765,65 +1879,7 @@ case "$1" in
         echo "Restore has finished! Read above if there's any errors"
         exit 1
         ;;
-
-
-    --ota-downgrade)
-        if [[ $# -ne 2 ]]; then
-            echo "[!] Usage: --ota-downgrade [IPSW FILE]"
-            exit 1
-        fi
-        sudo rm -rf "shsh"
-        IPSW="$2"
-        echo "[*] Restoring to iOS 10.3.3..."
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
-        echo "extracting ipsw"
-        mkdir tmp
-        mkdir tmp/Firmware
-        mkdir tmp/Firmware/all_flash
-        unzip -j "$IPSW" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
-        unzip -j "$IPSW" "Firmware/$BASEBAND10" -d tmp/Firmware
-        BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
-        SEP_PATH="tmp/Firmware/all_flash/$SEP"
-        echo "Fetching shsh blobs for iOS 10.3.3"
-        mkdir -p shsh
-        sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i 10.3.3 -o -m "$mnifst" --save-path shsh
-
-        # Find the .shsh2 file in the shsh directory
-        shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
-        if [[ -z "$shshpath" ]]; then
-            echo "[!] No .shsh2 blob found in shsh folder. Aborting."
-            exit 1
-        fi
-
-        echo "[*] Using SHSH blob: $shshpath"
-        echo "running futurerestore"
-        # required
-        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --use-pwndfu --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
-        echo "Restore has finished! Read above if there's any errors"
-        echo "Removing tmp folder"
-        sudo rm -rf "tmp"
-        exit 1
-        ;;
-
+# deprecate ota downgrade option
     --downgrade)
         if [[ $# -ne 3 ]]; then
             echo "[!] Usage: --downgrade [IPSW FILE] [SHSH BLOB]"
@@ -2067,14 +2123,12 @@ case "$1" in
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
         echo "Your device should now boot."
-        if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
+        if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
             echo "If it's your first boot after downgrading, wait for the Hello screen, then proceed with the next step"
             read -p "Is this your first time booting? (y/n): " bootresponse
             if [[ $bootresponse == y ]]; then
                 read -p "Press any key after your device is in DFU mode, we will need to inject activation"
                 sleep 4
-                ./bin/gaster pwn
-                ./bin/gaster reset
                 cd SSHRD_Script
                 sudo ./sshrd.sh 11.0
                 read -p "Was there an error while making the ramdisk? (y/n) " error_response
@@ -2083,6 +2137,8 @@ case "$1" in
                 else
                     echo ""
                 fi
+                ../bin/gaster pwn
+                ../bin/gaster reset
                 sudo ./sshrd.sh boot
                 sleep 10
                 sudo ./sshrd.sh --restore-activation
