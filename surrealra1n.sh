@@ -60,7 +60,7 @@ elif [[ $dist == 2 ]]; then
         echo "All dependencies are already installed."
     fi
 elif [[ $dist == 3 ]]; then
-    echo "You are running surrealra1n on a Apple Silicon. Make sure you have rosetta installed, xcode command line tools installed before proceeding."
+    echo "You are running surrealra1n on a Apple Silicon. Read the getting started guide: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
     read -p "Press any key to continue"
 fi
 
