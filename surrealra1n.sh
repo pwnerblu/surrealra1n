@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 5"
+CURRENT_VERSION="v1.3 beta 5 re-release"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1564,7 +1564,7 @@ case "$1" in
         # build ramdisk
         cd ..
         ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
             ./bin/hfsplus ramdisk.raw grow 60000000
         else
@@ -1581,7 +1581,7 @@ case "$1" in
         sleep 4
         ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
         sleep 4
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
             ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
         else
             ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
@@ -1622,7 +1622,7 @@ case "$1" in
         echo "building patched update ramdisk..."
         ./bin/img4 -i "$update_dmg" -o ramdisk.raw
         rm -rf "tmp1" 
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "growing ramdisk"
             ./bin/hfsplus ramdisk.raw grow 70000000
         else
@@ -1639,7 +1639,7 @@ case "$1" in
         sleep 4
         ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
         sleep 4
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
+        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
             ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
         else
             ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
