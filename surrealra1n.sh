@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 6"
+CURRENT_VERSION="v1.3 beta 7"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1823,6 +1823,10 @@ case "$1" in
         irecovery_output=$(./bin/irecovery -q)
         if echo "$irecovery_output" | grep -q "PWND"; then
             echo "[*] Device is in PWNDFU mode"
+            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                ./bin/irecovery -f surrealra1n.sh
+                ./bin/gaster reset
+            fi
         else
             echo "[!] Device is NOT in PWNDFU mode"
             echo "[!] Aborting restore. Please re-enter DFU and try again."
@@ -1869,6 +1873,9 @@ case "$1" in
             if [[ $update_prompt == y || $update_prompt == Y ]]; then
                 sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw
                 echo "Restore has finished! Read above if there's any errors"
+                if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]]; then
+                    sudo rm -rf "boot/$IDENTIFIER/$IOS_VERSION"
+                fi
                 exit 1
             fi
             sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw 
@@ -2090,6 +2097,32 @@ case "$1" in
                 unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d221.RELEASE.im4p" -d to_patch
                 ./bin/img4 -i "to_patch/sep-firmware.d221.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
             fi
+            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d22.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/adc-nike-d22.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
+            fi
+            if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d20.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/adc-nike-d20.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
+            fi
+            if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d21.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/adc-nike-d21.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
+            fi
+            # AVE firmware if on iOS 15.0+
+            if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 15.* ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/ave/AppleAVE2FW_H10.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/AppleAVE2FW_H10.im4p" -o "$BOOT_DIR/ave-firmware.img4" -T avef -M $im4m
+            fi         
+            if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 15.* ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/ave/AppleAVE2FW_H9.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/AppleAVE2FW_H9.im4p" -o "$BOOT_DIR/ave-firmware.img4" -T avef -M $im4m
+            fi        
             rm -rf "to_patch"
         else
             echo "[*] Existing boot files found in $BOOT_DIR"
@@ -2132,6 +2165,15 @@ case "$1" in
         if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
             ./bin/irecovery -f "$BOOT_DIR/sep-firmware.img4"
             ./bin/irecovery -c rsepfirmware
+        fi
+        if [[ $IDENTIFIER == iPhone10* ]]; then
+            # Fix camera, flashlight
+            ./bin/irecovery -f "$BOOT_DIR/isp-firmware.img4"
+            ./bin/irecovery -c firmware 
+        fi
+        if [[ $IOS_VERSION == 15.* ]]; then
+            ./bin/irecovery -f "$BOOT_DIR/ave-firmware.img4"
+            ./bin/irecovery -c firmware
         fi
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
