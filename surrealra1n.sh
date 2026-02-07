@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 5 re-release"
+CURRENT_VERSION="v1.3 beta 6"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1475,9 +1475,6 @@ case "$1" in
                 echo "[!] A future update will add the required buildmanifests to do this method on iPhone 8 Plus, and X." 
                 exit 1
             fi
-            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                echo "[!] The iPhone X may or may not work with surrealra1n, your mileage may vary! Please use at your own risk. Mineek's restored_external patcher will be used."
-            fi
             read -p "Press any key to continue"
         fi 
         if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 13.* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
@@ -1877,6 +1874,9 @@ case "$1" in
             sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw 
         fi
         echo "Restore has finished! Read above if there's any errors"
+        if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]]; then
+            sudo rm -rf "boot/$IDENTIFIER/$IOS_VERSION"
+        fi
         exit 1
         ;;
 # deprecate ota downgrade option
@@ -2081,6 +2081,15 @@ case "$1" in
             if [[ "$IOS_VERSION" == 12.* || $IOS_VERSION == 13.* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
                 ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
             fi
+            if [[ $IDENTIFIER == iPhone10,3 ]]; then
+                IPSW_PATH_2=$(zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file" --file-filter="*.ipsw")
+                unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d22.RELEASE.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/sep-firmware.d22.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
+            elif [[ $IDENTIFIER == iPhone10,6 ]]; then
+                IPSW_PATH_2=$(zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file" --file-filter="*.ipsw")
+                unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d221.RELEASE.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/sep-firmware.d221.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
+            fi
             rm -rf "to_patch"
         else
             echo "[*] Existing boot files found in $BOOT_DIR"
@@ -2119,6 +2128,10 @@ case "$1" in
         if [[ "$IOS_VERSION" == 12.* || $IOS_VERSION == 13.* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
           ./bin/irecovery -f "$BOOT_DIR/Trustcache.img4"
           ./bin/irecovery -c firmware
+        fi
+        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+            ./bin/irecovery -f "$BOOT_DIR/sep-firmware.img4"
+            ./bin/irecovery -c rsepfirmware
         fi
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
@@ -2168,7 +2181,31 @@ case "$1" in
                 else
                     echo ""
                 fi
-                sudo ./sshrd.sh boot
+                if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                    # fix weird sep panics while in ramdisk, send latest rsep...
+                    echo "Take your device out of DFU, then put it back in DFU."
+                    read -p "Press any key to continue after you have done this"
+                    ../bin/gaster pwn 
+                    ../bin/gaster reset
+                    ../bin/irecovery -f "sshramdisk/iBSS.img4"
+                    ../bin/irecovery -f "sshramdisk/iBEC.img4"
+                    ../bin/irecovery -c go 
+                    sleep 7
+                    ../bin/irecovery -f "sshramdisk/ramdisk.img4"
+                    ../bin/irecovery -c ramdisk 
+                    ../bin/irecovery -f "sshramdisk/trustcache.img4"
+                    ../bin/irecovery -c firmware
+                    ../bin/irecovery -f "sshramdisk/devicetree.img4"
+                    ../bin/irecovery -c devicetree
+                    # send latest RSEP
+                    ../bin/irecovery -f "../$BOOT_DIR/sep-firmware.img4"
+                    ../bin/irecovery -c rsepfirmware
+                    # kernelcache finally
+                    ../bin/irecovery -f "sshramdisk/kernelcache.img4"
+                    ../bin/irecovery -c bootx
+                else
+                    sudo ./sshrd.sh boot
+                fi
                 sleep 10
                 echo "What is the iOS version that you saved activation records with?"
                 read -p " " version
@@ -2206,7 +2243,31 @@ case "$1" in
                 else
                     echo ""
                 fi
-                sudo ./sshrd.sh boot
+                if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                    # fix weird sep panics while in ramdisk, send latest rsep...
+                    echo "Take your device out of DFU, then put it back in DFU."
+                    read -p "Press any key to continue after you have done this"
+                    ../bin/gaster pwn 
+                    ../bin/gaster reset
+                    ../bin/irecovery -f "sshramdisk/iBSS.img4"
+                    ../bin/irecovery -f "sshramdisk/iBEC.img4"
+                    ../bin/irecovery -c go 
+                    sleep 7
+                    ../bin/irecovery -f "sshramdisk/ramdisk.img4"
+                    ../bin/irecovery -c ramdisk 
+                    ../bin/irecovery -f "sshramdisk/trustcache.img4"
+                    ../bin/irecovery -c firmware
+                    ../bin/irecovery -f "sshramdisk/devicetree.img4"
+                    ../bin/irecovery -c devicetree
+                    # send latest RSEP
+                    ../bin/irecovery -f "../$BOOT_DIR/sep-firmware.img4"
+                    ../bin/irecovery -c rsepfirmware
+                    # kernelcache finally
+                    ../bin/irecovery -f "sshramdisk/kernelcache.img4"
+                    ../bin/irecovery -c bootx
+                else
+                    sudo ./sshrd.sh boot
+                fi
                 sleep 10
                 sudo ./sshrd.sh --install-trollstore
                 sudo ./sshrd.sh reboot
