@@ -1,5 +1,5 @@
-v1.3 beta 5 re-release
+v1.3 beta 6
 
 RELEASE NOTES:
 
-Addresses ramdisk handling problems on iPad mini 2
+Fixes SEP panics while booting on iPhone X
