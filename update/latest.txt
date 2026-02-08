@@ -1,5 +1,6 @@
-v1.3 beta 7
+v1.3 beta 8
 
 RELEASE NOTES:
 
-Fixes camera and flashlight on iPhone X and 8.
+Changes SEP handling for iOS 10.x-early 11.x restores.
+Adds experimental 13.3.x tethered downgrade support to A8(X) iPads
