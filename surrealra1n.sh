@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 7"
+CURRENT_VERSION="v1.3 beta 8"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -165,6 +165,7 @@ if [[ -f "./bin/img4" && \
       -f "./bin/Kernel64Patcher" && \
       -f "./bin/Kernel64Patcher2" && \
       -f "./bin/dmg" && \
+      -f "./bin/pzb" && \
       -f "./bin/iBoot64Patcher" && \
       -f "./bin/asr64_patcher" && \
       -f "./bin/ipx_restored_patcher" && \
@@ -188,6 +189,7 @@ elif [[ $dist == 3 ]]; then
 
     curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/img4
     curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/img4tool
+    curl -L -o bin/pzb https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/pzb
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
@@ -254,6 +256,7 @@ else
     curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4
     curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4tool
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/KPlooshFinder
+    curl -L -o bin/pzb https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/pzb
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kerneldiff
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery
@@ -1449,7 +1452,7 @@ case "$1" in
             echo "[!] And if you are restoring to iPadOS 13.4 - 13.7, you will be stuck in a blank screen after the restore. Put the device into real DFU mode and boot it normally."
             read -p "Press any key to continue"
         fi 
-        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.3* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
+        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
@@ -1488,15 +1491,16 @@ case "$1" in
         echo ""
         unzip "$TARGET_IPSW" -d tmp1
         unzip "$BASE_IPSW" -d tmp2
-        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
+        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
             echo "iOS 10.3 iBSS and iBEC will be used."
-            IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3 IPSW file (for iBSS and iBEC)" --file-filter="*.ipsw")
+            sudo ./bin/pzb -g Firmware/dfu/$IBSS http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw
+            sudo ./bin/pzb -g Firmware/dfu/$IBEC http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw
             rm -rf tmp1/Firmware/dfu/$IBSS10
             rm -rf tmp1/Firmware/dfu/$IBEC10
-            unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
-            unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d tmp1/Firmware/dfu
-            mv tmp1/Firmware/dfu/$IBSS tmp1/Firmware/dfu/$IBSS10
-            mv tmp1/Firmware/dfu/$IBEC tmp1/Firmware/dfu/$IBEC10
+            mv $IBSS tmp1/Firmware/dfu/$IBSS10
+            mv $IBEC tmp1/Firmware/dfu/$IBEC10
+            sudo rm -rf $IBSS
+            sudo rm -rf $IBEC
         fi
         if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
             rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
@@ -1841,11 +1845,16 @@ case "$1" in
         echo "running futurerestore"
         if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
             echo "iOS 10 sep will be used"
-            IPSW_PATH=$(zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)" --file-filter="*.ipsw")
+            if [[ $IDENTIFIER == iPhone6* ]]; then
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP http://appldnld.apple.com/ios10.3.3/091-23133-20170719-CA8E78E6-6977-11E7-968B-2B9100BA0AE3/iPhone_4.0_64bit_10.3.3_14G60_Restore.ipsw
+            fi
+            if [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]]; then
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP http://appldnld.apple.com/ios10.3.3/091-23378-20170719-CA983C78-6977-11E7-8922-3D9100BA0AE3/iPad_64bit_10.3.3_14G60_Restore.ipsw
+            fi
             mkdir tmp
             mkdir tmp/Firmware
             mkdir tmp/Firmware/all_flash
-            unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
+            mv $SEP tmp/Firmware/all_flash/
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
             if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
                 if [[ $update_prompt == y || $update_prompt == Y ]]; then
