@@ -1,6 +1,6 @@
-v1.3 beta 8
+v1.3 beta 9
 
 RELEASE NOTES:
 
-Changes SEP handling for iOS 10.x-early 11.x restores.
-Adds experimental 13.3.x tethered downgrade support to A8(X) iPads
+Adds fixes for 13.3.x A8(X) iPad downgrades by using 13.4 kernel/devicetree in restore.
+NOTE: you must remake the custom IPSW after updating surrealra1n for this fix to work.
