@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 9"
+CURRENT_VERSION="v1.3 beta 10"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -584,14 +584,14 @@ elif [[ $IDENTIFIER == iPad7,5 ]]; then
     USE_BASEBAND="--no-baseband"
 elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]]; then
     LATEST_VERSION="15.8.6"
-    DOWNGRADE_RANGE="13.4 to 15.8.5"
-    NOSEP_DOWNGRADE="8.1 to 9.3.5"
+    DOWNGRADE_RANGE="13.1 to 15.8.5"
+    NOSEP_DOWNGRADE="9.0 to 9.3.5"
     IBSS="iBSS.ipad5.RELEASE.im4p"
     IBEC="iBEC.ipad5.RELEASE.im4p"
     KERNELCACHE="kernelcache.release.ipad5"
 elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
     LATEST_VERSION="15.8.6"
-    DOWNGRADE_RANGE="13.4 to 15.8.5"
+    DOWNGRADE_RANGE="13.1 to 15.8.5"
     NOSEP_DOWNGRADE="8.1 to 9.3.5"
     IBSS="iBSS.ipad5b.RELEASE.im4p"
     IBEC="iBEC.ipad5b.RELEASE.im4p"
@@ -1444,15 +1444,14 @@ case "$1" in
             echo "[!] It is recommended to use turdus merula instead: https://sep.lol"
             read -p "Press any key to continue"
         fi 
-        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.3* || $IOS_VERSION == 13.4* || $IOS_VERSION == 13.5* || $IOS_VERSION == 13.6* || $IOS_VERSION == 13.7* ]]; then
+        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.* ]]; then
             echo "[!] SEP is partially incompatible"
             echo "[!] The iPadOS $LATEST_VERSION SEP is not fully compatible with this version."
             echo "[!] The following issues may occur:"
             echo "[!] Touch ID will cease to function fully."
-            echo "[!] And if you are restoring to iPadOS 13.3 - 13.7, you will be stuck in a blank screen after the restore. Put the device into real DFU mode and boot it normally."
             read -p "Press any key to continue"
         fi 
-        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
+        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 12.* || $IOS_VERSION == 11.* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
             echo "[!] SEP is incompatible"
             echo "[!] You cannot restore to this version or make a custom IPSW for it"
             exit 1
@@ -1528,8 +1527,8 @@ case "$1" in
             fi
             find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
             find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
-            if [[ $IOS_VERSION == 13.3* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                # 13.4 kernel/DT trick, for restoring 13.3.x on latest SEP
+            if [[ $IOS_VERSION == 13.1* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.3* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+                # 13.4 kernel/DT trick, for restoring 13.1-13.3.1 on latest SEP
                 sudo ./bin/pzb -g Firmware/all_flash/$DEVICETREE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
                 sudo ./bin/pzb -g $KERNELCACHE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
                 sudo rm -rf "tmp1/Firmware/all_flash/$DEVICETREE"
