@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 11"
+CURRENT_VERSION="v1.3 beta 12"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -769,18 +769,17 @@ case "$1" in
         exit 0
         ;;
     --seprmvr64-ipsw)
-        if [[ $# -lt 4 || $# -gt 5 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation]"
+        if [[ $# -lt 5 || $# -gt 7 ]]; then
+            echo "[!] Usage: --seprmvr64-ipsw [8.4.x ipsw] [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation]"
             exit 1
         fi
-
-        TARGET_IPSW="$2"
-        BASE_IPSW="$3"
-        IOS_VERSION="$4"
-
+        rdskipsw="$2"
+        TARGET_IPSW="$3"
+        BASE_IPSW="$4"
+        IOS_VERSION="$5"
         FORCE_ACTIVATE=""
 
-        if [[ "$5" == "--stitch-activation" ]]; then
+        if [[ "$6" == "--stitch-activation" ]]; then
             case "$IOS_VERSION" in
                 7.*|8.*|9.0*|9.1*|9.2*)
                     FORCE_ACTIVATE=1
@@ -864,8 +863,6 @@ case "$1" in
             fi
             if [[ $ios8ramdisk == y || $ios8ramdisk == Y || $IDENTIFIER == iPod7* || $FORCE_ACTIVATE == 1 ]]; then
                 read -p "iOS version for ramdisk? " ramdiskversion
-                rdskipsw=$(zenity --file-selection --title="Select the iOS $ramdiskversion IPSW file" --file-filter="*.ipsw")
-
                 echo "[*] Making custom IPSW..."
                 savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
                 mkdir -p "$savedir"
