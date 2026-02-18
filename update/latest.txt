@@ -1,5 +1,5 @@
-v1.3 beta 11
+v1.3 beta 12
 
 RELEASE NOTES:
 
-remove zenity requirement for seprmvr64-boot
+remove zenity requirement for 8.4.x ramdisk method
