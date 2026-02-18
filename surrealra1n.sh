@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 10"
+CURRENT_VERSION="v1.3 beta 11"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -683,7 +683,7 @@ Options:
         - Requires a custom IPSW already built for the specified iOS version.
         - Put your device into DFU mode before proceeding.
 
-  --seprmvr64-boot [iOS_VERSION]
+  --seprmvr64-boot [iOS_VERSION] [ipsw file]
         Perform a tethered boot of the specified iOS version with seprmvr64.
         - You must be on that iOS version already.
         - Put your device into DFU mode before proceeding.
@@ -1235,11 +1235,12 @@ case "$1" in
         ;;
 
     --seprmvr64-boot)
-        if [[ $# -ne 2 ]]; then
-            echo "[!] Usage: --seprmvr64-boot [iOS_VERSION]"
+        if [[ $# -ne 3 ]]; then
+            echo "[!] Usage: --seprmvr64-boot [iOS_VERSION] [ipsw file]"
             exit 1
         fi
         IOS_VERSION="$2"
+        IPSW_PATH="$3"
         savedir="seprmvr64boot/$IDENTIFIER/$IOS_VERSION"
         shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
         if [[ -z "$shshpath" ]]; then
@@ -1280,7 +1281,6 @@ case "$1" in
             echo "Your device should now boot."
             exit 0
         fi
-        IPSW_PATH=$(zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
         rm -rf "$savedir"
         mkdir -p "$savedir"
         echo ""
