@@ -1,5 +1,5 @@
-v1.3 beta 10
+v1.3 beta 11
 
 RELEASE NOTES:
 
-Adds 13.1.x and 13.2.x tether downgrade support on A8(X) iPads.
+remove zenity requirement for seprmvr64-boot
