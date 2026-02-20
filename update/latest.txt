@@ -1,5 +1,7 @@
-v1.3 beta 12
+v1.3 beta 13
 
 RELEASE NOTES:
 
-remove zenity requirement for 8.4.x ramdisk method.
+Remove zenity requirement almost...
+Add iOS 11.3-12.4.1 A8(X) iPad tethered downgrade support
+Experimental Intel macOS support.
