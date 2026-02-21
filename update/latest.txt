@@ -1,5 +1,5 @@
-v1.2.3
+v1.3 beta 16
 
 RELEASE NOTES:
 
-Fixes iPad Air 2 and mini 4 booting issues.
+Fixes apnonce haxx and removes futurerestore
