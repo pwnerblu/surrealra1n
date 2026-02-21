@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2.3"
+CURRENT_VERSION="v1.3 beta 16"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
