@@ -1,5 +1,5 @@
-v1.3 beta 15
+v1.3 beta 16
 
 RELEASE NOTES:
 
-adds apnonce haxx
+Adds make-custom-ipsw-2 for A8(X) iPad restores, to make an IPSW for restoring tethered via idevicerestore
