@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 13"
+CURRENT_VERSION="v1.3 beta 14"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1933,6 +1933,24 @@ case "$1" in
                 cd ..
             fi
         fi
+        read -p "localpatch iBSS iBEC (11.3 restore, ipad mini 4 cellular)... (y/n): " local_patching
+        if [[ $local_patching == y ]]; then
+            CACHE=""
+            ./bin/img4tool -s "$shshpath" -e -m "$IDENTIFIER-im4m"
+            im4m="$IDENTIFIER-im4m"
+            unzip -j "$restoredir/custom.ipsw" "Firmware/dfu/$IBSS" -d tmp
+            unzip -j "$restoredir/custom.ipsw" "Firmware/dfu/$IBEC" -d tmp
+            ./bin/gaster decrypt tmp/$IBSS tmp/iBSS.dec
+            ./bin/gaster decrypt tmp/$IBEC tmp/iBEC.dec
+            ./bin/iBoot64Patcher tmp/iBSS.dec tmp/iBSS.patch
+            ./bin/iBoot64Patcher tmp/iBEC.dec tmp/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1" -n
+            sudo ./bin/img4 -i tmp/iBSS.patch -o /tmp/futurerestore/ibss.j97ap.17E255.patched.img4 -A -T ibss -M $im4m
+            sudo ./bin/img4 -i tmp/iBEC.patch -o /tmp/futurerestore/ibec.j97ap.17E255.patched.img4 -A -T ibec -M $im4m
+            sudo rm -rf "tmp"
+        else
+            echo "Skipping Local patch."
+            CACHE="--no-cache"
+        fi
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
         echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
         echo "You can ignore this message if you are restoring an A8(X) device or newer."
@@ -2002,14 +2020,14 @@ case "$1" in
             exit 1
         else
             if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw
+                sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu $CACHE --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw
                 echo "Restore has finished! Read above if there's any errors"
                 if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]]; then
                     sudo rm -rf "boot/$IDENTIFIER/$IOS_VERSION"
                 fi
                 exit 1
             fi
-            sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw 
+            sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu $CACHE --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw 
         fi
         echo "Restore has finished! Read above if there's any errors"
         if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]]; then
