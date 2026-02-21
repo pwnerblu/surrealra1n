@@ -1,5 +1,5 @@
-v1.3 beta 15
+v1.3 beta 16
 
 RELEASE NOTES:
 
-adds apnonce haxx
+Fixes apnonce haxx and removes futurerestore
