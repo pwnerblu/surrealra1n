@@ -2,4 +2,4 @@ v1.3 beta 16 re-release
 
 RELEASE NOTES:
 
-Removes the content-protect patch for iOS 11.3-12.x A8(X) iPad restores
+Removes the content-protect patch for iOS 11.3-12.x A8(X) iPad restores.
