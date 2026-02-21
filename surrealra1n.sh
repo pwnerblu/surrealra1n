@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 16"
+CURRENT_VERSION="v1.3 beta 16 re-release"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1611,17 +1611,6 @@ case "$1" in
             find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
             if [[ $IOS_VERSION == 11.* || $IOS_VERSION == 12.* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.3* ]] && [[ $IDENTIFIER == iPad5* ]]; then
                 sudo ./bin/pzb -g Firmware/all_flash/$DEVICETREE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                if [[ $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
-                    # patch data encryption stuff
-                    ./bin/img4 -i "$DEVICETREE" -o dtre.raw
-                    perl -pi -e 's/content-protect/content-protecV/g' dtre.raw
-                    echo "Devicetree haxx complete!"
-                    sleep 4
-                    echo "Packing devicetree into im4p!"
-                    sudo rm -rf $DEVICETREE
-                    ./bin/img4 -i dtre.raw -o "$DEVICETREE" -A -T dtre
-                    rm -rf dtre.raw
-                fi
                 sudo ./bin/pzb -g $KERNELCACHE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
                 sudo rm -rf "tmp1/Firmware/all_flash/$DEVICETREE"
                 sudo rm -rf "tmp1/$KERNELCACHE"
@@ -1875,17 +1864,6 @@ case "$1" in
             fi
             if [[ $IOS_VERSION == 11.* || $IOS_VERSION == 12.* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.3* ]] && [[ $IDENTIFIER == iPad5* ]]; then
                 sudo ./bin/pzb -g Firmware/all_flash/$DEVICETREE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                if [[ $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
-                    # patch data encryption stuff
-                    ./bin/img4 -i "$DEVICETREE" -o dtre.raw
-                    perl -pi -e 's/content-protect/content-protecV/g' dtre.raw
-                    echo "Devicetree haxx complete!"
-                    sleep 4
-                    echo "Packing devicetree into im4p!"
-                    sudo rm -rf $DEVICETREE
-                    ./bin/img4 -i dtre.raw -o "$DEVICETREE" -A -T dtre
-                    rm -rf dtre.raw
-                fi
                 sudo ./bin/pzb -g $KERNELCACHE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
                 sudo rm -rf "tmp1/Firmware/all_flash/$DEVICETREE"
                 sudo rm -rf "tmp1/$KERNELCACHE"
