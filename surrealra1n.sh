@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2.3"
+CURRENT_VERSION="v1.2.4"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -201,8 +201,8 @@ else
 
     cd futurerestore || exit
     unzip -o futurerestore.zip
-    tar -xf futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE.tar.xz
-    cp futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE/* .
+    tar -xf futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE.tar.xz
+    cp futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE/* .
     chmod +x linux_fix.sh
     sudo ./linux_fix.sh
     rm -rf linux_fix.sh
@@ -210,7 +210,7 @@ else
     rm -rf *.tar.xz
     rm -rf *.sh
     rm -rf *.zip
-    rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_326-RELEASE" 
+    rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE" 
     cd ..
 fi
 
