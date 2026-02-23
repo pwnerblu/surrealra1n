@@ -1,5 +1,5 @@
-v1.2.3
+v1.2.4
 
 RELEASE NOTES:
 
-Fixes iPad Air 2 and mini 4 booting issues.
+Update futurerestore fetching as builds in LukeeGD fork have been updated from 326 to 329
