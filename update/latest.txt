@@ -1,5 +1,5 @@
-v1.3 beta 16 re-release
+v1.3 beta 17
 
 RELEASE NOTES:
 
-Removes the content-protect patch for iOS 11.3-12.x A8(X) iPad restores.
+Updates futurerestore fetching as LukeeGD futurerestore fork has been updated to 329
