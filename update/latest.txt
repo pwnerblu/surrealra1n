@@ -1,5 +1,6 @@
-v1.3 beta 17
+v1.3 beta 18
 
 RELEASE NOTES:
 
-Updates futurerestore fetching as LukeeGD futurerestore fork has been updated to 329
+Adds the jailbeak option to --seprmvr64-ipsw for iOS 7 seprmvr64 restores
+To pre-jailbreak restores to 7.x seprmvr64, add --jailbreak to the end of the seprmvr64 ipsw command 
