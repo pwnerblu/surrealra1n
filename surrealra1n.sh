@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 17"
+CURRENT_VERSION="v1.3 beta 18"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -731,7 +731,7 @@ Options:
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
 
-  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --stitch-activation]
+  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --stitch-activation] [optional: --jailbreak]
         Create a custom IPSW for tethered restore, with seprmvr64. If you're going to 9.2.1 and lower, you can choose to attempt stitching activation records to pre-activate the seprmvr64 restore.
         - TARGET_IPSW_PATH: Path for the stock IPSW for target version
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
@@ -840,8 +840,8 @@ case "$1" in
         exit 0
         ;;
     --seprmvr64-ipsw)
-        if [[ $# -lt 4 || $# -gt 6 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation]"
+        if [[ $# -lt 4 || $# -gt 7 ]]; then
+            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
             exit 1
         fi
         TARGET_IPSW="$2"
@@ -849,7 +849,7 @@ case "$1" in
         IOS_VERSION="$4"
         FORCE_ACTIVATE=""
 
-        if [[ "$5" == "--stitch-activation" ]]; then
+        if [[ "$5" == "--stitch-activation" || "$6" == "--stitch-activation" ]]; then
             case "$IOS_VERSION" in
                 7.*|8.*|9.0*|9.1*|9.2*)
                     FORCE_ACTIVATE=1
@@ -863,7 +863,27 @@ case "$1" in
                     ;;
             esac
         fi
-
+        if [[ "$5" == "--jailbreak" || "$6" == "--jailbreak" ]]; then
+            JAILBREAK=1
+        fi
+        if [[ $JAILBREAK != 1 ]]; then
+            echo "Jailbreak option disabled."
+            echo "Cydia will not be installed with this restore."
+            read -p "Press any key to continue"
+        fi
+        if [[ $JAILBREAK == 1 ]] && [[ $IOS_VERSION != 7.* ]]; then
+            echo "Jailbreak option not supported for iOS 8.0-9.3.5 yet, only 7.0-7.1.2."
+            JAILBREAK=0
+            read -p "Press any key to continue"
+        fi
+        if [[ $JAILBREAK == 1 ]]; then
+            mkdir jbresources
+            curl -L -o jbresources/pangu-untether.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/panguaxe.tar
+            curl -L -o jbresources/evasi0n7-untether.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether.tar
+            curl -L -o jbresources/evasi0n7-untether-70.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether-70.tar
+            curl -L -o jbresources/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
+            gzip -dc jbresources/freeze.tar.gz > jbresources/freeze.tar
+        fi
         if [[ "$FORCE_ACTIVATE" == "0" ]]; then
             echo "[*] iOS version is not supported for stitch-activation. Skipping pre-activation of IPSW."
         elif [[ "$FORCE_ACTIVATE" == "1" ]]; then
@@ -1133,6 +1153,7 @@ case "$1" in
             fi
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+            ./bin/hfsplus "tmp1/rootfs.raw" grow 3500000000
             if [[ $FORCE_ACTIVATE == 1 ]]; then
                 echo "Preparing activation files..."
                 sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
@@ -1151,7 +1172,7 @@ case "$1" in
                 sudo rm -rf IC-Info.sisv
             fi
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
-        elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 ]]; then
+        elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 || $JAILBREAK == 1 ]]; then
             # patch asr...
             ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
             ./bin/hfsplus "work/ramdisk.raw" grow 30000000
@@ -1179,6 +1200,18 @@ case "$1" in
                 echo "Cleaning up..."
                 sudo rm -rf activation.plist
                 sudo rm -rf IC-Info.sisv
+            fi
+            if [[ $JAILBREAK == 1 ]]; then
+                echo "Doing jailbreak stuff..."
+                if [[ $IOS_VERSION == 7.1* ]]; then
+                    untether_tar="jbresources/pangu-untether.tar"
+                elif [[ $IOS_VERSION == 7.0.1* || $IOS_VERSION == 7.0.2* || $IOS_VERSION == 7.0.3* || $IOS_VERSION == 7.0.4* || $IOS_VERSION == 7.0.5* || $IOS_VERSION == 7.0.6* ]]; then
+                    untether_tar="jbresources/evasi0n7-untether.tar"
+                else
+                    untether_tar="jbresources/evasi0n7-untether-70.tar"
+                fi
+                ./bin/hfsplus "tmp1/rootfs.raw" untar jbresources/freeze.tar
+                ./bin/hfsplus "tmp1/rootfs.raw" untar $untether_tar
             fi
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
         elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* ]]; then
@@ -1246,6 +1279,7 @@ case "$1" in
         cd ..
         rm -rf "tmp2"
         echo "Custom IPSW is created! You can restore with: ./surrealra1n.sh --seprmvr64-restore $IOS_VERSION"
+        rm -rf "jbresources"
         exit 0
         ;;
 
@@ -1385,11 +1419,16 @@ case "$1" in
             mv "tmp1/Firmware/dfu/$IBSS10" "tmp1/Firmware/dfu/$IBSS7"
             mv "tmp1/Firmware/dfu/$IBEC10" "tmp1/Firmware/dfu/$IBEC7"
         fi
+        if [[ $IOS_VERSION == 8.* ]]; then
+            extra_args="amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e wdt=-1 PE_i_can_has_debugger=1 amfi_get_out_of_my_way=0x1 amfi_unrestrict_task_for_pid=0x0"
+        else
+            extra_args=""
+        fi
         ./bin/img4 -i "tmp1/Firmware/dfu/$IBSS7" -o "work/iBSS.dec" -k $IBSS_KEY
         ./bin/img4 -i "tmp1/Firmware/dfu/$IBEC7" -o "work/iBEC.dec" -k $IBEC_KEY
         if [[ $IOS_VERSION == 7.* || $IOS_VERSION == 8.* ]]; then
             ./bin/ipatcher work/iBSS.dec work/iBSS.patched
-            ./bin/ipatcher work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1 amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e wdt=-1 PE_i_can_has_debugger=1 amfi_get_out_of_my_way=0x1 amfi_unrestrict_task_for_pid=0x0"
+            ./bin/ipatcher work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1 $extra_args"
         else
             ./bin/kairos work/iBSS.dec work/iBSS.patched
             ./bin/kairos work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1 amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e wdt=-1 PE_i_can_has_debugger=1 amfi_get_out_of_my_way=0x1 amfi_unrestrict_task_for_pid=0x0"
