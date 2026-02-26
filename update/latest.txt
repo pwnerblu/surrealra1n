@@ -1,6 +1,6 @@
-v1.3 beta 18
+v1.3 beta 19
 
 RELEASE NOTES:
 
-Adds the jailbeak option to --seprmvr64-ipsw for iOS 7 seprmvr64 restores
-To pre-jailbreak restores to 7.x seprmvr64, add --jailbreak to the end of the seprmvr64 ipsw command 
+Introduces iOS 7 tethered downgrade support to iPhone6,2 (iPhone 5S, Global)
+Note that since the firmware key list doesn't have 8.x or 9.x keys yet for iPhone6,2, you can only downgrade to 7.0-7.1.2
