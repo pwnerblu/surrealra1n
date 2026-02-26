@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 18"
+CURRENT_VERSION="v1.3 beta 19"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -700,6 +700,8 @@ if [[ $IDENTIFIER == iPhone6,2 ]]; then
     KERNELCACHE10="kernelcache.release.n53"
     IBSS10="iBSS.n53.RELEASE.im4p"
     IBEC10="iBEC.n53.RELEASE.im4p"
+    IBSS7="iBSS.n53ap.RELEASE.im4p"
+    IBEC7="iBEC.n53ap.RELEASE.im4p"
     DEVICETREE="DeviceTree.n53ap.im4p"
     sudo rm -rf "tmpmanifest"
     mkdir -p tmpmanifest
