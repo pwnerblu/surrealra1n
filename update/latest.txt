@@ -1,6 +1,6 @@
-v1.3 beta 19
+v1.3 beta 20
 
 RELEASE NOTES:
 
-Introduces iOS 7 tethered downgrade support to iPhone6,2 (iPhone 5S, Global)
-Note that since the firmware key list doesn't have 8.x or 9.x keys yet for iPhone6,2, you can only downgrade to 7.0-7.1.2
+Introduces iOS 8.4.1 downgrade support for the iPhone 6 and 6 Plus.
+NOTE that this is 8.4.1 only, though other versions of iOS 8 and also iOS 9 will be added eventually
