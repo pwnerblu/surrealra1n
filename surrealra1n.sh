@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 19"
+CURRENT_VERSION="v1.3 beta 20"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -518,6 +518,13 @@ if [[ $IDENTIFIER == iPhone7,2 ]]; then
     IBSS="iBSS.n61.RELEASE.im4p"
     IBEC="iBEC.n61.RELEASE.im4p"
     DEVICETREE="DeviceTree.n61ap.im4p"
+    ALLFLASH="all_flash.n61ap.production"
+    IBSS10="iBSS.n61.RELEASE.im4p"
+    IBEC10="iBEC.n61.RELEASE.im4p"
+    # ik this device did not get ios 7
+    IBSS7="iBSS.n61ap.RELEASE.im4p"
+    IBEC7="iBEC.n61ap.RELEASE.im4p"
+    KERNELCACHE10="kernelcache.release.n61"
 fi
 
 # iBSS and iBEC specification for iPhone 6 Plus, and DeviceTree. finish A8 support
@@ -526,6 +533,13 @@ if [[ $IDENTIFIER == iPhone7,1 ]]; then
     IBSS="iBSS.n56.RELEASE.im4p"
     IBEC="iBEC.n56.RELEASE.im4p"
     DEVICETREE="DeviceTree.n56ap.im4p"
+    ALLFLASH="all_flash.n56ap.production"
+    IBSS10="iBSS.n56.RELEASE.im4p"
+    IBEC10="iBEC.n56.RELEASE.im4p"
+    # ik this device did not get ios 7
+    IBSS7="iBSS.n56ap.RELEASE.im4p"
+    IBEC7="iBEC.n56ap.RELEASE.im4p"
+    KERNELCACHE10="kernelcache.release.n56"
 fi
 
 # important, for iPad air 2 and mini 4 tethered restores
@@ -1133,7 +1147,7 @@ case "$1" in
         mkdir work
         rm -rf "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
-        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $FORCE_ACTIVATE == 1 ]]; then
+        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
             ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
             ./bin/hfsplus "work/ramdisk.raw" grow 30000000
@@ -1144,7 +1158,7 @@ case "$1" in
             ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
             ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
             ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
-            if [[ $IDENTIFIER == iPod7* ]]; then
+            if [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]]; then
                 ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
                 ./bin/restoredpatcher restored_external restored_patch -b
                 ./bin/ldid -e restored_external > ents.plist
