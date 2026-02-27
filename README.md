@@ -14,7 +14,7 @@ iPod touch 6:
 
 iPhone 6 and 6 Plus:
 
-8.0 - 11.2.6 (no support)
+8.0 - 11.2.6 (no support, except for 8.4.1 seprmvr64)
 
 11.3 - 12.5.7 (supported with SEP)
 
