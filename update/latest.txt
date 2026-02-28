@@ -1,6 +1,6 @@
-v1.3 beta 20
+v1.3 beta 21
 
 RELEASE NOTES:
 
-Introduces iOS 8.4.1 downgrade support for the iPhone 6 and 6 Plus.
-NOTE that this is 8.4.1 only, though other versions of iOS 8 and also iOS 9 will be added eventually
+Adds skip baseband update patch to cellular A8+ seprmvr64 restores.
+NOTE: This will break baseband, so hacktivation/restoring activation tickets is required.
