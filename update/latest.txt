@@ -1,6 +1,5 @@
-v1.3 beta 21
+v1.3 beta 22
 
 RELEASE NOTES:
 
-Adds skip baseband update patch to cellular A8+ seprmvr64 restores.
-NOTE: This will break baseband, so hacktivation/restoring activation tickets is required.
+Remove the SSHRD_Script fork to comply with r/LegacyJailbreak and r/jailbreak rules.
