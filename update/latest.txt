@@ -1,5 +1,5 @@
-v1.2.4
+v1.2.5
 
 RELEASE NOTES:
 
-Update futurerestore fetching as builds in LukeeGD fork have been updated from 326 to 329
+Remove the SSHRD_Script fork to comply with r/LegacyJailbreak and r/jailbreak rules.
