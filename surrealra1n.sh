@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 21"
+CURRENT_VERSION="v1.3 beta 22"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -7,7 +7,6 @@ echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "iSuns9 fork of asr64_patcher is used for patching ASR"
 echo "Huge thanks to bodyc1m (discord username: cashcart1capone) for iPod touch 6 support, including the Arch Linux port they did."
-echo "iPh0ne4s fork of SSHRD_Script is used to back up and restore activation tickets for iOS 11.0 - 11.2.6 restores on iPhone 5S"
 
 # Request sudo password upfront
 echo "Enter your user password when prompted to"
@@ -144,15 +143,6 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
 else
     echo "surrealra1n is up to date."
     sleep 1
-fi
-
-echo "Checking if SSHRD_Script exists..."
-
-if [[ -f "./SSHRD_Script/sshrd.sh" ]]; then
-    echo "SSHRD_Script is installed."
-else
-    echo ""
-    git clone https://github.com/iPh0ne4s/SSHRD_Script --recursive
 fi
 
 echo "Checking for existing binaries..."
@@ -747,7 +737,7 @@ Options:
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
 
-  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --stitch-activation] [optional: --jailbreak]
+  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --jailbreak]
         Create a custom IPSW for tethered restore, with seprmvr64. If you're going to 9.2.1 and lower, you can choose to attempt stitching activation records to pre-activate the seprmvr64 restore.
         - TARGET_IPSW_PATH: Path for the stock IPSW for target version
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
@@ -758,11 +748,6 @@ Options:
         Restore the device to a previously created custom IPSW.
         - You can also choose to tethered update (no data loss, but may only work if going from a lower version to a newer version (13.6 to 15.4.1 for example)
         - Requires a custom IPSW already built for the specified iOS version.
-        - Put your device into DFU mode before proceeding.
-        
-  --fix-ios8
-        Fix slide to upgrade, springboard and other issues with 8.0-8.4.1 seprmvr64.
-        - Your device MUST be freshly restored and never booted to 8.0-8.4.1 seprmvr64.
         - Put your device into DFU mode before proceeding.
 
   --seprmvr64-restore [iOS_VERSION]
@@ -797,88 +782,14 @@ if [[ $# -eq 0 ]]; then
 fi
 
 case "$1" in
-    --fix-ios8)
-        echo "[!] WARNING: Your device must be freshly restored to iOS 8.0-8.4.1 with the seprmvr64 restore, and NEVER booted!"
-        sleep 5
-        cd SSHRD_Script
-        sudo ./sshrd.sh 12.0
-        read -p "Was there an error while making the ramdisk? (y/n) " error_response
-        if [[ $error_response == y ]]; then
-            sudo ./sshrd.sh 12.0
-        else
-            echo ""
-        fi
-        cd ..
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        echo "You can ignore this message if you are restoring an A8(X) device or newer."
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
-        cd SSHRD_Script
-        sudo ./sshrd.sh boot
-        sleep 17
-        if [[ $dist == 3 ]]; then
-            sudo osascript -e 'tell application "Terminal" to do script "cd \"'"$(pwd)"'\" && ./sshrd.sh ssh"'
-            SSHPASS="./Darwin/sshpass"
-        else
-            sudo gnome-terminal -- bash -c "sudo ./sshrd.sh ssh"
-            SSHPASS="./Linux/sshpass"
-        fi
-
-        sleep 3
-        echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
-        $SSHPASS -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-        sleep 6
-        $SSHPASS -p "alpine" scp -P2222 -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
-        ../bin/dsc64patcher dyld.raw dyld.patched -8
-        $SSHPASS -p "alpine" scp -P2222 -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
-        sleep 12
-        rm -rf dyld.raw
-        rm -rf dyld.patched
-        sudo ./sshrd.sh reboot
-        echo "All done! You can now boot your fixed iOS 8 install with: ./surrealra1n.sh --seprmvr64-boot [your ios 8 version]"
-        exit 0
-        ;;
     --seprmvr64-ipsw)
-        if [[ $# -lt 4 || $# -gt 7 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+        if [[ $# -lt 4 || $# -gt 6 ]]; then
+            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--jailbreak]"
             exit 1
         fi
         TARGET_IPSW="$2"
         BASE_IPSW="$3"
         IOS_VERSION="$4"
-        FORCE_ACTIVATE=""
-
-        if [[ "$5" == "--stitch-activation" || "$6" == "--stitch-activation" ]]; then
-            case "$IOS_VERSION" in
-                7.*|8.*|9.0*|9.1*|9.2*)
-                    FORCE_ACTIVATE=1
-                    ;;
-                9.3*)
-                    FORCE_ACTIVATE=0
-                    ;;
-                *)
-                    echo "[!] Unsupported iOS version for stitch-activation: $IOS_VERSION"
-                    exit 1
-                    ;;
-            esac
-        fi
         if [[ "$5" == "--jailbreak" || "$6" == "--jailbreak" ]]; then
             JAILBREAK=1
         fi
@@ -899,55 +810,6 @@ case "$1" in
             curl -L -o jbresources/evasi0n7-untether-70.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether-70.tar
             curl -L -o jbresources/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
             gzip -dc jbresources/freeze.tar.gz > jbresources/freeze.tar
-        fi
-        if [[ "$FORCE_ACTIVATE" == "0" ]]; then
-            echo "[*] iOS version is not supported for stitch-activation. Skipping pre-activation of IPSW."
-        elif [[ "$FORCE_ACTIVATE" == "1" ]]; then
-            echo "[!] Before you can proceed, make sure your device is legitimately activated via Apple's servers on the Latest iOS (activated, not iCloud/MDM bypassed)."
-            # normalize ECID (hex -> decimal if needed)
-            if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
-                ECID_CLEAN="${ECID#0x}"
-                ECID_CLEAN="${ECID_CLEAN#0X}"
-                ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
-            else
-                ECID_CLEAN="$ECID"
-                ECID_DEC="$ECID"
-            fi
-            CACHE_FILE="cache/$ECID_DEC"
-
-            # check cached serial
-            if [[ -f "$CACHE_FILE" ]]; then
-                CACHED_SERIAL=$(cat "$CACHE_FILE")
-            else
-                CACHED_SERIAL=""
-            fi
-
-            # save serial to cache if empty
-            if [[ -z "$CACHED_SERIAL" ]]; then
-                mkdir -p cache
-                echo "$SERIAL" > "$CACHE_FILE"
-                # temporary workaround
-                CACHED_SERIAL="$SERIAL"
-            fi
-        fi
-        if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
-            echo "[!] Put your device into DFU mode."
-            read -p "After putting your device into DFU, press any key to continue."
-            cd SSHRD_Script
-            sudo ./sshrd.sh 12.0
-            read -p "Was there an error while making the ramdisk? (y/n) " error_response
-            if [[ $error_response == y ]]; then
-                sudo ./sshrd.sh 12.0
-            else
-                echo ""
-            fi
-            ../bin/gaster pwn
-            ../bin/gaster reset
-            sudo ./sshrd.sh boot
-            sleep 10
-            sudo ./sshrd.sh --backup-activation
-            sudo ./sshrd.sh reboot
-            cd ..
         fi
         echo "[!] IMPORTANT: This feature is only supported on iOS 7.0 - 9.3.5. DO NOT TRY THIS on 10.0 or later"
         echo "[!] Warning: Before you proceed with a seprmvr64 restore, please understand the following issues you will have afterwards:"
@@ -1010,23 +872,6 @@ case "$1" in
                 mkdir work
                 rm -rf "$rootfs12_dmg"
                 ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
-                if [[ $FORCE_ACTIVATE == 1 ]]; then
-                    echo "Preparing activation files..."
-                    sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
-                    sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
-                    echo "Making dirs..."
-                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
-                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
-                    echo "Injecting activation files into rootfs..."
-                    ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
-                    ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                    echo "Setting permissions..."
-                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
-                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                    echo "Cleaning up..."
-                    sudo rm -rf activation.plist
-                    sudo rm -rf IC-Info.sisv
-                fi
                 ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
                 ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
                 ./bin/hfsplus "work/ramdisk.raw" grow 30000000
@@ -1170,23 +1015,6 @@ case "$1" in
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
             ./bin/hfsplus "tmp1/rootfs.raw" grow 3500000000
-            if [[ $FORCE_ACTIVATE == 1 ]]; then
-                echo "Preparing activation files..."
-                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
-                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
-                echo "Making dirs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
-                echo "Injecting activation files into rootfs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                echo "Setting permissions..."
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                echo "Cleaning up..."
-                sudo rm -rf activation.plist
-                sudo rm -rf IC-Info.sisv
-            fi
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
         elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 || $JAILBREAK == 1 ]]; then
             # patch asr...
@@ -1200,23 +1028,6 @@ case "$1" in
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
             ./bin/hfsplus "tmp1/rootfs.raw" grow 2500000000
-            if [[ $FORCE_ACTIVATE == 1 ]]; then
-                echo "Preparing activation files..."
-                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
-                sudo cp SSHRD_Script/activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
-                echo "Making dirs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
-                echo "Injecting activation files into rootfs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                echo "Setting permissions..."
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                echo "Cleaning up..."
-                sudo rm -rf activation.plist
-                sudo rm -rf IC-Info.sisv
-            fi
             if [[ $JAILBREAK == 1 ]]; then
                 echo "Doing jailbreak stuff..."
                 if [[ $IOS_VERSION == 7.1* ]]; then
@@ -2145,113 +1956,13 @@ case "$1" in
 
         echo "[*] Using SHSH blob: $shshpath"
         read -p "Do you want to do an update install? (y/n): " update_prompt
-        if [[ $IDENTIFIER == iPhone6* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
-            echo "since this restore requires the iOS 10 SEP to restore successfully, and we are restoring iOS 11.0 - 11.2.6, we need to save activation records so we can activate (because of SEP compatibility problems we cannot activate normally)"
-            echo "iPh0ne4s fork of SSHRD_Script will be used"
-            sleep 4
-            cd SSHRD_Script
-            sudo ./sshrd.sh 12.0
-            read -p "Was there an error while making the ramdisk? (y/n) " error_response
-            if [[ $error_response == y ]]; then
-                sudo ./sshrd.sh 12.0
-            else
-                echo ""
-            fi
-            ../bin/gaster pwn
-            ../bin/gaster reset
-            sudo ./sshrd.sh boot
-            sleep 10
-            sudo ./sshrd.sh --backup-activation
-            sudo ./sshrd.sh reboot
-            cd ..
-            read -p "Press any key after you have placed your device into DFU mode"
-            ./bin/gaster pwn
-            ./bin/gaster reset
-        fi
-        if [[ $IDENTIFIER == iPad4* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
-            echo "since this restore requires the iOS 10 SEP to restore successfully, and we are restoring iOS 11.0 - 11.2.6, we need to save activation records so we can activate (because of SEP compatibility problems we cannot activate normally)"
-            echo "iPh0ne4s fork of SSHRD_Script will be used"
-            sleep 4
-            cd SSHRD_Script
-            sudo ./sshrd.sh 12.0
-            read -p "Was there an error while making the ramdisk? (y/n) " error_response
-            if [[ $error_response == y ]]; then
-                sudo ./sshrd.sh 12.0
-            else
-                echo ""
-            fi
-            ../bin/gaster pwn
-            ../bin/gaster reset
-            sudo ./sshrd.sh boot
-            sleep 10
-            sudo ./sshrd.sh --backup-activation
-            sudo ./sshrd.sh reboot
-            cd ..
-            read -p "Press any key after you have placed your device into DFU mode"
-            ./bin/gaster pwn
-            ./bin/gaster reset
-        fi
-        if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
+        if [[ $IDENTIFIER == iPhone10* || $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "We must save activation tickets in order to activate on this version. Please read what is below."
-            echo "If you are on iOS 16.0 or later, note the following:"
-            echo "eclipsera1n from hiylx will be used to save activation tickets. Make sure you are jailbroken with palera1n (or Dopamine if you're on 16.6.1 or earlier), and that OpenSSH is installed."
-            echo "If you are on iOS 15 or earlier, the SSHRD method will be used instead."
-            echo ""
-            echo "Press any key to continue, or press Ctrl + C to cancel."
-            read -p ""
-            echo "What is the iOS version of this device?"
-            read -p " " version
-            if [[ $version == 16.* ]]; then
-                echo "Assuming device is jailbroken with palera1n and OpenSSH installed"
-                sudo ./backup.sh
-            else
-                echo "Put your device from Normal mode into DFU mode! Press any key after you have done so"
-                read -p ""
-                cd SSHRD_Script
-                sudo ./sshrd.sh $version
-                read -p "Was there an error while making the ramdisk? (y/n) " error_response
-                if [[ $error_response == y ]]; then
-                    sudo ./sshrd.sh $version
-                else
-                    echo ""
-                fi
-                sudo ./sshrd.sh boot
-                sleep 10
-                sudo ./sshrd.sh --backup-activation
-                sudo ./sshrd.sh reboot
-                cd ..
-            fi
+            echo "Please read this guide to backup/restore activation tickets: https://gist.github.com/pixdoet/2b58cce317a3bc7158dfe10c53e3dd32"
         fi
-        if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
+        if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
             echo "We must save activation tickets in order to activate on this version. Please read what is below."
-            echo "If you are on iPadOS 16.0 or later, note the following:"
-            echo "eclipsera1n from hiylx will be used to save activation tickets. Make sure you are jailbroken with palera1n (or Dopamine if you're on 16.6.1 or earlier), and that OpenSSH is installed."
-            echo "If you are on iPadOS 15 or earlier, the SSHRD method will be used instead."
-            echo ""
-            echo "Press any key to continue, or press Ctrl + C to cancel."
-            read -p ""
-            echo "What is the iOS version of this device?"
-            read -p " " version
-            if [[ $version == 16.* || $version == 17.* ]]; then
-                echo "Assuming device is jailbroken with palera1n and OpenSSH installed"
-                sudo ./backup.sh
-            else
-                echo "Put your device from Normal mode into DFU mode! Press any key after you have done so"
-                read -p ""
-                cd SSHRD_Script
-                sudo ./sshrd.sh $version
-                read -p "Was there an error while making the ramdisk? (y/n) " error_response
-                if [[ $error_response == y ]]; then
-                    sudo ./sshrd.sh $version
-                else
-                    echo ""
-                fi
-                sudo ./sshrd.sh boot
-                sleep 10
-                sudo ./sshrd.sh --backup-activation
-                sudo ./sshrd.sh reboot
-                cd ..
-            fi
+            echo "Please read this guide to backup/restore activation tickets: https://gist.github.com/pixdoet/2b58cce317a3bc7158dfe10c53e3dd32"
         fi
         echo "first, your device needs to be in pwndfu mode. pwning with gaster"
         echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
@@ -2659,146 +2370,6 @@ case "$1" in
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
         echo "Your device should now boot."
-        if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
-            echo "If it's your first boot after downgrading, wait for the Hello screen, then proceed with the next step"
-            read -p "Is this your first time booting? (y/n): " bootresponse
-            if [[ $bootresponse == y ]]; then
-                read -p "Press any key after your device is in DFU mode, we will need to inject activation"
-                sleep 4
-                cd SSHRD_Script
-                sudo ./sshrd.sh 11.0
-                read -p "Was there an error while making the ramdisk? (y/n) " error_response
-                if [[ $error_response == y ]]; then
-                    sudo ./sshrd.sh 11.0
-                else
-                    echo ""
-                fi
-                ../bin/gaster pwn
-                ../bin/gaster reset
-                sudo ./sshrd.sh boot
-                sleep 10
-                sudo ./sshrd.sh --restore-activation
-                sudo ./sshrd.sh reboot
-                cd ..
-                echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
-                exit 1
-            fi
-        fi
-        if [[ $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-            echo "If it's your first boot after downgrading, wait for the Hello screen, then proceed with the next step"
-            read -p "Is this your first time booting? (y/n): " bootresponse
-            if [[ $bootresponse == y ]]; then
-                if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.2* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.0* ]]; then
-                    # Use 14.3 ramdisk to send activation files, on 14.0-14.2 restores on A11
-                    ramdisk_version="14.3"
-                else
-                    ramdisk_version="$IOS_VERSION"                 
-                fi
-                read -p "Press any key after your device is in DFU mode, we will need to inject activation"
-                sleep 4
-                cd SSHRD_Script
-                sudo ./sshrd.sh $ramdisk_version
-                read -p "Was there an error while making the ramdisk? (y/n) " error_response
-                if [[ $error_response == y ]]; then
-                    sudo ./sshrd.sh $ramdisk_version
-                else
-                    echo ""
-                fi
-                if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                    # fix weird sep panics while in ramdisk, send latest rsep...
-                    echo "Take your device out of DFU, then put it back in DFU."
-                    read -p "Press any key to continue after you have done this"
-                    ../bin/gaster pwn 
-                    ../bin/gaster reset
-                    ../bin/irecovery -f "sshramdisk/iBSS.img4"
-                    ../bin/irecovery -f "sshramdisk/iBEC.img4"
-                    ../bin/irecovery -c go 
-                    sleep 7
-                    ../bin/irecovery -f "sshramdisk/ramdisk.img4"
-                    ../bin/irecovery -c ramdisk 
-                    ../bin/irecovery -f "sshramdisk/trustcache.img4"
-                    ../bin/irecovery -c firmware
-                    ../bin/irecovery -f "sshramdisk/devicetree.img4"
-                    ../bin/irecovery -c devicetree
-                    # send latest RSEP
-                    ../bin/irecovery -f "../$BOOT_DIR/sep-firmware.img4"
-                    ../bin/irecovery -c rsepfirmware
-                    # kernelcache finally
-                    ../bin/irecovery -f "sshramdisk/kernelcache.img4"
-                    ../bin/irecovery -c bootx
-                else
-                    sudo ./sshrd.sh boot
-                fi
-                sleep 10
-                echo "What is the iOS version that you saved activation records with?"
-                read -p " " version
-                if [[ $version == 16.* || $version == 17.* ]]; then
-                    echo "Open another terminal window in the SSHRD directory and type: sudo ./sshrd.sh ssh (then press any key to continue)"
-                    read -p ""
-                    cd ..
-                    sudo ./activate.sh --skip-rdboot
-                    echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
-                    exit 1
-                else
-                    sudo ./sshrd.sh --restore-activation
-                fi
-                read -p "would you like to install TrollStore (strongly recommended, if you want to sideload on this version)? (Y/n): " install_troll
-                if [[ $install_troll == Y || $install_troll == y ]]; then
-                    sudo ./sshrd.sh --install-trollstore
-                fi
-                sudo ./sshrd.sh reboot
-                cd ..
-                echo "activation records have been restored! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
-                exit 1
-            fi
-        fi
-        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-            echo "This iOS/iPadOS version supports TrollStore"
-            read -p "Would you like to install TrollStore (recommended, ignore if you've already installed TrollStore)? (y/n): " troll
-            if [[ $troll == y ]]; then
-                read -p "Press any key after your device is in DFU mode"
-                sleep 4
-                cd SSHRD_Script
-                sudo ./sshrd.sh 14.3
-                read -p "Was there an error while making the ramdisk? (y/n) " error_response
-                if [[ $error_response == y ]]; then
-                    sudo ./sshrd.sh 14.3
-                else
-                    echo ""
-                fi
-                if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                    # fix weird sep panics while in ramdisk, send latest rsep...
-                    echo "Take your device out of DFU, then put it back in DFU."
-                    read -p "Press any key to continue after you have done this"
-                    ../bin/gaster pwn 
-                    ../bin/gaster reset
-                    ../bin/irecovery -f "sshramdisk/iBSS.img4"
-                    ../bin/irecovery -f "sshramdisk/iBEC.img4"
-                    ../bin/irecovery -c go 
-                    sleep 7
-                    ../bin/irecovery -f "sshramdisk/ramdisk.img4"
-                    ../bin/irecovery -c ramdisk 
-                    ../bin/irecovery -f "sshramdisk/trustcache.img4"
-                    ../bin/irecovery -c firmware
-                    ../bin/irecovery -f "sshramdisk/devicetree.img4"
-                    ../bin/irecovery -c devicetree
-                    # send latest RSEP
-                    ../bin/irecovery -f "../$BOOT_DIR/sep-firmware.img4"
-                    ../bin/irecovery -c rsepfirmware
-                    # kernelcache finally
-                    ../bin/irecovery -f "sshramdisk/kernelcache.img4"
-                    ../bin/irecovery -c bootx
-                else
-                    sudo ./sshrd.sh boot
-                fi
-                sleep 10
-                sudo ./sshrd.sh --install-trollstore
-                sudo ./sshrd.sh reboot
-                cd ..
-                echo "TrollStore has been installed! now run ./surrealra1n.sh --boot $IOS_VERSION to boot"
-                exit 1
-            fi
-        fi
         exit 1
         ;;
 
