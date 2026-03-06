@@ -13,17 +13,55 @@ echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
 
-echo "Please select the Distro/OS you are on:"
-echo "1. Ubuntu"
-echo "2. Arch"
-echo "3. macOS (arm64)"
-echo "4. macOS (Intel)"
-read -p "Please enter an answer (1-4): " dist 
+DISTRO="Unsupported"
+
+# macOS detections
+if [[ "$(uname)" == "Darwin" ]]; then
+    DISTRO="macOS"
+    ARCH="$(uname -m)"
+    if [[ "$ARCH" == "x86_64" ]]; then
+        MAC_ARCH="Intel"
+    elif [[ "$ARCH" == "arm64" ]]; then
+        MAC_ARCH="Apple Silicon"
+    fi
+fi
+
+# Linux distro detection
+if [[ -r /etc/os-release ]]; then
+    . /etc/os-release
+
+    if [[ "$ID" == "arch" || "$ID_LIKE" == *"arch"* ]]; then
+        DISTRO="Arch"
+    elif [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
+        DISTRO="Debian"
+    fi
+fi
+
+if [[ "$DISTRO" == "macOS" || "$ARCH" == "arm64" ]]; then
+    echo "You are running surrealra1n on a Apple Silicon Mac. Read the getting started guide: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
+    read -p "Press any key to continue"
+fi
+
+if [[ "$DISTRO" == "macOS" || "$ARCH" == "x86_64" ]]; then
+    echo "You are running surrealra1n on Intel macOS. This has NOT been tested thoroughly, as I (pwnerblu) do not have an Intel Mac."
+    echo "Please report any issues you find in the GitHub, and clearly state development branch."
+    read -p "Press any key to continue"
+fi
+
+if [[ "$DISTRO" == "Unsupported" ]]; then
+    echo "Unsupported Linux distribution."
+    echo "This script only supports Debian-based, Arch-based and MacOS systems"
+    exit 1
+fi
+
+echo "Detected distro family: $DISTRO"
+
+
 
 # Dependency check
 echo "Checking for required dependencies..."
 
-if [[ $dist == 1 ]]; then
+if [[ "$DISTRO" == "debian" ]]; then
     DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd libimobiledevice6 zenity git curl make gcc)
     MISSING_PACKAGES=()
 
@@ -41,7 +79,7 @@ if [[ $dist == 1 ]]; then
     else
         echo "All dependencies are installed." 
     fi
-elif [[ $dist == 2 ]]; then
+elif [[ "$DISTRO" == "arch" ]]; then
     DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel)
     MISSING_PACKAGES=()
 
@@ -59,13 +97,10 @@ elif [[ $dist == 2 ]]; then
     else
         echo "All dependencies are already installed."
     fi
-elif [[ $dist == 3 ]]; then
-    echo "You are running surrealra1n on a Apple Silicon. Read the getting started guide: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
-    read -p "Press any key to continue"
-else
-    echo "You are running surrealra1n on Intel macOS. This has NOT been tested thoroughly, as I (pwnerblu) do not have an Intel Mac."
-    echo "Please report any issues you find in the GitHub, and clearly state development branch."
-    read -p "Press any key to continue"
+elif [[ "$DISTRO" == "unknown" ]]; then
+    echo "Unsupported Linux distribution."
+    echo "This script only supports Debian-based and Arch-based systems."
+    exit 1
 fi
 
 #
