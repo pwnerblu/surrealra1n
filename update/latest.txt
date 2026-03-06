@@ -1,5 +1,5 @@
-v1.3 beta 22
+v1.3 beta 23
 
 RELEASE NOTES:
 
-Remove the SSHRD_Script fork to comply with r/LegacyJailbreak and r/jailbreak rules.
+Auto distro-detection.
