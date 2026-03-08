@@ -1,5 +1,5 @@
-v1.3 beta 23
+v1.3 beta 24
 
 RELEASE NOTES:
 
-Auto distro-detection.
+Auto distro-detection fixes
