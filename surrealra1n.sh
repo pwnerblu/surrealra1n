@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 23"
+CURRENT_VERSION="v1.3 beta 24"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -14,43 +14,41 @@ sudo -v || exit 1
 
 
 DISTRO="Unsupported"
+ARCH="$(uname -m)"
 
-# macOS detections
+# macOS detection
 if [[ "$(uname)" == "Darwin" ]]; then
     DISTRO="macOS"
-    ARCH="$(uname -m)"
-    if [[ "$ARCH" == "x86_64" ]]; then
-        MAC_ARCH="Intel"
-    elif [[ "$ARCH" == "arm64" ]]; then
-        MAC_ARCH="Apple Silicon"
-    fi
-fi
 
-# Linux distro detection
-if [[ -r /etc/os-release ]]; then
+    if [[ "$ARCH" == "arm64" ]]; then
+        echo "You are running surrealra1n on an Apple Silicon Mac."
+        echo "Guide: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
+        read -n 1 -s -r -p "Press any key to continue"
+        dist=3
+        echo
+    elif [[ "$ARCH" == "x86_64" ]]; then
+        echo "You are running surrealra1n on Intel macOS."
+        echo "This has NOT been tested thoroughly."
+        read -n 1 -s -r -p "Press any key to continue"
+        dist=4
+        echo
+    fi
+
+# Linux detection
+elif [[ -r /etc/os-release ]]; then
     . /etc/os-release
 
-    if [[ "$ID" == "arch" || "$ID_LIKE" == *"arch"* ]]; then
+    if [[ "$ID" == "arch" || "$ID_LIKE" == *arch* ]]; then
         DISTRO="Arch"
-    elif [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
+    elif [[ "$ID" == "debian" || "$ID_LIKE" == *debian* ]]; then
         DISTRO="Debian"
     fi
 fi
 
-if [[ "$DISTRO" == "macOS" || "$ARCH" == "arm64" ]]; then
-    echo "You are running surrealra1n on a Apple Silicon Mac. Read the getting started guide: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
-    read -p "Press any key to continue"
-fi
-
-if [[ "$DISTRO" == "macOS" || "$ARCH" == "x86_64" ]]; then
-    echo "You are running surrealra1n on Intel macOS. This has NOT been tested thoroughly, as I (pwnerblu) do not have an Intel Mac."
-    echo "Please report any issues you find in the GitHub, and clearly state development branch."
-    read -p "Press any key to continue"
-fi
-
+# Unsupported check
 if [[ "$DISTRO" == "Unsupported" ]]; then
     echo "Unsupported Linux distribution."
-    echo "This script only supports Debian-based, Arch-based and MacOS systems"
+    echo "This script only supports Debian-based, Arch-based and macOS systems."
     exit 1
 fi
 
