@@ -1,5 +1,5 @@
-v1.2.5
+v1.2.6
 
 RELEASE NOTES:
 
-Remove the SSHRD_Script fork to comply with r/LegacyJailbreak and r/jailbreak rules.
+Update script because Apple updated EoL iOS 15 and 16 (15.8.7 and 16.7.15 respectfully).
