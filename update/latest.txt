@@ -1,5 +1,5 @@
-v1.3 beta 24
+v1.3 beta 25
 
 RELEASE NOTES:
 
-Auto distro-detection fixes.
+Update script because Apple updated EoL iOS 15 and 16 (15.8.7 and 16.7.15 respectfully).
