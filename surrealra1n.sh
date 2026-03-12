@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 24"
+CURRENT_VERSION="v1.3 beta 25"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -658,11 +658,11 @@ elif [[ $IDENTIFIER == iPhone7* ]]; then
     NOSEP_DOWNGRADE="8.0 to 9.3.5"
     KERNELCACHE="kernelcache.release.iphone7"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-    LATEST_VERSION="16.7.14"
+    LATEST_VERSION="16.7.15"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10"
 elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-    LATEST_VERSION="16.7.14"
+    LATEST_VERSION="16.7.15"
     DOWNGRADE_RANGE="14.3 to 15.6.1"
     KERNELCACHE="kernelcache.release.iphone10b"
 elif [[ $IDENTIFIER == iPod7,1 ]]; then
@@ -691,14 +691,14 @@ elif [[ $IDENTIFIER == iPad7,5 ]]; then
     DEVICETREE="DeviceTree.j71bap.im4p"
     USE_BASEBAND="--no-baseband"
 elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]]; then
-    LATEST_VERSION="15.8.6"
+    LATEST_VERSION="15.8.7"
     DOWNGRADE_RANGE="11.3 to 15.8.5"
     NOSEP_DOWNGRADE="9.0 to 9.3.5"
     IBSS="iBSS.ipad5.RELEASE.im4p"
     IBEC="iBEC.ipad5.RELEASE.im4p"
     KERNELCACHE="kernelcache.release.ipad5"
 elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
-    LATEST_VERSION="15.8.6"
+    LATEST_VERSION="15.8.7"
     DOWNGRADE_RANGE="11.3 to 15.8.5"
     NOSEP_DOWNGRADE="8.1 to 9.3.5"
     IBSS="iBSS.ipad5b.RELEASE.im4p"
