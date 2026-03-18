@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>MinimumSystemPartition</key>
+	<integer>2682</integer>
+	<key>SystemPartitionPadding</key>
+	<dict>
+		<key>1024</key>
+		<integer>1280</integer>
+		<key>128</key>
+		<integer>1280</integer>
+		<key>16</key>
+		<integer>260</integer>
+		<key>256</key>
+		<integer>1280</integer>
+		<key>32</key>
+		<integer>320</integer>
+		<key>512</key>
+		<integer>1280</integer>
+		<key>64</key>
+		<integer>640</integer>
+		<key>768</key>
+		<integer>1280</integer>
+		<key>8</key>
+		<integer>180</integer>
+	</dict>
+	<key>SystemPartitionSize</key>
+	<integer>2682</integer>
+	<key>UpdateBaseband</key>
+	<false/>
+</dict>
+</plist>
