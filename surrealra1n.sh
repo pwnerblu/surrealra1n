@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 25"
+CURRENT_VERSION="v1.3 beta 26"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1044,6 +1044,17 @@ case "$1" in
                 ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
+                if [[ $IDENTIFIER == iPhone7,2 ]]; then
+                    # options plist change
+                    curl -L -o options.n61.plist https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/dualboot/options.n61.plist
+                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/share/restore/options.n61.plist
+                    ./bin/hfsplus "work/ramdisk.raw" add options.n61.plist usr/local/share/restore/options.n61.plist
+                elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+                    # options plist change
+                    curl -L -o options.n56.plist https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/dualboot/options.n56.plist
+                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/share/restore/options.n56.plist
+                    ./bin/hfsplus "work/ramdisk.raw" add options.n56.plist usr/local/share/restore/options.n56.plist
+                fi
             fi
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
