@@ -1,5 +1,5 @@
-v1.2.6
+v1.2.7
 
 RELEASE NOTES:
 
-Update script because Apple updated EoL iOS 15 and 16 (15.8.7 and 16.7.15 respectfully).
+Finally add iPhone X boot fixes into stable branch
