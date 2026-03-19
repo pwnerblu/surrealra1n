@@ -1,5 +1,5 @@
-v1.3 beta 26
+v1.3 beta 27
 
 RELEASE NOTES:
 
-Adds options plist modification for iPhone 6/6 Plus 8.4.1 seprmvr64 restores (should fix baseband error)
+Returns the activation stitching feature for seprmvr64-ipsw, reimplemented so SSHRD_Script fork isn't used
