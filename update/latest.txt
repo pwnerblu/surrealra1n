@@ -1,5 +1,5 @@
-v1.3 beta 25
+v1.3 beta 26
 
 RELEASE NOTES:
 
-Update script because Apple updated EoL iOS 15 and 16 (15.8.7 and 16.7.15 respectfully).
+Adds options plist modification for iPhone 6/6 Plus 8.4.1 seprmvr64 restores (should fix baseband error)
