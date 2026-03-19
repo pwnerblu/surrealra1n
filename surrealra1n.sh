@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 26"
+CURRENT_VERSION="v1.3 beta 27"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -225,6 +225,8 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
+    # sshpass
+    curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
     curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dmg
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iPatcher
     # install additional restored_external patcher (iPhone X only)
@@ -291,6 +293,8 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
+    # sshpass
+    curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
     curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dmg
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iPatcher
     # install additional restored_external patcher (iPhone X only)
@@ -357,6 +361,8 @@ else
     curl -L -o bin/iBoot64Patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
+    # sshpass
+    curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass
     curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dmg
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/ipatcher
     # install additional restored_external patcher (iPhone X only)
@@ -816,13 +822,29 @@ fi
 
 case "$1" in
     --seprmvr64-ipsw)
-        if [[ $# -lt 4 || $# -gt 6 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--jailbreak]"
+        if [[ $# -lt 4 || $# -gt 7 ]]; then
+            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
             exit 1
         fi
         TARGET_IPSW="$2"
         BASE_IPSW="$3"
         IOS_VERSION="$4"
+        FORCE_ACTIVATE=""
+
+        if [[ "$5" == "--stitch-activation" || "$6" == "--stitch-activation" ]]; then
+            case "$IOS_VERSION" in
+                7.*|8.*|9.0*|9.1*|9.2*)
+                    FORCE_ACTIVATE=1
+                    ;;
+                9.3*)
+                    FORCE_ACTIVATE=0
+                    ;;
+                *)
+                    echo "[!] Unsupported iOS version for stitch-activation: $IOS_VERSION"
+                    exit 1
+                    ;;
+            esac
+        fi
         if [[ "$5" == "--jailbreak" || "$6" == "--jailbreak" ]]; then
             JAILBREAK=1
         fi
@@ -844,6 +866,61 @@ case "$1" in
             curl -L -o jbresources/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
             gzip -dc jbresources/freeze.tar.gz > jbresources/freeze.tar
         fi
+        if [[ "$FORCE_ACTIVATE" == "0" ]]; then
+            echo "[*] iOS version is not supported for stitch-activation. Skipping pre-activation of IPSW."
+        elif [[ "$FORCE_ACTIVATE" == "1" ]]; then
+            echo "[!] Before you can proceed, make sure your device is legitimately activated via Apple's servers on the Latest iOS (activated, not iCloud/MDM bypassed)."
+            # normalize ECID (hex -> decimal if needed)
+            if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
+                ECID_CLEAN="${ECID#0x}"
+                ECID_CLEAN="${ECID_CLEAN#0X}"
+                ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
+            else
+                ECID_CLEAN="$ECID"
+                ECID_DEC="$ECID"
+            fi
+            CACHE_FILE="cache/$ECID_DEC"
+
+            # check cached serial
+            if [[ -f "$CACHE_FILE" ]]; then
+                CACHED_SERIAL=$(cat "$CACHE_FILE")
+            else
+                CACHED_SERIAL=""
+            fi
+
+            # save serial to cache if empty
+            if [[ -z "$CACHED_SERIAL" ]]; then
+                mkdir -p cache
+                echo "$SERIAL" > "$CACHE_FILE"
+                # temporary workaround
+                CACHED_SERIAL="$SERIAL"
+            fi
+        fi
+        if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "activation_records/$CACHED_SERIAL/IC-Info.sisv" ]] && [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then
+            echo "[!] Make sure your device is in a jailbroken state, and OpenSSH is installed."
+            echo "[!] Please DO NOT USE THIS IN THE INTENT OF BYPASSING ICLOUD, THANK YOU." 
+            mkdir -p activation_records
+            mkdir -p activation_records/$CACHED_SERIAL/
+            read -p "Press enter when it is ready. The SSH password you must input during this is "alpine" or your device's SSH password"
+            echo "Make sure your computer and device is connected to the same Wi-Fi network."
+            read -p "Insert the IP of your device, go to Settings/Wi-Fi/Wi-Fi network/Information/IP Address: " ip_address
+            read -p "Enter the SSH Password of your device: " sshpwd
+            sudo ./bin/sshpass -p "$sshpwd" scp -o StrictHostKeyChecking=no root@"$ip_address":/private/var/containers/Data/System/*/Library/activation_records/activation_record.plist activation_records/$CACHED_SERIAL/activation_record.plist
+            if [[ ! -f "activation_records/$CACHED_SERIAL/activation_record.plist" ]]; then
+                echo "activation_record.plist did not save correctly. Cannot continue --stitch-activation with this."
+                exit 1
+            fi
+            sudo ./bin/sshpass -p "$sshpwd" scp -o StrictHostKeyChecking=no root@"$ip_address":/private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv activation_records/$CACHED_SERIAL/IC-Info.sisv
+            if [[ ! -f "activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
+                echo "IC-Info.sisv did not save correctly. Certain things may be broken."
+                read -p "You can press any key to continue, but it is usually not recommended to have an incomplete backup of activation records."
+            fi
+            sudo ./bin/sshpass -p "$sshpwd" scp -o StrictHostKeyChecking=no root@"$ip_address":/private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist
+            if [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then
+                echo "com.apple.commcenter.device_specific_nobackup.plist did not save correctly."
+                read -p "You can press any key to continue, but you will not have cellular signal after activation records are stitched."
+            fi
+        fi        
         echo "[!] IMPORTANT: This feature is only supported on iOS 7.0 - 9.3.5. DO NOT TRY THIS on 10.0 or later"
         echo "[!] Warning: Before you proceed with a seprmvr64 restore, please understand the following issues you will have afterwards:"
         echo "[!] 1. Touch ID will NOT work, at all."
@@ -905,6 +982,29 @@ case "$1" in
                 mkdir work
                 rm -rf "$rootfs12_dmg"
                 ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+                if [[ $FORCE_ACTIVATE == 1 ]]; then
+                    echo "Preparing activation files..."
+                    sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
+                    sudo cp activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
+                    sudo cp activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist com.apple.commcenter.device_specific_nobackup.plist
+                    echo "Making dirs..."
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
+                    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
+                    echo "Injecting activation files into rootfs..."
+                    ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
+                    ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                    sudo ./bin/hfsplus "tmp1/rootfs.raw" add com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+                    echo "Setting permissions..."
+                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
+                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                    ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+                    echo "Cleaning up..."
+                    sudo rm -rf activation.plist
+                    sudo rm -rf IC-Info.sisv
+                fi
                 ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
                 ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
                 ./bin/hfsplus "work/ramdisk.raw" grow 30000000
@@ -1059,6 +1159,32 @@ case "$1" in
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
             ./bin/hfsplus "tmp1/rootfs.raw" grow 3500000000
+            if [[ $FORCE_ACTIVATE == 1 ]]; then
+                echo "Preparing activation files..."
+                sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
+                sudo cp activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
+                sudo cp activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist com.apple.commcenter.device_specific_nobackup.plist
+                echo "Making dirs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
+                echo "Injecting activation files into rootfs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                sudo ./bin/hfsplus "tmp1/rootfs.raw" add com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+                echo "Setting permissions..."
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+                echo "Cleaning up..."
+                sudo rm -rf activation.plist
+                sudo rm -rf IC-Info.sisv
+            fi
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
         elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 || $JAILBREAK == 1 ]]; then
             # patch asr...
@@ -1072,6 +1198,30 @@ case "$1" in
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
             ./bin/hfsplus "tmp1/rootfs.raw" grow 2500000000
+            if [[ $FORCE_ACTIVATE == 1 ]]; then
+                echo "Preparing activation files..."
+                sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
+                sudo cp activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
+                sudo cp activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist com.apple.commcenter.device_specific_nobackup.plist
+                echo "Making dirs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
+                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
+                echo "Injecting activation files into rootfs..."
+                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                sudo ./bin/hfsplus "tmp1/rootfs.raw" add com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+                echo "Setting permissions..."
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+                ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+                echo "Cleaning up..."
+                sudo rm -rf activation.plist
+                sudo rm -rf IC-Info.sisv
+                sudo rm -rf com.apple.commcenter.device_specific_nobackup.plist
+            fi
             if [[ $JAILBREAK == 1 ]]; then
                 echo "Doing jailbreak stuff..."
                 if [[ $IOS_VERSION == 7.1* ]]; then
