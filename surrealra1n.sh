@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.2.6"
+CURRENT_VERSION="v1.2.7"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1666,6 +1666,41 @@ case "$1" in
             if [[ "$IOS_VERSION" == 12.* || $IOS_VERSION == 13.* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
                 ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
             fi
+            if [[ $IDENTIFIER == iPhone10,3 ]]; then
+                IPSW_PATH_2=$(zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file" --file-filter="*.ipsw")
+                unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d22.RELEASE.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/sep-firmware.d22.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
+            elif [[ $IDENTIFIER == iPhone10,6 ]]; then
+                IPSW_PATH_2=$(zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file" --file-filter="*.ipsw")
+                unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d221.RELEASE.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/sep-firmware.d221.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
+            fi
+            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d22.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/adc-nike-d22.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
+            fi
+            if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d20.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/adc-nike-d20.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
+            fi
+            if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d21.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/adc-nike-d21.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
+            fi
+            # AVE firmware if on iOS 15.0+
+            if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 15.* ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/ave/AppleAVE2FW_H10.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/AppleAVE2FW_H10.im4p" -o "$BOOT_DIR/ave-firmware.img4" -T avef -M $im4m
+            fi         
+            if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 15.* ]]; then
+                # camera fix
+                unzip -j "$IPSW_PATH" "Firmware/ave/AppleAVE2FW_H9.im4p" -d to_patch
+                ./bin/img4 -i "to_patch/AppleAVE2FW_H9.im4p" -o "$BOOT_DIR/ave-firmware.img4" -T avef -M $im4m
+            fi 
             rm -rf "to_patch"
         else
             echo "[*] Existing boot files found in $BOOT_DIR"
@@ -1704,6 +1739,19 @@ case "$1" in
         if [[ "$IOS_VERSION" == 12.* || $IOS_VERSION == 13.* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
           ./bin/irecovery -f "$BOOT_DIR/Trustcache.img4"
           ./bin/irecovery -c firmware
+        fi
+        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+            ./bin/irecovery -f "$BOOT_DIR/sep-firmware.img4"
+            ./bin/irecovery -c rsepfirmware
+        fi
+        if [[ $IDENTIFIER == iPhone10* ]]; then
+            # Fix camera, flashlight
+            ./bin/irecovery -f "$BOOT_DIR/isp-firmware.img4"
+            ./bin/irecovery -c firmware 
+        fi
+        if [[ $IOS_VERSION == 15.* ]]; then
+            ./bin/irecovery -f "$BOOT_DIR/ave-firmware.img4"
+            ./bin/irecovery -c firmware
         fi
         ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
         ./bin/irecovery -c bootx
