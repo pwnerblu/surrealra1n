@@ -1,5 +1,5 @@
-v1.3 beta 28
+v1.3 beta 29
 
 RELEASE NOTES:
 
-Brings back --fix-ios8 option
+Adds iOS 8.1-8.4.1 tethered seprmvr64 downgrades for iPad Air 2 (Wi-Fi only model).
