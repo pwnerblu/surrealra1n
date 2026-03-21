@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 29"
+CURRENT_VERSION="v1.3 RC 1"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1182,6 +1182,14 @@ case "$1" in
                 ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
+                if [[ $IDENTIFIER == iPad5,3 ]] && [[ $dist == 3 || $dist == 4 ]]; then
+                    # options plist haxx, to fix some ASR errors
+                    ./bin/hfsplus "work/ramdisk.raw" extract usr/local/share/restore/options.j81.plist
+                    plutil -replace SystemPartitionSize -integer 4200 options.j81.plist
+                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/share/restore/options.j81.plist
+                    ./bin/hfsplus "work/ramdisk.raw" add options.j81.plist usr/local/share/restore/options.j81.plist
+                    rm -rf options.j81.plist
+                fi
                 if [[ $IDENTIFIER == iPhone7,2 ]]; then
                     # options plist change
                     curl -L -o options.n61.plist https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/dualboot/options.n61.plist
