@@ -1,5 +1,5 @@
-v1.3 beta 29
+v1.3 RC 1
 
 RELEASE NOTES:
 
-Adds iOS 8.1-8.4.1 tethered seprmvr64 downgrades for iPad Air 2 (Wi-Fi only model).
+Adds potential fixes to ASR error on iPad Air 2 seprmvr64 restores (macOS only)
