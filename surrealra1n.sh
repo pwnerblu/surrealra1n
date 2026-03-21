@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 27"
+CURRENT_VERSION="v1.3 beta 28"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -1355,8 +1355,29 @@ case "$1" in
         fi
         sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -e $savedir/custom.ipsw -y
         echo "Restore has completed! If it's successful, you can boot with: ./surrealra1n.sh --seprmvr64-boot $IOS_VERSION"
+        if [[ $IOS_VERSION == 8.* ]]; then
+            echo "We are not done yet. You need to run this command to fix dyld: ./surrealra1n.sh --fix-ios8"
+            echo "Only after fixing dyld can you boot it normally, this is so we don't get stuck at Slide to Upgrade"
+        fi
         exit 0
         ;;
+
+    --fix-ios8)
+        echo "[!] IMPORTANT: Your device should be freshly restored to iOS 8.x and never be booted!"
+        echo "[!] Please boot an SSH ramdisk with Legacy iOS Kit first. You can get Legacy iOS Kit from: https://github.com/LukeZGD/Legacy-iOS-Kit"
+        read -p "Press enter to continue after booting the ramdisk"
+        echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
+        ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p6414 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+        ./bin/sshpass -p "alpine" scp -P6414 -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+        ./bin/dsc64patcher dyld.raw dyld.patched -8
+        ./bin/sshpass -p "alpine" scp -P6414 -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+        rm -rf dyld.patched
+        rm -rf dyld.raw
+        ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p6414 -o StrictHostKeyChecking=no "/sbin/reboot || true"
+        echo "dyld fix is complete. You can now boot iOS 8."
+        exit 0
+        ;;
+
 
     --seprmvr64-boot)
         if [[ $# -ne 2 ]]; then
@@ -1449,7 +1470,7 @@ case "$1" in
         ./bin/img4 -i "tmp1/Firmware/dfu/$IBEC7" -o "work/iBEC.dec" -k $IBEC_KEY
         if [[ $IOS_VERSION == 7.* || $IOS_VERSION == 8.* ]]; then
             ./bin/ipatcher work/iBSS.dec work/iBSS.patched
-            ./bin/ipatcher work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1 $extra_args"
+            ./bin/ipatcher work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1"
         else
             ./bin/kairos work/iBSS.dec work/iBSS.patched
             ./bin/kairos work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1 amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e wdt=-1 PE_i_can_has_debugger=1 amfi_get_out_of_my_way=0x1 amfi_unrestrict_task_for_pid=0x0"
