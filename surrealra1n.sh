@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 beta 28"
+CURRENT_VERSION="v1.3 beta 29"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -432,6 +432,7 @@ if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
     IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
     ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
     SERIAL=$(echo "$IDEVICE_INFO" | grep "^SerialNumber:" | cut -d ':' -f2 | xargs)
+    DEVICE_VERSION=$(echo "$IDEVICE_INFO" | grep "^ProductVersion:" | cut -d ':' -f2 | xargs)
 
     echo "[+] Device Identifier: $IDENTIFIER"
     echo "[+] ECID: $ECID"
@@ -531,6 +532,12 @@ fi
 
 if [[ $IDENTIFIER == iPad5,3 ]]; then
     DEVICETREE="DeviceTree.j81ap.im4p"
+    ALLFLASH="all_flash.j81ap.production"
+    IBSS10="iBSS.j81.RELEASE.im4p"
+    IBEC10="iBEC.j81.RELEASE.im4p"
+    IBSS7="iBSS.j81ap.RELEASE.im4p"
+    IBEC7="iBEC.j81ap.RELEASE.im4p"
+    KERNELCACHE10="kernelcache.release.j81"
 fi
 
 if [[ $IDENTIFIER == iPad5,4 ]]; then
@@ -845,6 +852,23 @@ case "$1" in
                     ;;
             esac
         fi
+        if [[ $FORCE_ACTIVATE != 1 ]] && [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]]; then
+            echo "Please read the following in full:"
+            echo "Recently, Apple blocked activation for A8(X) iOS 8 and 9. This means that you might not be able to activate normally, getting "Activation Error"."
+            echo "It is recommended to Ctrl + C, then re-run the --seprmvr64-ipsw command and specify --stitch-activation so you can stitch activation records into the restore"
+            echo "You can choose to continue without stitching activation records, but you might not get past Setup. It is recommended to save/stitch activation records instead of risking broken activation."
+            if [[ $IDENTIFIER == iPhone7* ]]; then
+                echo "Since the restore will not have baseband, activation will not work, so it is strongly recommended to stitch activation records"
+            fi
+            echo "Note: stitching activation records is only for 9.2.1 and lower"
+            echo "Even when stitching records, there is no guarantees that the device will remain activated. It may deactivate later on. Especially below iOS 8.3"
+            read -p "Press enter to continue without stitching activation records"
+        fi
+        if [[ $FORCE_ACTIVATE == 1 ]] && [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 8.2* || $IOS_VERSION == 8.1* || $IOS_VERSION == 8.0* ]]; then
+            echo "Stitching activation may work on this version, but there is a much higher chance of the device deactivating especially right after the first boot."
+            echo "It is recommended to do iOS 8.3 or later instead."
+            read -p "Press any key to continue"
+        fi
         if [[ "$5" == "--jailbreak" || "$6" == "--jailbreak" ]]; then
             JAILBREAK=1
         fi
@@ -902,23 +926,37 @@ case "$1" in
             mkdir -p activation_records
             mkdir -p activation_records/$CACHED_SERIAL/
             read -p "Press enter when it is ready. The SSH password you must input during this is "alpine" or your device's SSH password"
+            # determine what it connects by, on iOS 15.0 and later, connect as mobile, otherwise connect as root
+            if [[ $DEVICE_VERSION == 15.* ]]; then
+                CONNECT_AS="mobile"
+            else
+                CONNECT_AS="root"
+            fi
+            echo "SSH will connect as $CONNECT_AS"
             echo "Make sure your computer and device is connected to the same Wi-Fi network."
             read -p "Insert the IP of your device, go to Settings/Wi-Fi/Wi-Fi network/Information/IP Address: " ip_address
             read -p "Enter the SSH Password of your device: " sshpwd
-            sudo ./bin/sshpass -p "$sshpwd" scp -o StrictHostKeyChecking=no root@"$ip_address":/private/var/containers/Data/System/*/Library/activation_records/activation_record.plist activation_records/$CACHED_SERIAL/activation_record.plist
+            sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/containers/Data/System/*/Library/activation_records/activation_record.plist activation_records/$CACHED_SERIAL/activation_record.plist
             if [[ ! -f "activation_records/$CACHED_SERIAL/activation_record.plist" ]]; then
                 echo "activation_record.plist did not save correctly. Cannot continue --stitch-activation with this."
                 exit 1
             fi
-            sudo ./bin/sshpass -p "$sshpwd" scp -o StrictHostKeyChecking=no root@"$ip_address":/private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv activation_records/$CACHED_SERIAL/IC-Info.sisv
+            sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv activation_records/$CACHED_SERIAL/IC-Info.sisv
             if [[ ! -f "activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
                 echo "IC-Info.sisv did not save correctly. Certain things may be broken."
                 read -p "You can press any key to continue, but it is usually not recommended to have an incomplete backup of activation records."
             fi
-            sudo ./bin/sshpass -p "$sshpwd" scp -o StrictHostKeyChecking=no root@"$ip_address":/private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist
-            if [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then
+            if [[ $DEVICE_VERSION == 15.* ]]; then
+                # re-set permissions for com.apple.commcenter.device_specific_nobackup.plist and move to different dir, so you can download it when connected via mobile
+                sudo ./bin/sshpass -p "$sshpwd" ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address" "echo "$sshpwd" | sudo -S cp /private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist /private/var/containers/Data/System/"
+                sudo ./bin/sshpass -p "$sshpwd" ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address" "echo "$sshpwd" | sudo -S chown mobile:mobile /private/var/containers/Data/System/com.apple.commcenter.device_specific_nobackup.plist"
+                sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/containers/Data/System/com.apple.commcenter.device_specific_nobackup.plist activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist
+            else
+                sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist
+            fi
+            if [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then 
                 echo "com.apple.commcenter.device_specific_nobackup.plist did not save correctly."
-                read -p "You can press any key to continue, but you will not have cellular signal after activation records are stitched."
+                read -p "You can press any key to continue, but you will not have cellular signal after activation records are stitched (that is if of course, baseband update doesn't have to be skipped)."
             fi
         fi        
         echo "[!] IMPORTANT: This feature is only supported on iOS 7.0 - 9.3.5. DO NOT TRY THIS on 10.0 or later"
@@ -1125,7 +1163,7 @@ case "$1" in
         mkdir work
         rm -rf "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
-        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $FORCE_ACTIVATE == 1 ]]; then
+        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
             ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
             ./bin/hfsplus "work/ramdisk.raw" grow 30000000
@@ -1136,7 +1174,7 @@ case "$1" in
             ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
             ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
             ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
-            if [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]]; then
+            if [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
                 ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
                 ./bin/restoredpatcher restored_external restored_patch -b
                 ./bin/ldid -e restored_external > ents.plist
