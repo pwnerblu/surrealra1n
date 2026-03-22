@@ -1,5 +1,5 @@
-v1.3 RC 1
+v1.3 RC 2
 
 RELEASE NOTES:
 
-Adds potential fixes to ASR error on iPad Air 2 seprmvr64 restores (macOS only)
+Add stronger enforcement for activation records stitching on A8(X) devices when restoring to iOS 8.0-9.x
