@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 RC 1"
+CURRENT_VERSION="v1.3 RC 2"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -837,7 +837,6 @@ case "$1" in
         BASE_IPSW="$3"
         IOS_VERSION="$4"
         FORCE_ACTIVATE=""
-
         if [[ "$5" == "--stitch-activation" || "$6" == "--stitch-activation" ]]; then
             case "$IOS_VERSION" in
                 7.*|8.*|9.0*|9.1*|9.2*)
@@ -852,17 +851,22 @@ case "$1" in
                     ;;
             esac
         fi
-        if [[ $FORCE_ACTIVATE != 1 ]] && [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]]; then
-            echo "Please read the following in full:"
-            echo "Recently, Apple blocked activation for A8(X) iOS 8 and 9. This means that you might not be able to activate normally, getting "Activation Error"."
-            echo "It is recommended to Ctrl + C, then re-run the --seprmvr64-ipsw command and specify --stitch-activation so you can stitch activation records into the restore"
-            echo "You can choose to continue without stitching activation records, but you might not get past Setup. It is recommended to save/stitch activation records instead of risking broken activation."
+        # A8(X) iOS 8.0-9.x activation error candidates
+        if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 9.3* ]]; then
+            echo "[!] 9.3.x restores are blocked on A8(X) devices for the following reason."
+            echo "Recently, Apple blocked activation for A8(X) iOS 8 and 9. This means that you will not be able to activate normally, getting \"Activation Error\"."
             if [[ $IDENTIFIER == iPhone7* ]]; then
                 echo "Since the restore will not have baseband, activation will not work, so it is strongly recommended to stitch activation records"
             fi
-            echo "Note: stitching activation records is only for 9.2.1 and lower"
-            echo "Even when stitching records, there is no guarantees that the device will remain activated. It may deactivate later on. Especially below iOS 8.3"
-            read -p "Press enter to continue without stitching activation records"
+            echo "Note: stitching activation records is only for 9.2.1 and lower, and you are trying to restore to 9.3.x. Please do iOS 9.2.1 and lower."
+            exit 1
+        elif [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION != 9.3* ]]; then
+            # set FORCE_ACTIVATE=1 automatically because these are affected A8/A8X candidates, override --stitch-activation flag here
+            FORCE_ACTIVATE=1
+            echo "[!] Activation records are REQUIRED for this restore."
+            echo "[!] This is due to Apple blocking activation recently for A8(X) iOS 8 and 9."
+            echo "[!] Make sure you are on the latest iOS (must be a functional device), and fully activated via Apple's servers. Make sure to jailbreak and install OpenSSH as well."
+            read -p "Press enter to continue"
         fi
         if [[ $FORCE_ACTIVATE == 1 ]] && [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 8.2* || $IOS_VERSION == 8.1* || $IOS_VERSION == 8.0* ]]; then
             echo "Stitching activation may work on this version, but there is a much higher chance of the device deactivating especially right after the first boot."
