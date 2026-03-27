@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3 RC 3"
+CURRENT_VERSION="v1.3 RC 4"
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5"
@@ -988,7 +988,7 @@ case "$1" in
             if [[ $ios8ramdisk == y || $ios8ramdisk == Y || $IDENTIFIER == iPod7* || $FORCE_ACTIVATE == 1 ]]; then
                 read -p "iOS version for ramdisk? " ramdiskversion
                 echo "Drag and drop the iOS $ramdiskversion IPSW file"
-                rdskipsw=$(./bin/zenity --file-selection --title="Select the iOS $ramdiskversion IPSW file" --file-filter="*.ipsw")
+                rdskipsw=$(./bin/zenity --file-selection --title="Select the iOS $ramdiskversion IPSW file")
                 echo "[*] Making custom IPSW..."
                 savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
                 mkdir -p "$savedir"
@@ -1447,7 +1447,7 @@ case "$1" in
         fi
         if [[ ! -d "$savedir" ]]; then
             echo "[!] New boot files must be created."
-            IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
+            IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file")
             sleep 2
         else
             echo "first, your device needs to be in pwndfu mode. pwning with gaster"
@@ -1732,7 +1732,7 @@ case "$1" in
         else
             if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
                 # A11 hax to tether restore 14.0-14.2 on 16 SEP, 14.3 iBoot method (thanks to verygenericname for pointing that out)
-                IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)" --file-filter="*.ipsw")
+                IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)")
                 rm -rf tmp1/Firmware/dfu/$IBSS
                 rm -rf tmp1/Firmware/dfu/$IBEC 
                 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
@@ -1987,7 +1987,7 @@ case "$1" in
         else
             if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
                 # A11 hax to tether restore 14.0-14.2 on 16 SEP, 14.3 iBoot method (thanks to verygenericname for pointing that out)
-                IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)" --file-filter="*.ipsw")
+                IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)")
                 rm -rf tmp1/Firmware/dfu/$IBSS
                 rm -rf tmp1/Firmware/dfu/$IBEC 
                 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
@@ -2375,7 +2375,7 @@ case "$1" in
            sudo ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu $USE_BASEBAND --latest-sep --no-rsep $IPSW
         elif [[ $IDENTIFIER == iPhone6* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
            echo "iOS 10 SEP needs to be used"
-           IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)" --file-filter="*.ipsw")
+           IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)")
            mkdir tmp
            mkdir tmp/Firmware
            mkdir tmp/Firmware/all_flash
@@ -2418,7 +2418,7 @@ case "$1" in
                 IPSW_PATH="restorefiles/$IDENTIFIER/$IOS_VERSION/custom.ipsw"
             else
                 echo "Drag and drop the iOS $IOS_VERSION IPSW file."
-                IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file" --file-filter="*.ipsw")
+                IPSW_PATH=$(./bin/zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file")
             fi
             mkdir -p to_patch
             mkdir -p "$BOOT_DIR"
@@ -2549,11 +2549,11 @@ case "$1" in
                 ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
             fi
             if [[ $IDENTIFIER == iPhone10,3 ]]; then
-                IPSW_PATH_2=$(./bin/zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file" --file-filter="*.ipsw")
+                IPSW_PATH_2=$(./bin/zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file")
                 unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d22.RELEASE.im4p" -d to_patch
                 ./bin/img4 -i "to_patch/sep-firmware.d22.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
             elif [[ $IDENTIFIER == iPhone10,6 ]]; then
-                IPSW_PATH_2=$(./bin/zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file" --file-filter="*.ipsw")
+                IPSW_PATH_2=$(./bin/zenity --file-selection --title="Select the iOS $LATEST_VERSION IPSW file")
                 unzip -j "$IPSW_PATH_2" "Firmware/all_flash/sep-firmware.d221.RELEASE.im4p" -d to_patch
                 ./bin/img4 -i "to_patch/sep-firmware.d221.RELEASE.im4p" -o "$BOOT_DIR/sep-firmware.img4" -T rsep -M $im4m
             fi
