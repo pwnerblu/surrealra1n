@@ -26,7 +26,7 @@
 		<integer>180</integer>
 	</dict>
 	<key>SystemPartitionSize</key>
-	<integer>3122</integer>
+	<integer>4200</integer>
 	<key>UpdateBaseband</key>
 	<false/>
 </dict>
