@@ -1,5 +1,5 @@
-v1.3 RC 2
+v1.3 RC 3
 
 RELEASE NOTES:
 
-Add stronger enforcement for activation records stitching on A8(X) devices when restoring to iOS 8.0-9.x
+Bring back the usage of zenity for IPSW selection but download the zenity bin instead
