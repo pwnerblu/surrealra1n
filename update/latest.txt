@@ -1,6 +1,6 @@
-v1.3.7
+v1.3.8
 
 RELEASE NOTES:
 
-don't fatally quit the script if openra1n fails to compile
+Set minimum macOS version to 10.11
 
