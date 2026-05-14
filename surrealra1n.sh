@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.8"
+CURRENT_VERSION="v1.3.9"
 
 set -euo pipefail
 
@@ -529,13 +529,13 @@ else
     unzip -o futurerestore.zip
     tar -xf futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE.tar.xz
     cp futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE/* . || true
-    chmod +x linux_fix.sh
-    sudo ./linux_fix.sh
-    rm -rf linux_fix.sh
+    chmod +x linux_fix.sh || true
+    sudo ./linux_fix.sh || true
+    rm -rf linux_fix.sh || true
     chmod +x futurerestore
-    rm -rf *.tar.xz
-    rm -rf *.sh
-    rm -rf *.zip
+    rm -rf *.tar.xz || true
+    rm -rf *.sh || true
+    rm -rf *.zip || true
     rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE" 
     cd ..
 fi
