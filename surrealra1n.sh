@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.7"
+CURRENT_VERSION="v1.3.8"
 
 set -euo pipefail
 
@@ -37,12 +37,27 @@ echo "Huge thanks to Mineek for openra1n and seprmvr64."
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
+macmodel=$(sysctl -n hw.model)
+
+# Outdated macOS ver check
+macos_ver=$(sw_vers -productVersion)
+
 dist=0
 
 JAILBREAK=0
 
 DISTRO="Unsupported"
 ARCH="$(uname -m)"
+
+if [[ "$(printf) '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
+    echo "Your macOS version $macos_ver is supported."
+else
+    echo "surrealra1n only supports macOS versions after 10.11. Learn more at https://github.com/pwnerblu/surrealra1n"
+    echo "You can continue however features WILL be broken."
+    echo "Your macOS X version:$macos_ver"
+    read -n 1 -s -r -p "Press any key to continue"
+    echo
+fi
 
 # macOS detection
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -72,8 +87,18 @@ elif [[ -r /etc/os-release ]]; then
     elif [[ "$ID" == "debian" || "$ID_LIKE" == *debian* ]]; then
         DISTRO="Debian"
         dist=1
+        read -n 1 -s -r -p "Press any key to continue"
     fi
 fi
+
+if [[ "$macmodel" == "Mac17,5" ]]; then
+    echo "There is a problem with the MacBook Neo in which openra1n fails to compile."
+    echo "You cannot boot jailbroken with palera1n on tethered downgrades without openra1n, however for everything else it should be fine."
+    echo "It will be fixed soon enough."
+    read -n 1 -s -r -p "Press any key to continue"
+    echo
+fi
+
 
 # Unsupported check
 if [[ "$DISTRO" == "Unsupported" ]]; then
