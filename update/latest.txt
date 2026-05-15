@@ -1,5 +1,5 @@
-v1.3.14
+v1.3.15
 
 RELEASE NOTES:
 
-Log only when error occurs
+Log exact command that failed
