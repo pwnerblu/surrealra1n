@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.10"
+CURRENT_VERSION="v1.3.11"
 
 set -euo pipefail
 
@@ -7,6 +7,9 @@ LOG_FILE="surrealra1n-log-$(date +%Y%m%d-%H%M%S).txt"
 
 # Save ALL output to log while still showing terminal output
 exec > >(tee -a "$LOG_FILE") 2>&1
+
+# Optional: disable error handler/logger
+DISABLE_ERROR_HANDLER="${DISABLE_ERROR_HANDLER:-0}"
 
 error_handler() {
     local exit_code=$?
@@ -20,10 +23,21 @@ error_handler() {
     echo "    $LOG_FILE"
     echo
     echo "[!] Issues that do not contain the relevant details may be closed and dismissed without response"
+
     exit "$exit_code"
 }
 
-trap 'error_handler $LINENO' ERR
+if [[ "$DISABLE_ERROR_HANDLER" == "1" ]]; then
+    echo
+    echo "[!] WARNING: Error handler/logger is DISABLED."
+    echo "[!] Script may continue running after errors occur."
+    echo "[!] This is NOT recommended for normal use."
+    echo "[!] It may be useful for debugging or reporting surrealra1n issues."
+    echo
+    read -p "Press enter to continue anyway"
+else
+    trap 'error_handler $LINENO' ERR
+fi
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1"
