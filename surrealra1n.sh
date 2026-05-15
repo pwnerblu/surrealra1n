@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.12"
+CURRENT_VERSION="v1.3.13"
 
 set -euo pipefail
 
@@ -2798,6 +2798,7 @@ case "$1" in
         fi
 
         }
+        palera1n_option=0
         if [[ $IOS_VERSION == 15.* || $IOS_VERSION == 16.* ]] && [[ $dist == 3 || $dist == 4 ]]; then
             read -p "Would you like to boot jailbroken with palera1n? (y/n): " palera1n_option
         fi
