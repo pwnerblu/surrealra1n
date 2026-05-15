@@ -37,10 +37,10 @@ echo "Huge thanks to Mineek for openra1n and seprmvr64."
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
-macmodel=$(sysctl -n hw.model)
+macmodel=$(sysctl -n hw.model) || true
 
 # Outdated macOS ver check
-macos_ver=$(sw_vers -productVersion)
+macos_ver=$(sw_vers -productVersion) || true
 
 dist=0
 
@@ -48,16 +48,6 @@ JAILBREAK=0
 
 DISTRO="Unsupported"
 ARCH="$(uname -m)"
-
-if [[ "$(printf) '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
-    echo "Your macOS version $macos_ver is supported."
-else
-    echo "surrealra1n only supports macOS versions after 10.11. Learn more at https://github.com/pwnerblu/surrealra1n"
-    echo "You can continue however features WILL be broken."
-    echo "Your macOS X version:$macos_ver"
-    read -n 1 -s -r -p "Press any key to continue"
-    echo
-fi
 
 # macOS detection
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -90,6 +80,17 @@ elif [[ -r /etc/os-release ]]; then
         read -n 1 -s -r -p "Press any key to continue"
     fi
 fi
+
+if [[ $dist == 3 || $dist == 4 ]] && [[ "$(printf) '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
+    echo "Your macOS version $macos_ver is supported."
+else
+    echo "surrealra1n only supports macOS versions after 10.11. Learn more at https://github.com/pwnerblu/surrealra1n"
+    echo "You can continue however features WILL be broken."
+    echo "Your macOS X version:$macos_ver"
+    read -n 1 -s -r -p "Press any key to continue"
+    echo
+fi
+
 
 if [[ "$macmodel" == "Mac17,5" ]]; then
     echo "There is a problem with the MacBook Neo in which openra1n fails to compile."
@@ -529,13 +530,13 @@ else
     unzip -o futurerestore.zip
     tar -xf futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE.tar.xz
     cp futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE/* . || true
-    chmod +x linux_fix.sh || true
-    sudo ./linux_fix.sh || true
-    rm -rf linux_fix.sh || true
+    chmod +x linux_fix.sh
+    sudo ./linux_fix.sh
+    rm -rf linux_fix.sh
     chmod +x futurerestore
-    rm -rf *.tar.xz || true
-    rm -rf *.sh || true
-    rm -rf *.zip || true
+    rm -rf *.tar.xz
+    rm -rf *.sh
+    rm -rf *.zip
     rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE" 
     cd ..
 fi
