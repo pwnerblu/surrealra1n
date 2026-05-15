@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.9"
+CURRENT_VERSION="v1.3.10"
 
 set -euo pipefail
 
@@ -90,7 +90,6 @@ else
     read -n 1 -s -r -p "Press any key to continue"
     echo
 fi
-
 
 if [[ "$macmodel" == "Mac17,5" ]]; then
     echo "There is a problem with the MacBook Neo in which openra1n fails to compile."
@@ -530,13 +529,13 @@ else
     unzip -o futurerestore.zip
     tar -xf futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE.tar.xz
     cp futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE/* . || true
-    chmod +x linux_fix.sh
-    sudo ./linux_fix.sh
-    rm -rf linux_fix.sh
+    chmod +x linux_fix.sh || true
+    sudo ./linux_fix.sh || true
+    rm -rf linux_fix.sh || true
     chmod +x futurerestore
-    rm -rf *.tar.xz
-    rm -rf *.sh
-    rm -rf *.zip
+    rm -rf *.tar.xz || true
+    rm -rf *.sh || true
+    rm -rf *.zip || true
     rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE" 
     cd ..
 fi
