@@ -1,23 +1,28 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.14"
+CURRENT_VERSION="v1.3.15"
 
 set -euo pipefail
 
 error_handler() {
     local exit_code=$?
-    local line_number=$1
+    local failed_command="$BASH_COMMAND"
 
-    # Create log only when error happens
+    # THIS is the real line of the failing command
+    local line_number="${BASH_LINENO[0]}"
+    local script_file="${BASH_SOURCE[1]:-$0}"
+
     LOG_FILE="surrealra1n-log-$(date +%Y%m%d-%H%M%S).txt"
 
     {
-        echo "[!] An error occurred on line $line_number."
+        echo "[!] surrealra1n crashed"
         echo "[!] Exit code: $exit_code"
+        echo "[!] Script: $script_file"
+        echo "[!] Line: $line_number"
+        echo "[!] Failed command: $failed_command"
         echo
-        echo "[!] Please open an issue on the GitHub:"
+        echo "[!] Report:"
         echo "    https://github.com/pwnerblu/surrealra1n/issues"
-        echo "[!] Attach this log:"
-        echo "    $LOG_FILE"
+        echo "[!] Log file: $LOG_FILE"
     } | tee "$LOG_FILE" >&2
 
     exit "$exit_code"
