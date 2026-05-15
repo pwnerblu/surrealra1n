@@ -1,5 +1,11 @@
-v1.3.10
+v1.3.11
 
 RELEASE NOTES:
 
-Fix Linux issues
+Adds error handler override
+
+To use error handler override (not recommended):
+
+export DISABLE_ERROR_HANDLER=1
+
+then run surrealra1n
