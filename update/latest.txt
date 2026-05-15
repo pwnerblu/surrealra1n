@@ -1,11 +1,5 @@
-v1.3.11
+v1.3.12
 
 RELEASE NOTES:
 
-Adds error handler override
-
-To use error handler override (not recommended):
-
-export DISABLE_ERROR_HANDLER=1
-
-then run surrealra1n
+Improvements to error handler override
