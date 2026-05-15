@@ -1,5 +1,5 @@
-v1.3.13
+v1.3.14
 
 RELEASE NOTES:
 
-Set variables properly
+Log only when error occurs
