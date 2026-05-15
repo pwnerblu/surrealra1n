@@ -1,5 +1,5 @@
-v1.3.12
+v1.3.13
 
 RELEASE NOTES:
 
-Improvements to error handler override
+Set variables properly
