@@ -1,12 +1,9 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.11"
+CURRENT_VERSION="v1.3.12"
 
 set -euo pipefail
 
 LOG_FILE="surrealra1n-log-$(date +%Y%m%d-%H%M%S).txt"
-
-# Save ALL output to log while still showing terminal output
-exec > >(tee -a "$LOG_FILE") 2>&1
 
 # Optional: disable error handler/logger
 DISABLE_ERROR_HANDLER="${DISABLE_ERROR_HANDLER:-0}"
@@ -36,6 +33,8 @@ if [[ "$DISABLE_ERROR_HANDLER" == "1" ]]; then
     echo
     read -p "Press enter to continue anyway"
 else
+    # Save ALL output to log while still showing terminal output
+    exec > >(tee -a "$LOG_FILE") 2>&1
     trap 'error_handler $LINENO' ERR
 fi
 
