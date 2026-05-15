@@ -1,42 +1,29 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.13"
+CURRENT_VERSION="v1.3.14"
 
 set -euo pipefail
-
-LOG_FILE="surrealra1n-log-$(date +%Y%m%d-%H%M%S).txt"
-
-# Optional: disable error handler/logger
-DISABLE_ERROR_HANDLER="${DISABLE_ERROR_HANDLER:-0}"
 
 error_handler() {
     local exit_code=$?
     local line_number=$1
 
-    echo
-    echo "[!] An error occurred on line $line_number."
-    echo "[!] Exit code: $exit_code"
-    echo
-    echo "[!] Please open an issue on the GitHub (https://github.com/pwnerblu/surrealra1n/issues) and attach this log, and relevant details of the issue:"
-    echo "    $LOG_FILE"
-    echo
-    echo "[!] Issues that do not contain the relevant details may be closed and dismissed without response"
+    # Create log only when error happens
+    LOG_FILE="surrealra1n-log-$(date +%Y%m%d-%H%M%S).txt"
+
+    {
+        echo "[!] An error occurred on line $line_number."
+        echo "[!] Exit code: $exit_code"
+        echo
+        echo "[!] Please open an issue on the GitHub:"
+        echo "    https://github.com/pwnerblu/surrealra1n/issues"
+        echo "[!] Attach this log:"
+        echo "    $LOG_FILE"
+    } | tee "$LOG_FILE" >&2
 
     exit "$exit_code"
 }
 
-if [[ "$DISABLE_ERROR_HANDLER" == "1" ]]; then
-    echo
-    echo "[!] WARNING: Error handler/logger is DISABLED."
-    echo "[!] Script may continue running after errors occur."
-    echo "[!] This is NOT recommended for normal use."
-    echo "[!] It may be useful for debugging or reporting surrealra1n issues."
-    echo
-    read -p "Press enter to continue anyway"
-else
-    # Save ALL output to log while still showing terminal output
-    exec > >(tee -a "$LOG_FILE") 2>&1
-    trap 'error_handler $LINENO' ERR
-fi
+trap 'error_handler $LINENO' ERR
 
 echo "surrealra1n - $CURRENT_VERSION"
 echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1"
