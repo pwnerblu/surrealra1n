@@ -1,6 +1,5 @@
-v1.3.9
+v1.3.10
 
 RELEASE NOTES:
 
-Maybe some fixes?
-
+Fix Linux issues
