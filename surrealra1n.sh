@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.15"
+CURRENT_VERSION="v1.3.16"
 
 set -euo pipefail
 
@@ -1541,7 +1541,7 @@ case "$1" in
             ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 9 -f 9 -k
         fi     
         ./bin/kerneldiff "work/kcache.raw" "work/kcache.patched" "work/kcache.bpatch"
-        ./bin/img4 -i "work/kcache.im4p" -o "$savedir/Kernelcache.img4" -T rkrn -P "work/kcache.bpatch" -J -M $im4m
+        ./bin/img4 -i "work/kcache.im4p" -o "$savedir/Kernelcache.img4" -T rkrn -P "work/kcache.bpatch" -J -M $im4m || true
         echo "Patching complete!"
         echo "[*] Verifying generated boot files..."
 
