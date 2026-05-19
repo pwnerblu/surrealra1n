@@ -1,5 +1,7 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.16"
+CURRENT_VERSION="v1.3.17"
+
+clear
 
 set -euo pipefail
 
@@ -11,19 +13,27 @@ error_handler() {
     local line_number="${BASH_LINENO[0]}"
     local script_file="${BASH_SOURCE[1]:-$0}"
 
-    LOG_FILE="surrealra1n-log-$(date +%Y%m%d-%H%M%S).txt"
-
     {
-        echo "[!] surrealra1n crashed"
+        echo "[!] surrealra1n has crashed due to an issue"
         echo "[!] Exit code: $exit_code"
         echo "[!] Script: $script_file"
         echo "[!] Line: $line_number"
         echo "[!] Failed command: $failed_command"
         echo
-        echo "[!] Report:"
+        echo "[!] It is recommended to report this issue here:"
         echo "    https://github.com/pwnerblu/surrealra1n/issues"
-        echo "[!] Log file: $LOG_FILE"
-    } | tee "$LOG_FILE" >&2
+        echo "Here's the recommended way to report this:"
+        echo "Title should be a brief and clear summary of the issue you are trying to report"
+        echo "Issue description should mention all relevant details to such issue if possible, and also a full terminal log attached."
+        echo "[!] Issues THAT DO NOT CONTAIN PROPER LOGS, DETAILS, OR ANYTHING RELEVANT, WILL BE CLOSED AS INVALID."
+        echo 
+        echo "[!] To attach this log into your issue, do the following:"
+        if [[ $dist == 3 || $dist == 4 ]]; then
+            echo "Cmd + A -> Cmd + C, then paste the entire log into your issue you're opening"
+        else
+            echo "Ctrl + Shift + A -> Ctrl + Shift + C, then paste the entire log into the issue you're opening"
+        fi
+    } 
 
     exit "$exit_code"
 }
