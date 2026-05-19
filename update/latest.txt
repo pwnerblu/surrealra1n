@@ -1,5 +1,5 @@
-v1.3.16
+v1.3.17
 
 RELEASE NOTES:
 
-More updates
+improve standards for issue reporting
