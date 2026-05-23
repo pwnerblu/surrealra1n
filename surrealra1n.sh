@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.4 beta 3"
+CURRENT_VERSION="v1.4 beta 2"
 
 clear
 
@@ -556,16 +556,6 @@ else
     rm -rf *.zip || true
     rm -rf "futurerestore-Linux-x86_64-v2.0.0-Build_329-RELEASE" 
     cd ..
-fi
-
-echo "Checking for SSHRD_Script dependency..."
-if [[ -f "./bin/SSHRD_Script/sshrd.sh" ]]; then
-    echo "Found SSHRD_Script in bin/SSHRD_Script."
-else
-    echo "SSHRD_Script is missing. Installing into bin/SSHRD_Script..."
-    rm -rf "./bin/SSHRD_Script"
-    git clone --recursive https://github.com/verygenericname/SSHRD_Script "./bin/SSHRD_Script"
-    chmod +x "./bin/SSHRD_Script/sshrd.sh" || true
 fi
 
 
@@ -1426,65 +1416,24 @@ case "$1" in
         sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -e $savedir/custom.ipsw -y
         echo "Restore has completed! If it's successful, you can boot with: ./surrealra1n.sh --seprmvr64-boot $IOS_VERSION"
         if [[ $IOS_VERSION == 8.* ]]; then
-            echo "[*] iOS 8 detected, running automatic dyld fix now..."
-            "$0" --fix-ios8
+            echo "We are not done yet. You need to run this command to fix dyld: ./surrealra1n.sh --fix-ios8"
+            echo "Only after fixing dyld can you boot it normally, this is so we don't get stuck at Slide to Upgrade"
         fi
         exit 0
         ;;
 
     --fix-ios8)
         echo "[!] IMPORTANT: Your device should be freshly restored to iOS 8.x and never be booted!"
-        SSHRD_DIR="./bin/SSHRD_Script"
-        SSHRD_SSHPASS="$SSHRD_DIR/$(uname)/sshpass"
-        SSHRD_IPROXY="$SSHRD_DIR/$(uname)/iproxy"
-        if [[ ! -f "$SSHRD_DIR/sshrd.sh" ]]; then
-            echo "[!] SSHRD_Script is missing at $SSHRD_DIR."
-            echo "[!] Re-run surrealra1n so dependency bootstrap can install it."
-            exit 1
-        fi
-        if [[ ! -x "$SSHRD_SSHPASS" || ! -x "$SSHRD_IPROXY" ]]; then
-            echo "[!] SSHRD binaries are missing for $(uname): $SSHRD_SSHPASS / $SSHRD_IPROXY"
-            exit 1
-        fi
-        if [[ ! -f "$SSHRD_DIR/sshramdisk/iBSS.img4" || ! -f "$SSHRD_DIR/sshramdisk/iBEC.img4" || ! -f "$SSHRD_DIR/sshramdisk/ramdisk.img4" || ! -f "$SSHRD_DIR/sshramdisk/devicetree.img4" || ! -f "$SSHRD_DIR/sshramdisk/kernelcache.img4" ]]; then
-            echo "[*] SSHRD ramdisk payload not found, generating with 12.0..."
-            (
-                cd "$SSHRD_DIR" || exit 1
-                chmod +x ./sshrd.sh
-                sudo ./sshrd.sh 12.0
-            ) || exit 1
-        fi
-        echo "[*] Booting SSH ramdisk with SSHRD..."
-        (
-            cd "$SSHRD_DIR" || exit 1
-            chmod +x ./sshrd.sh
-            sudo ./sshrd.sh boot
-        ) || exit 1
-        killall iproxy >/dev/null 2>&1 || true
-        "$SSHRD_IPROXY" 2222 22 >/dev/null 2>&1 &
-        echo "[*] Waiting for SSH ramdisk on 127.0.0.1:2222..."
-        SSH_READY=0
-        for _ in {1..50}; do
-            if "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o ConnectTimeout=2 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "echo ready" >/dev/null 2>&1; then
-                SSH_READY=1
-                break
-            fi
-            sleep 2
-        done
-        if [[ "$SSH_READY" -ne 1 ]]; then
-            echo "[!] SSH ramdisk did not become reachable on port 2222."
-            killall iproxy >/dev/null 2>&1 || true
-            exit 1
-        fi
+        echo "[!] Please boot an SSH ramdisk with Legacy iOS Kit first. You can get Legacy iOS Kit from: https://github.com/LukeZGD/Legacy-iOS-Kit"
+        read -p "Press enter to continue after booting the ramdisk"
         echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
-        "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-        "$SSHRD_SSHPASS" -p "alpine" scp -P2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+        ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p6414 -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+        ./bin/sshpass -p "alpine" scp -P6414 -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
         ./bin/dsc64patcher dyld.raw dyld.patched -8
-        "$SSHRD_SSHPASS" -p "alpine" scp -P2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+        ./bin/sshpass -p "alpine" scp -P6414 -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
         rm -rf dyld.patched
         rm -rf dyld.raw
-        "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/reboot || true"
-        killall iproxy >/dev/null 2>&1 || true
+        ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p6414 -o StrictHostKeyChecking=no "/sbin/reboot || true"
         echo "dyld fix is complete. You can now boot iOS 8."
         exit 0
         ;;
