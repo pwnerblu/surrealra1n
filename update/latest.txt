@@ -1,5 +1,5 @@
-v1.4 beta 2
+v1.4 beta 3
 
 RELEASE NOTES:
 
-revert
+adds automatic SSHRD again to fix-ios8 but with official SSHRD_Script
