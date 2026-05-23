@@ -1,5 +1,5 @@
-v1.4 beta 2
+v1.4 beta 3
 
 RELEASE NOTES:
 
-Fixes a bug in the A8 10.3.x untethered downgrade stuff
+adds automatic SSHRD again to fix-ios8 but with official SSHRD_Script
