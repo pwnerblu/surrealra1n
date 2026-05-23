@@ -1,5 +1,5 @@
-v1.4 beta
+v1.4 beta 2
 
 RELEASE NOTES:
 
-Introduces iOS 10.3.x downgrade support with blobs for A8 devices
+Fixes a bug in the A8 10.3.x untethered downgrade stuff
