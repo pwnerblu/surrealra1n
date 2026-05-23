@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.18"
+CURRENT_VERSION="v1.3.19"
 
 clear
 
@@ -81,10 +81,10 @@ if [[ "$(uname)" == "Darwin" ]]; then
 elif [[ -r /etc/os-release ]]; then
     . /etc/os-release
 
-    if [[ "$ID" == "arch" || "$ID_LIKE" == *arch* ]]; then
+    if [[ "$ID" == "arch" || "${ID_LIKE:-}" == *arch* ]]; then
         DISTRO="Arch"
         dist=2
-    elif [[ "$ID" == "debian" || "$ID_LIKE" == *debian* ]]; then
+    elif [[ "$ID" == "debian" || "${ID_LIKE:-}" == *debian* ]]; then
         DISTRO="Debian"
         dist=1
         read -n 1 -s -r -p "Press any key to continue"
