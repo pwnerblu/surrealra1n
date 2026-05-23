@@ -122,5 +122,16 @@ libimobiledevice team, tihmstar, LukeeGD/LukeZGD, xerub, plooshi, etc! (for the 
 
 Mineek - iPhone X restored patcher, used for ipx restores 14.3-15.6.1 (my fork of the patcher is used for seprmvr64 restores on A8+), openra1n, and seprmvr64
 
+Nathan (verygenericname) - SSHRD_Script
+
+
+
+
+
+
+
+
+
+
 
 
