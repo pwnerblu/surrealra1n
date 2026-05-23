@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.20"
+CURRENT_VERSION="v1.3.21"
 
 clear
 
@@ -99,22 +99,22 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     macos_ver=$(sw_vers -productVersion) 
 fi
 
-if [[ $dist == 3 || $dist == 4 ]] && [[ "$(printf) '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
-    echo "Your macOS version $macos_ver is supported."
-else
-    echo "surrealra1n only supports macOS versions after 10.11. Learn more at https://github.com/pwnerblu/surrealra1n"
-    echo "You can continue however features WILL be broken."
-    echo "Your macOS X version:$macos_ver"
-    read -n 1 -s -r -p "Press any key to continue"
-    echo
-fi
-
-if [[ "$macmodel" == "Mac17,5" ]]; then
-    echo "There is a problem with the MacBook Neo in which openra1n fails to compile."
-    echo "You cannot boot jailbroken with palera1n on tethered downgrades without openra1n, however for everything else it should be fine."
-    echo "It will be fixed soon enough."
-    read -n 1 -s -r -p "Press any key to continue"
-    echo
+if [[ $dist == 3 || $dist == 4 ]]; then
+    if [[ "$(printf '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
+        echo "Your macOS version $macos_ver is supported."
+    else
+        echo "surrealra1n only supports macOS versions 10.11 and later at the moment."
+        echo "Your macOS version: $macos_ver"
+        echo "This may change in the future though"
+        exit 1
+    fi
+    if [[ "$macmodel" == "Mac17,5" ]]; then
+        echo "There is a problem with the MacBook Neo in which openra1n fails to compile."
+        echo "You cannot boot jailbroken with palera1n on tethered downgrades without openra1n, however for everything else it should be fine."
+        echo "It will be fixed soon enough."
+        read -n 1 -s -r -p "Press any key to continue"
+        echo
+    fi
 fi
 
 
