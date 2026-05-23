@@ -2587,6 +2587,7 @@ case "$1" in
             mkdir tmp
             mkdir tmp/Firmware
             mkdir tmp/Firmware/all_flash
+            mv $SEP tmp/Firmware/all_flash/
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
             # patch restore kernel if not on iPod touch 6, otherwise proceed without rkrn patching
             if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
