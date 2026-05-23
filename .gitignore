@@ -1,0 +1,80 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Downloaded dependencies (keep notice files)
+bin/*
+!bin/notice.txt
+futurerestore/*
+!futurerestore/notice.txt
+lib/
+!scripts/core/lib/
+!scripts/core/lib/**
+activate.sh
+backup.sh
+main.c
+
+# Dependency build clones
+asr64_patcher/
+restored_external64patcher/
+libimg4_patcher/
+openra1n/
+
+# Runtime temp / work directories
+tmp*/
+tmpmanifest/
+work/
+updatefiles/
+jbresources/
+sshrd/
+sshramdisk/
+
+# Generated restore artifacts
+noseprestore/
+restorefiles/
+seprmvr64boot/
+cache/
+activation_records/
+
+# Device / activation files (sensitive, generated at runtime)
+activation.plist
+IC-Info.sisv
+com.apple.commcenter.device_specific_nobackup.plist
+dyld.raw
+dyld.patched
+asr
+asr_patch
+restored_external
+restored_patch
+ents.plist
+options.n61.plist
+
+# Large firmware / restore files
+*.ipsw
+*.dmg
+*.bbfw
+*.dfu
+*.im4p
+*.img4
+*.im4m
+*.shsh
+*.shsh2
+*.raw
+*.ipa
+
+# Logs
+*.log
+
+# C build artifacts
+src/*.o
+surrealra1n
