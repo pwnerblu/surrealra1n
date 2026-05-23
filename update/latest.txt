@@ -1,5 +1,5 @@
-v1.3.17
+v1.3.18
 
 RELEASE NOTES:
 
-improve standards for issue reporting
+Fix Linux
