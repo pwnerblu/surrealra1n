@@ -1426,8 +1426,8 @@ case "$1" in
         sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -e $savedir/custom.ipsw -y
         echo "Restore has completed! If it's successful, you can boot with: ./surrealra1n.sh --seprmvr64-boot $IOS_VERSION"
         if [[ $IOS_VERSION == 8.* ]]; then
-            echo "We are not done yet. You need to run this command to fix dyld: ./surrealra1n.sh --fix-ios8"
-            echo "Only after fixing dyld can you boot it normally, this is so we don't get stuck at Slide to Upgrade"
+            echo "[*] iOS 8 detected, running automatic dyld fix now..."
+            "$0" --fix-ios8
         fi
         exit 0
         ;;
