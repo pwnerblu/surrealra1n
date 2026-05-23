@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.17"
+CURRENT_VERSION="v1.3.18"
 
 clear
 
@@ -52,11 +52,6 @@ echo "Huge thanks to Mineek for openra1n and seprmvr64."
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
 
-macmodel=$(sysctl -n hw.model) || true
-
-# Outdated macOS ver check
-macos_ver=$(sw_vers -productVersion) || true
-
 dist=0
 
 JAILBREAK=0
@@ -94,6 +89,14 @@ elif [[ -r /etc/os-release ]]; then
         dist=1
         read -n 1 -s -r -p "Press any key to continue"
     fi
+fi
+
+# Run macOS version check only if you're on macOS, should fix Linux
+if [[ $dist == 3 || $dist == 4 ]]; then
+    macmodel=$(sysctl -n hw.model) 
+
+    # Outdated macOS ver check
+    macos_ver=$(sw_vers -productVersion) 
 fi
 
 if [[ $dist == 3 || $dist == 4 ]] && [[ "$(printf) '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
@@ -147,8 +150,8 @@ if [[ $dist == 1 ]]; then
     if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
         echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
         echo "Installing missing dependencies..."
-        sudo apt update
-        sudo apt install -y "${MISSING_PACKAGES[@]}"
+        sudo apt update || true # issue workarounds
+        sudo apt install -y "${MISSING_PACKAGES[@]}" || true # issue workarounds
     else
         echo "All dependencies are installed." 
     fi
