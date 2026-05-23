@@ -1,5 +1,5 @@
-v1.3.18
+v1.3.19
 
 RELEASE NOTES:
 
-Fix Linux
+improve linux a bit more
