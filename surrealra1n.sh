@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.19"
+CURRENT_VERSION="v1.3.20"
 
 clear
 
@@ -2454,6 +2454,7 @@ case "$1" in
                 mnifst="manifest/BuildManifest-iPad5,2.plist"
                 curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,2.plist
             fi
+            sudo rm -rf "tmp"
             mkdir tmp
             mkdir tmp/Firmware
             mkdir tmp/Firmware/all_flash
