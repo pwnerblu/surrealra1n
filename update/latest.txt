@@ -1,5 +1,5 @@
-v1.3.21
+v1.4 beta
 
 RELEASE NOTES:
 
-More linux fixes
+Introduces iOS 10.3.x downgrade support with blobs for A8 devices
