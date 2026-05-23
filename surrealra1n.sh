@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.21"
+CURRENT_VERSION="v1.4 beta"
 
 clear
 
@@ -230,7 +230,7 @@ require_dir() {
 
 echo "Checking for updates..."
 rm -rf update/latest.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
@@ -247,12 +247,12 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
         rm -rf futurerestore
         rm -rf "keys"
         rm -rf "manifest"
-        curl -L -o updatefiles/surrealra1n.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/surrealra1n.sh
+        curl -L -o updatefiles/surrealra1n.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/surrealra1n.sh
         rm -rf surrealra1n.sh
         mv updatefiles/surrealra1n.sh surrealra1n.sh
         chmod +x surrealra1n.sh
         cd updatefiles
-        git clone --branch main https://github.com/pwnerblu/surrealra1n --recursive
+        git clone --branch development https://github.com/pwnerblu/surrealra1n --recursive
         mv surrealra1n/keys keys
         mv surrealra1n/manifest manifest
         cd ..
@@ -2536,25 +2536,83 @@ case "$1" in
 
         echo "[*] Using SHSH blob: $SHSHBLOB"
         echo "running futurerestore"
+        sudo rm -rf "tmp" 
         if [[ $vers == 11.3* || $vers == 11.4* || $vers == 12.* || $vers == 13.* || $vers == 14.* || $vers == 15.* || $vers == 16.* ]]; then
-           echo "Using latest SEP and baseband!"
-           sudo ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu $USE_BASEBAND --latest-sep --no-rsep $IPSW
+            echo "Using latest SEP and baseband!"
+            sudo ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu $USE_BASEBAND --latest-sep --no-rsep $IPSW
         elif [[ $IDENTIFIER == iPhone6* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
-           echo "iOS 10 SEP needs to be used"
-           IPSW_PATH=$($zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)")
-           mkdir tmp
-           mkdir tmp/Firmware
-           mkdir tmp/Firmware/all_flash
-           unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
-           unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
-           SEP_PATH="tmp/Firmware/all_flash/$SEP"
-           BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
-           sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
+            echo "iOS 10 SEP needs to be used"
+            IPSW_PATH=$($zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)")
+            mkdir tmp
+            mkdir tmp/Firmware
+            mkdir tmp/Firmware/all_flash
+            unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
+            unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
+            SEP_PATH="tmp/Firmware/all_flash/$SEP"
+            BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
+            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
+        elif [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
+            # untether downgrade iPhone 6/6 Plus/mini 4/iPod touch 6 with blobs to 10.x, tvOS SEP hax
+            echo "tvOS 10.2.2 SEP needs to be used"
+            if [[ $IDENTIFIER == iPod7* ]]; then
+                # download tvOS SEP
+                SEP="sep-firmware.j42d.RELEASE.im4p"
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
+                mnifst="manifest/BuildManifest-iPod7,1.plist" # slightly modified BuildManifest from tvOS 10.2.2 to hack signed SEP for 10.3.x restores A8
+            fi
+            if [[ $IDENTIFIER == iPhone7,2 ]]; then
+                SEP="sep-firmware.j42d.RELEASE.im4p"
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
+                mnifst="manifest/BuildManifest-iPhone7,2.plist"
+                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPhone7,2.plist
+            fi
+            if [[ $IDENTIFIER == iPhone7,1 ]]; then
+                SEP="sep-firmware.j42d.RELEASE.im4p"
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
+                mnifst="manifest/BuildManifest-iPhone7,1.plist"
+                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPhone7,1.plist
+            fi
+            if [[ $IDENTIFIER == iPad5,1 ]]; then
+                SEP="sep-firmware.j42d.RELEASE.im4p"
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
+                mnifst="manifest/BuildManifest-iPad5,1.plist"
+                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,1.plist
+            fi
+            if [[ $IDENTIFIER == iPad5,2 ]]; then
+                SEP="sep-firmware.j42d.RELEASE.im4p"
+                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
+                mnifst="manifest/BuildManifest-iPad5,2.plist"
+                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,2.plist
+            fi
+            mkdir tmp
+            mkdir tmp/Firmware
+            mkdir tmp/Firmware/all_flash
+            SEP_PATH="tmp/Firmware/all_flash/$SEP"
+            # patch restore kernel if not on iPod touch 6, otherwise proceed without rkrn patching
+            if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
+                unzip -j "$IPSW_PATH" "$KERNELCACHE" -d tmp
+                ./bin/img4 -i tmp/$KERNELCACHE -o tmp/kernel.raw 
+                ./bin/Kernel64Patcher2 tmp/kernel.raw tmp/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
+                ./bin/kerneldiff tmp/kernel.raw tmp/kernel.patch tmp/kernel.diff 
+                ./bin/img4 -i tmp/$KERNELCACHE -o tmp/kernel.im4p -T rkrn -P tmp/kernel.diff -J || true 
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW --rkrn tmp/kernel.im4p
+            else
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
+            fi
         else
-           echo "SEP is incompatible!"
-           exit 1
+            echo "SEP is incompatible!"
+            exit 1
         fi
         echo "Restore has finished! Read above if there's any errors"
+        if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]]; then
+            echo "You will have the following issues:"
+            echo "1. Touch ID will not work"
+            echo "2. Device may hang for a certain amount of time at certain parts of setup screen."
+            echo "3. Device may take 3-5 minutes to boot untethered"
+            echo "All of the issues, except Touch ID, can be mitigated if you boot tethered with surrealra1n."
+            echo "It is recommended to briefly boot tethered, so you can set up the device normally, then you can reboot untethered"
+            echo "surrealra1n tethered boot command: ./surrealra1n.sh --boot $vers"
+        fi
         echo "Removing tmp folder if it exists"
         sudo rm -rf "tmp"
         exit 1
