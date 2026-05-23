@@ -1,5 +1,5 @@
-v1.3.20
+v1.3.21
 
 RELEASE NOTES:
 
-mkdir tmp error fix
+More linux fixes
