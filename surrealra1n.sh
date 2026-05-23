@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.4 beta"
+CURRENT_VERSION="v1.4 beta 2"
 
 clear
 
@@ -2591,7 +2591,7 @@ case "$1" in
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
             # patch restore kernel if not on iPod touch 6, otherwise proceed without rkrn patching
             if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
-                unzip -j "$IPSW_PATH" "$KERNELCACHE" -d tmp
+                unzip -j "$IPSW" "$KERNELCACHE" -d tmp
                 ./bin/img4 -i tmp/$KERNELCACHE -o tmp/kernel.raw 
                 ./bin/Kernel64Patcher2 tmp/kernel.raw tmp/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
                 ./bin/kerneldiff tmp/kernel.raw tmp/kernel.patch tmp/kernel.diff 
@@ -2613,6 +2613,9 @@ case "$1" in
             echo "All of the issues, except Touch ID, can be mitigated if you boot tethered with surrealra1n."
             echo "It is recommended to briefly boot tethered, so you can set up the device normally, then you can reboot untethered"
             echo "surrealra1n tethered boot command: ./surrealra1n.sh --boot $vers"
+            sudo rm -rf "shsh"
+            mkdir shsh
+            cp $SHSHBLOB shsh/something.shsh2 # so tether boot can work
         fi
         echo "Removing tmp folder if it exists"
         sudo rm -rf "tmp"
