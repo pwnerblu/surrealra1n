@@ -564,7 +564,7 @@ if [[ -f "./bin/SSHRD_Script/sshrd.sh" ]]; then
 else
     echo "SSHRD_Script is missing. Installing into bin/SSHRD_Script..."
     rm -rf "./bin/SSHRD_Script"
-    git clone --recursive https://github.com/iPh0ne4s/SSHRD_Script "./bin/SSHRD_Script"
+    git clone --recursive https://github.com/verygenericname/SSHRD_Script "./bin/SSHRD_Script"
     chmod +x "./bin/SSHRD_Script/sshrd.sh" || true
 fi
 
