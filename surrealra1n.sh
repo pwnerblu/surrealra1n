@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.4 beta 3"
+CURRENT_VERSION="v1.4 beta 4"
 
 clear
 
@@ -994,9 +994,6 @@ case "$1" in
             exit 1
         elif [[ $IDENTIFIER == iPhone7,2 || $IDENTIFIER == iPhone7,1 ]] && [[ $IOS_VERSION != 8.4.1 ]]; then
             echo "iPhone 6 (and 6 Plus) does not support any other than 8.4.1 seprmvr64 restores via surrealra1n"
-            exit 1
-        elif [[ $IDENTIFIER == iPad5,3 ]] && [[ $IOS_VERSION != 8.* ]]; then
-            echo "This version is not supported yet in seprmvr64-ipsw"
             exit 1
         elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad4* ]]; then
             echo "Device is not supported yet for seprmvr64-ipsw"
