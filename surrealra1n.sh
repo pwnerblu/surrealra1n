@@ -267,7 +267,7 @@ seprmvr64_ipsw_version_error() {
     esac
 }
 
-# Fetch stock IPSW from ipsw.me (cached under ipsws/<device>/). Picks newest build per version.
+# Fetch stock IPSW from ipsw.me (cached under ipsws/<device>/). iPad5,3 9.2.1 uses a hardcoded 13D15 URL.
 ipsw_ensure_jq() {
     if [[ -x "./bin/jq" ]]; then
         echo "./bin/jq"
@@ -289,10 +289,34 @@ ipsw_ensure_jq() {
     exit 1
 }
 
+# iPad Air 2 Wi-Fi (iPad5,3) iOS 9.2.1: keys match 13D15 only (not 13D20).
+IPAD53_921_IPSW_URL="http://appldnld.apple.com/ios9.2.1/031-47549-20160119-8C3BBC04-B968-11E5-A462-B84A8FD31F8F/iPad5,3_9.2.1_13D15_Restore.ipsw"
+
+ipad53_require_921_ipsw() {
+    local ipsw_path="$1"
+    local device="${2:-$IDENTIFIER}"
+    local ios_version="${3:-$IOS_VERSION}"
+
+    [[ "$device" == iPad5,3 && "$ios_version" == 9.2.1 ]] || return 0
+    if [[ "$(basename "$ipsw_path")" != *"_13D15_"* ]]; then
+        echo "[!] iPad5,3 iOS 9.2.1 requires stock IPSW build 13D15."
+        echo "[!] Got: $(basename "$ipsw_path")"
+        echo "[!] Use auto/- or iPad5,3_9.2.1_13D15_Restore.ipsw"
+        exit 1
+    fi
+}
+
 ipsw_me_url() {
     local device="$1"
     local ios_version="$2"
     local jqbin url buildid
+
+    if [[ $device == iPad5,3 && $ios_version == 9.2.1 ]]; then
+        echo "[*] iPad5,3 iOS 9.2.1: stock IPSW 13D15" >&2
+        printf '%s' "$IPAD53_921_IPSW_URL"
+        return 0
+    fi
+
     jqbin=$(ipsw_ensure_jq)
     read -r url buildid < <(
         curl -fsSL "https://api.ipsw.me/v4/device/${device}?type=ipsw" |
@@ -316,10 +340,32 @@ ipsw_me_url() {
 ipsw_find_cached() {
     local device="$1"
     local ios_version="$2"
-    local cache_dir f
+    local cache_dir f basename_f
 
     cache_dir="ipsws/$device"
     [[ -d "$cache_dir" ]] || return 1
+
+    if [[ $device == iPad5,3 && $ios_version == 9.2.1 ]]; then
+        shopt -s nullglob
+        local cached=("$cache_dir"/iPad5,3_9.2.1_13D15_*.ipsw)
+        shopt -u nullglob
+        if [[ ${#cached[@]} -gt 0 && -f "${cached[0]}" ]]; then
+            printf '%s' "${cached[0]}"
+            return 0
+        fi
+        for f in "$cache_dir"/*.ipsw; do
+            [[ -f "$f" ]] || continue
+            basename_f=$(basename "$f")
+            if [[ "$basename_f" == *"_9.2.1_13D15_"* ]]; then
+                printf '%s' "$f"
+                return 0
+            fi
+            if [[ "$basename_f" == *"_9.2.1_"* ]]; then
+                echo "[!] Ignoring cached iPad5,3 9.2.1 IPSW (need 13D15): $f" >&2
+            fi
+        done
+        return 1
+    fi
 
     shopt -s nullglob
     local cached=("$cache_dir"/${device}_"${ios_version}"_*.ipsw)
@@ -395,19 +441,22 @@ resolve_seprmvr64_ipsw() {
     local path="$1"
     local ios_version="$2"
     local device="$3"
+    local resolved
 
     case "$path" in
         auto|"-"|"")
-            ipsw_download_for_device "$device" "$ios_version"
+            resolved=$(ipsw_download_for_device "$device" "$ios_version")
             ;;
         *)
             if [[ ! -f "$path" ]]; then
                 echo "[!] IPSW not found: $path"
                 exit 1
             fi
-            printf '%s' "$path"
+            resolved="$path"
             ;;
     esac
+    ipad53_require_921_ipsw "$resolved" "$device" "$ios_version"
+    printf '%s' "$resolved"
 }
 
 prepare_restore_ramdisk() {
@@ -1356,7 +1405,7 @@ case "$1" in
         echo "[!] 4. You will have deep sleep issues, and POTENTIALLY other issues."
         read -p "Press enter to continue. Or press CTRL + C to cancel."
         if [[ "$TARGET_IPSW" == "auto" || "$TARGET_IPSW" == "-" || "$BASE_IPSW" == "auto" || "$BASE_IPSW" == "-" ]]; then
-            echo "[*] Resolving IPSW files for $IDENTIFIER (ipsw.me)..."
+            echo "[*] Resolving IPSW files for $IDENTIFIER..."
             TARGET_IPSW=$(resolve_seprmvr64_ipsw "$TARGET_IPSW" "$IOS_VERSION" "$IDENTIFIER")
             BASE_IPSW=$(resolve_seprmvr64_ipsw "$BASE_IPSW" "$LATEST_VERSION" "$IDENTIFIER")
             echo "[*] Target IPSW: $TARGET_IPSW"
@@ -1366,6 +1415,7 @@ case "$1" in
                 echo "[!] TARGET_IPSW and BASE_IPSW must be existing files, or use auto/- to download."
                 exit 1
             fi
+            ipad53_require_921_ipsw "$TARGET_IPSW"
         fi
         echo "[*] Making custom IPSW..."
         savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
@@ -1761,6 +1811,7 @@ case "$1" in
                 fi
                 echo "[*] Using IPSW: $IPSW_PATH"
             fi
+            ipad53_require_921_ipsw "$IPSW_PATH"
         else
             echo "first, your device needs to be in pwndfu mode. pwning with gaster"
             echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
