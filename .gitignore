@@ -1,2 +1,80 @@
+# Binaries (shipped separately; only keep notice)
 bin/*
 !bin/notice.txt
+
+# futurerestore binary bundle
+futurerestore/*
+!futurerestore/notice.txt
+
+# macOS / Finder
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# surrealra1n runtime — IPSW extract, work dir, logs
+tmp/
+tmp1/
+tmp2/
+work/
+to_patch/
+restore_*.log
+*.log
+
+# Downloaded IPSW cache and built boot payloads
+ipsws/
+seprmvr64boot/
+noseprestore/
+shsh/
+cache/
+
+# Activation / device-specific data (never commit)
+activation_records/*
+
+# Ramdisk patch artifacts (extracted during restore)
+/asr
+/asr_patch
+/restored_external
+/restored_patch
+/options.n61.plist
+
+# SHSH / IM4M generated at repo root
+*-im4m
+im4m
+
+# Jailbreak resources fetched on demand
+jbresources/
+
+# Local helper scripts (not part of upstream repo)
+activate.sh
+backup.sh
+
+# Nested clones / dev trees (local build deps)
+openra1n/
+sshrd/
+scripts/
+updatefiles/
+.tmp_*/
+asr64_patcher/
+libimg4_patcher/
+restored_external64patcher/
+
+# Archives / large binaries
+*.ipsw
+*.dmg
+*.tar
+*.tar.gz
+*.zip
+!dylib/libs.zip

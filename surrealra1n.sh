@@ -210,6 +210,193 @@ find_dmg() {
     cut -d' ' -f2-
 }
 
+# iPhone 6 / 6 Plus (iPhone7,2 / iPhone7,1) seprmvr64: iOS 8.0-9.2.1
+iphone7_seprmvr64_supported() {
+    case "$1" in
+        8.*|9.0*|9.1*|9.2*) return 0 ;;
+    esac
+    return 1
+}
+
+# Devices supported by --seprmvr64-ipsw (must match version rules below).
+seprmvr64_device_allowed() {
+    case "$1" in
+        iPhone6,2|iPhone7,1|iPhone7,2|iPad5,3|iPod7,1) return 0 ;;
+    esac
+    return 1
+}
+
+seprmvr64_ipsw_supported() {
+    local device="$1"
+    local version="$2"
+    case "$device" in
+        iPhone6,2) [[ $version == 7.* ]] ;;
+        iPhone7,1|iPhone7,2) iphone7_seprmvr64_supported "$version" ;;
+        iPad5,3) [[ $version == 8.* ]] ;;
+        iPod7,1) [[ $version == 8.* || $version == 9.0* || $version == 9.1* || $version == 9.2* ]] ;;
+        *) return 1 ;;
+    esac
+}
+
+seprmvr64_ipsw_version_error() {
+    case "$1" in
+        iPhone6,2) echo "iPhone6,2 only supports iOS 7.x seprmvr64 restores via surrealra1n" ;;
+        iPhone7,1|iPhone7,2) echo "iPhone7,1 and iPhone7,2 only support iOS 8.0-9.2.1 seprmvr64 restores via surrealra1n" ;;
+        iPad5,3) echo "iPad5,3 only supports iOS 8.x seprmvr64 restores via surrealra1n" ;;
+        iPod7,1) echo "iPod7,1 supports iOS 8.x and 9.0-9.2.1 seprmvr64 restores via surrealra1n" ;;
+        *) echo "This iOS version is not supported for seprmvr64-ipsw on $1" ;;
+    esac
+}
+
+# Fetch stock IPSW from ipsw.me (cached under ipsws/<device>/). Picks newest build per version.
+ipsw_ensure_jq() {
+    if [[ -x "./bin/jq" ]]; then
+        echo "./bin/jq"
+        return 0
+    fi
+    local osdir="Darwin"
+    [[ "$(uname)" != "Darwin" ]] && osdir="Linux"
+    if [[ -x "./bin/SSHRD_Script/$osdir/jq" ]]; then
+        cp "./bin/SSHRD_Script/$osdir/jq" ./bin/jq
+        chmod +x ./bin/jq
+        echo "./bin/jq"
+        return 0
+    fi
+    if command -v jq >/dev/null 2>&1; then
+        echo "jq"
+        return 0
+    fi
+    echo "[!] jq is required to download IPSW files. Install jq or clone SSHRD_Script into bin/."
+    exit 1
+}
+
+ipsw_me_url() {
+    local device="$1"
+    local ios_version="$2"
+    local jqbin url buildid
+    jqbin=$(ipsw_ensure_jq)
+    read -r url buildid < <(
+        curl -fsSL "https://api.ipsw.me/v4/device/${device}?type=ipsw" |
+            "$jqbin" -r --arg ver "$ios_version" '
+                [.firmwares[] | select(.version == $ver)]
+                | sort_by(.releasedate)
+                | reverse
+                | .[0]
+                | [.url, .buildid]
+                | @tsv
+            '
+    )
+    if [[ -z "$url" || "$url" == "null" ]]; then
+        echo "[!] Could not find a stock IPSW for $device iOS $ios_version on ipsw.me."
+        exit 1
+    fi
+    echo "[*] ipsw.me: iOS $ios_version build $buildid" >&2
+    printf '%s' "$url"
+}
+
+ipsw_find_cached() {
+    local device="$1"
+    local ios_version="$2"
+    local cache_dir f
+
+    cache_dir="ipsws/$device"
+    [[ -d "$cache_dir" ]] || return 1
+
+    shopt -s nullglob
+    local cached=("$cache_dir"/${device}_"${ios_version}"_*.ipsw)
+    shopt -u nullglob
+    if [[ ${#cached[@]} -gt 0 && -f "${cached[0]}" ]]; then
+        printf '%s' "${cached[0]}"
+        return 0
+    fi
+
+    for f in "$cache_dir"/*.ipsw; do
+        [[ -f "$f" ]] || continue
+        if [[ "$(basename "$f")" == *"_${ios_version}_"* ]]; then
+            printf '%s' "$f"
+            return 0
+        fi
+    done
+    return 1
+}
+
+seprmvr64_post_boot_ipsw_prompt() {
+    local savedir="$1"
+    local ipsw_path="$2"
+    local ios_version="$3"
+
+    [[ -n "$ipsw_path" && -f "$ipsw_path" ]] || return 0
+    [[ "$ipsw_path" == ipsws/* ]] || return 0
+
+    if $zenity --question \
+        --title="surrealra1n" \
+        --width=460 \
+        --text="Boot files for iOS $ios_version are ready:\n$savedir\n\nThe stock IPSW is still cached at:\n$ipsw_path\n\nKeep it for the next restore or boot build, or delete it to free disk space?" \
+        --ok-label="Keep IPSW" \
+        --cancel-label="Delete IPSW" 2>/dev/null; then
+        echo "[*] Keeping cached IPSW."
+    else
+        rm -f "$ipsw_path"
+        echo "[*] Deleted cached IPSW: $ipsw_path"
+    fi
+}
+
+ipsw_download_for_device() {
+    local device="$1"
+    local ios_version="$2"
+    local cache_dir dest url filename cached_path
+
+    if cached_path=$(ipsw_find_cached "$device" "$ios_version"); then
+        echo "[*] Using cached IPSW: $cached_path" >&2
+        printf '%s' "$cached_path"
+        return 0
+    fi
+
+    cache_dir="ipsws/$device"
+    mkdir -p "$cache_dir"
+
+    url=$(ipsw_me_url "$device" "$ios_version")
+    filename=$(basename "$url")
+    dest="$cache_dir/$filename"
+
+    if [[ -f "$dest" ]]; then
+        echo "[*] Using cached IPSW: $dest" >&2
+        printf '%s' "$dest"
+        return 0
+    fi
+
+    echo "[*] Downloading $device iOS $ios_version IPSW..." >&2
+    echo "[*] $url" >&2
+    curl -fL --progress-bar -C - -o "$dest" "$url"
+    echo "[*] Saved to $dest" >&2
+    printf '%s' "$dest"
+}
+
+resolve_seprmvr64_ipsw() {
+    local path="$1"
+    local ios_version="$2"
+    local device="$3"
+
+    case "$path" in
+        auto|"-"|"")
+            ipsw_download_for_device "$device" "$ios_version"
+            ;;
+        *)
+            if [[ ! -f "$path" ]]; then
+                echo "[!] IPSW not found: $path"
+                exit 1
+            fi
+            printf '%s' "$path"
+            ;;
+    esac
+}
+
+prepare_restore_ramdisk() {
+    local grow_size="${1:-30000000}"
+    ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY
+    ./bin/hfsplus "work/ramdisk.raw" grow "$grow_size"
+}
+
 # boot file error handling improvements
 
 require_file() {
@@ -570,6 +757,7 @@ fi
 
 
 # Run ideviceinfo and capture both output and return code
+SERIAL=""
 IDEVICE_INFO=$(ideviceinfo 2>&1) || true
 IDEVICE_STATUS=$?
 
@@ -594,9 +782,13 @@ else
     if [[ -n "$IRECOVERY_INFO" ]]; then
         echo "[*] Device is in Recovery or DFU mode."
 
-        # Extract PRODUCT and ECID
+        # Extract PRODUCT, ECID, and serial (SRNM) when available
         IDENTIFIER=$(echo "$IRECOVERY_INFO" | grep "^PRODUCT:" | cut -d ':' -f2 | xargs)
         ECID=$(echo "$IRECOVERY_INFO" | grep "^ECID:" | cut -d ':' -f2 | xargs)
+        SERIAL=$(echo "$IRECOVERY_INFO" | grep "^SRNM:" | cut -d ':' -f2 | xargs)
+        if [[ "$SERIAL" == "N/A" ]]; then
+            SERIAL=""
+        fi
 
         echo "[+] Device Identifier: $IDENTIFIER"
         echo "[+] ECID: $ECID"
@@ -925,7 +1117,9 @@ Options:
         Create a custom IPSW for tethered restore, with seprmvr64. If you're going to 9.2.1 and lower, you can choose to attempt stitching activation records to pre-activate the seprmvr64 restore.
         - TARGET_IPSW_PATH: Path for the stock IPSW for target version
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
-        - iOS_VERSION: Target iOS version to restore 
+        - iOS_VERSION: Target iOS version to restore
+        - Supported devices: use "auto" (or "-") for TARGET/BASE to download from ipsw.me, or run: --seprmvr64-ipsw [iOS_VERSION]
+        - iPhone6,2 (7.x), iPhone7,1 (8.0-9.2.1), iPhone7,2 (8.0-9.2.1), iPad5,3 (8.x), iPod7,1 (8.x, 9.0-9.2.1)
         - [--stitch-activation]: Attempt to stitch activation records into rootfs to pre-activate a restore (7.0 - 9.2.1 only). Device must be legitimately activated to save activation records, it can't be iCloud/MDM bypassed.
 
   --restore [iOS_VERSION]
@@ -939,8 +1133,9 @@ Options:
         - Requires a custom IPSW already built for the specified iOS version.
         - Put your device into DFU mode before proceeding.
 
-  --seprmvr64-boot [iOS_VERSION] [ipsw file]
+  --seprmvr64-boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version with seprmvr64.
+        - Uses stock IPSW from ipsws/<device>/ if present, otherwise asks you to select the IPSW file.
         - You must be on that iOS version already.
         - Put your device into DFU mode before proceeding.
 
@@ -967,36 +1162,56 @@ fi
 
 case "$1" in
     --seprmvr64-ipsw)
-        if [[ $# -lt 4 || $# -gt 7 ]]; then
+        TARGET_IPSW=""
+        BASE_IPSW=""
+        IOS_VERSION=""
+        if seprmvr64_device_allowed "$IDENTIFIER" && [[ $# -ge 2 && $# -le 7 ]]; then
+            if [[ $# -eq 2 && ! -f "$2" ]]; then
+                IOS_VERSION="$2"
+                TARGET_IPSW="auto"
+                BASE_IPSW="auto"
+            elif [[ $# -ge 4 ]]; then
+                TARGET_IPSW="$2"
+                BASE_IPSW="$3"
+                IOS_VERSION="$4"
+            else
+                echo "[!] Usage: --seprmvr64-ipsw [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+                echo "[!]    or: --seprmvr64-ipsw [TARGET_IPSW|auto] [BASE_IPSW|auto] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+                exit 1
+            fi
+        elif [[ $# -lt 4 || $# -gt 7 ]]; then
             echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
             exit 1
+        else
+            TARGET_IPSW="$2"
+            BASE_IPSW="$3"
+            IOS_VERSION="$4"
         fi
-        TARGET_IPSW="$2"
-        BASE_IPSW="$3"
-        IOS_VERSION="$4"
         FORCE_ACTIVATE="0"
-        if [[ "${5:-}" == "--stitch-activation" || "${6:-}" == "--stitch-activation" ]]; then
-            case "$IOS_VERSION" in
-                7.*|8.*|9.0*|9.1*|9.2*)
-                    FORCE_ACTIVATE=1
-                    ;;
-                9.3*)
-                    FORCE_ACTIVATE=0
-                    ;;
-                *)
-                    echo "[!] Unsupported iOS version for stitch-activation: $IOS_VERSION"
-                    exit 1
-                    ;;
-            esac
-        fi
-        if [[ $IDENTIFIER == iPhone6,2 ]] && [[ $IOS_VERSION != 7.* ]]; then
-            echo "iPhone6,2 does not support 8.0-9.3.5 seprmvr64 restores yet in surrealra1n."
-            exit 1
-        elif [[ $IDENTIFIER == iPhone7,2 || $IDENTIFIER == iPhone7,1 ]] && [[ $IOS_VERSION != 8.4.1 ]]; then
-            echo "iPhone 6 (and 6 Plus) does not support any other than 8.4.1 seprmvr64 restores via surrealra1n"
-            exit 1
-        elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad4* ]]; then
+        for arg in "$@"; do
+            if [[ "$arg" == "--stitch-activation" ]]; then
+                case "$IOS_VERSION" in
+                    7.*|8.*|9.0*|9.1*|9.2*)
+                        FORCE_ACTIVATE=1
+                        ;;
+                    9.3*)
+                        FORCE_ACTIVATE=0
+                        ;;
+                    *)
+                        echo "[!] Unsupported iOS version for stitch-activation: $IOS_VERSION"
+                        exit 1
+                        ;;
+                esac
+            fi
+            if [[ "$arg" == "--jailbreak" ]]; then
+                JAILBREAK=1
+            fi
+        done
+        if ! seprmvr64_device_allowed "$IDENTIFIER"; then
             echo "Device is not supported yet for seprmvr64-ipsw"
+            exit 1
+        elif ! seprmvr64_ipsw_supported "$IDENTIFIER" "$IOS_VERSION"; then
+            seprmvr64_ipsw_version_error "$IDENTIFIER"
             exit 1
         fi
         # A8(X) iOS 8.0-9.x activation error candidates
@@ -1020,9 +1235,6 @@ case "$1" in
             echo "Stitching activation may work on this version, but there is a much higher chance of the device deactivating especially right after the first boot."
             echo "It is recommended to do iOS 8.3 or later instead."
             read -p "Press enter to continue"
-        fi
-        if [[ "${5:-}" == "--jailbreak" || "${6:-}" == "--jailbreak" ]]; then
-            JAILBREAK=1
         fi
         if [[ $JAILBREAK != 1 ]]; then
             echo "Jailbreak option disabled."
@@ -1066,9 +1278,15 @@ case "$1" in
 
             # save serial to cache if empty
             if [[ -z "$CACHED_SERIAL" ]]; then
+                if [[ -z "$SERIAL" ]]; then
+                    read -p "Enter device serial number (Settings > General > About): " SERIAL
+                fi
+                if [[ -z "$SERIAL" ]]; then
+                    echo "[!] Serial number is required for stitch-activation (cache/$ECID_DEC)."
+                    exit 1
+                fi
                 mkdir -p cache
                 echo "$SERIAL" > "$CACHE_FILE"
-                # temporary workaround
                 CACHED_SERIAL="$SERIAL"
             fi
         fi
@@ -1118,6 +1336,18 @@ case "$1" in
         echo "[!] 3. Encrypted Wi-Fi networks will not work. Use an open network instead."
         echo "[!] 4. You will have deep sleep issues, and POTENTIALLY other issues."
         read -p "Press enter to continue. Or press CTRL + C to cancel."
+        if [[ "$TARGET_IPSW" == "auto" || "$TARGET_IPSW" == "-" || "$BASE_IPSW" == "auto" || "$BASE_IPSW" == "-" ]]; then
+            echo "[*] Resolving IPSW files for $IDENTIFIER (ipsw.me)..."
+            TARGET_IPSW=$(resolve_seprmvr64_ipsw "$TARGET_IPSW" "$IOS_VERSION" "$IDENTIFIER")
+            BASE_IPSW=$(resolve_seprmvr64_ipsw "$BASE_IPSW" "$LATEST_VERSION" "$IDENTIFIER")
+            echo "[*] Target IPSW: $TARGET_IPSW"
+            echo "[*] Base IPSW (iOS $LATEST_VERSION): $BASE_IPSW"
+        else
+            if [[ ! -f "$TARGET_IPSW" || ! -f "$BASE_IPSW" ]]; then
+                echo "[!] TARGET_IPSW and BASE_IPSW must be existing files, or use auto/- to download."
+                exit 1
+            fi
+        fi
         echo "[*] Making custom IPSW..."
         savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
         mkdir -p "$savedir"
@@ -1160,8 +1390,7 @@ case "$1" in
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
         if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
-            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
-            ./bin/hfsplus "work/ramdisk.raw" grow 30000000
+            prepare_restore_ramdisk 30000000
             ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
             ./bin/asr64_patcher asr asr_patch 
             ./bin/ldid -e asr > ents.plist
@@ -1228,8 +1457,7 @@ case "$1" in
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
         elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 || $JAILBREAK == 1 ]]; then
             # patch asr...
-            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
-            ./bin/hfsplus "work/ramdisk.raw" grow 30000000
+            prepare_restore_ramdisk 30000000
             ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
             ./bin/asr64_patcher asr asr_patch 
             ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
@@ -1277,8 +1505,7 @@ case "$1" in
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
         elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
-            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
-            ./bin/hfsplus "work/ramdisk.raw" grow 40000000
+            prepare_restore_ramdisk 40000000
             ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
             ./bin/asr64_patcher asr asr_patch 
             ./bin/ldid -e asr > ents.plist
@@ -1294,10 +1521,10 @@ case "$1" in
                 ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
                 ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
-                ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             fi
             ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
             ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
+            ./bin/hfsplus "tmp1/rootfs.raw" grow 3500000000
             if [[ $FORCE_ACTIVATE == 1 ]]; then
                 echo "Preparing activation files..."
                 sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
@@ -1500,9 +1727,21 @@ case "$1" in
             exit 1
         fi
         if [[ ! -d "$savedir" ]] || [[ ! -f "$savedir"/iBSS.img4 || ! -f "$savedir"/iBEC.img4 || ! -f "$savedir"/DeviceTree.img4 || ! -f "$savedir"/Kernelcache.img4 ]]; then
-            echo "[!] New boot files must be created."
-            IPSW_PATH=$($zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file")
-            sleep 2
+            echo "[!] Boot files not found in $savedir — building from stock IPSW..."
+            SEPRMVR64_BUILT_BOOT=1
+            if IPSW_PATH=$(ipsw_find_cached "$IDENTIFIER" "$IOS_VERSION"); then
+                echo "[*] Using cached IPSW: $IPSW_PATH"
+            else
+                echo "[*] No cached IPSW in ipsws/$IDENTIFIER/ for iOS $IOS_VERSION."
+                echo "[*] Please select the stock iOS $IOS_VERSION IPSW file."
+                IPSW_PATH=$($zenity --file-selection --title="Select iOS $IOS_VERSION IPSW for $IDENTIFIER")
+                sleep 1
+                if [[ -z "$IPSW_PATH" ]]; then
+                    echo "[!] No IPSW selected. Aborting."
+                    exit 1
+                fi
+                echo "[*] Using IPSW: $IPSW_PATH"
+            fi
         else
             echo "first, your device needs to be in pwndfu mode. pwning with gaster"
             echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
@@ -1534,8 +1773,8 @@ case "$1" in
             echo "Your device should now boot."
             exit 0
         fi
-        if [[ -z "$IPSW_PATH" ]]; then
-            echo "[!] No IPSW selected. Aborting."
+        if [[ -z "${IPSW_PATH:-}" ]]; then
+            echo "[!] No IPSW available. Aborting."
             exit 1
         fi
         if [[ ! -f "$IPSW_PATH" ]]; then
@@ -1642,6 +1881,9 @@ case "$1" in
         ./bin/irecovery -f $savedir/Kernelcache.img4
         ./bin/irecovery -c bootx
         echo "Your device should now boot."
+        if [[ "${SEPRMVR64_BUILT_BOOT:-}" == "1" ]]; then
+            seprmvr64_post_boot_ipsw_prompt "$savedir" "${IPSW_PATH:-}" "$IOS_VERSION"
+        fi
         exit 0
         ;;
 
