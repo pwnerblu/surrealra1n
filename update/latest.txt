@@ -1,5 +1,5 @@
-v1.4 beta 3
+v1.4 beta 4
 
 RELEASE NOTES:
 
-adds automatic SSHRD again to fix-ios8 but with official SSHRD_Script
+Adds iPad Air 2 9.x downgrade support (Wi-Fi only model) up to 9.2.1 (13D15)
