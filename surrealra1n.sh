@@ -218,10 +218,27 @@ iphone7_seprmvr64_supported() {
     return 1
 }
 
+# iPad Air 2 Wi-Fi (iPad5,3) seprmvr64: iOS 8.1-9.2.1 (no 8.0)
+ipad53_seprmvr64_supported() {
+    case "$1" in
+        8.0*) return 1 ;;
+        8.*|9.0*|9.1*|9.2*) return 0 ;;
+    esac
+    return 1
+}
+
+# iPhone 5s (iPhone6,1) seprmvr64: iOS 7.0-9.3.5
+iphone61_seprmvr64_supported() {
+    case "$1" in
+        7.*|8.*|9.*) return 0 ;;
+    esac
+    return 1
+}
+
 # Devices supported by --seprmvr64-ipsw (must match version rules below).
 seprmvr64_device_allowed() {
     case "$1" in
-        iPhone6,2|iPhone7,1|iPhone7,2|iPad5,3|iPod7,1) return 0 ;;
+        iPhone6,1|iPhone6,2|iPhone7,1|iPhone7,2|iPad5,3|iPod7,1) return 0 ;;
     esac
     return 1
 }
@@ -230,9 +247,10 @@ seprmvr64_ipsw_supported() {
     local device="$1"
     local version="$2"
     case "$device" in
+        iPhone6,1) iphone61_seprmvr64_supported "$version" ;;
         iPhone6,2) [[ $version == 7.* ]] ;;
         iPhone7,1|iPhone7,2) iphone7_seprmvr64_supported "$version" ;;
-        iPad5,3) [[ $version == 8.* ]] ;;
+        iPad5,3) ipad53_seprmvr64_supported "$version" ;;
         iPod7,1) [[ $version == 8.* || $version == 9.0* || $version == 9.1* || $version == 9.2* ]] ;;
         *) return 1 ;;
     esac
@@ -240,9 +258,10 @@ seprmvr64_ipsw_supported() {
 
 seprmvr64_ipsw_version_error() {
     case "$1" in
+        iPhone6,1) echo "iPhone6,1 only supports iOS 7.0-9.3.5 seprmvr64 restores via surrealra1n" ;;
         iPhone6,2) echo "iPhone6,2 only supports iOS 7.x seprmvr64 restores via surrealra1n" ;;
         iPhone7,1|iPhone7,2) echo "iPhone7,1 and iPhone7,2 only support iOS 8.0-9.2.1 seprmvr64 restores via surrealra1n" ;;
-        iPad5,3) echo "iPad5,3 only supports iOS 8.x seprmvr64 restores via surrealra1n" ;;
+        iPad5,3) echo "iPad5,3 only supports iOS 8.1-9.2.1 seprmvr64 restores via surrealra1n" ;;
         iPod7,1) echo "iPod7,1 supports iOS 8.x and 9.0-9.2.1 seprmvr64 restores via surrealra1n" ;;
         *) echo "This iOS version is not supported for seprmvr64-ipsw on $1" ;;
     esac
@@ -1119,7 +1138,7 @@ Options:
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore
         - Supported devices: use "auto" (or "-") for TARGET/BASE to download from ipsw.me, or run: --seprmvr64-ipsw [iOS_VERSION]
-        - iPhone6,2 (7.x), iPhone7,1 (8.0-9.2.1), iPhone7,2 (8.0-9.2.1), iPad5,3 (8.x), iPod7,1 (8.x, 9.0-9.2.1)
+        - iPhone6,1 (7.0-9.3.5), iPhone6,2 (7.x), iPhone7,1 (8.0-9.2.1), iPhone7,2 (8.0-9.2.1), iPad5,3 (8.1-9.2.1), iPod7,1 (8.x, 9.0-9.2.1)
         - [--stitch-activation]: Attempt to stitch activation records into rootfs to pre-activate a restore (7.0 - 9.2.1 only). Device must be legitimately activated to save activation records, it can't be iCloud/MDM bypassed.
 
   --restore [iOS_VERSION]
