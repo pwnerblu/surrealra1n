@@ -1,5 +1,7 @@
-v1.4 beta 4
+v1.4 beta 5
 
 RELEASE NOTES:
 
-Adds iPad Air 2 9.x downgrade support (Wi-Fi only model) up to 9.2.1 (13D15)
+Adds iPhone 6 and 6 Plus 9.x downgrade support up to 9.2.1, and add the rest of 8.x to the list.
+
+Expands iPhone6,2 (5S Global) support from 7.0-7.1.2 to 7.0-9.3.5
