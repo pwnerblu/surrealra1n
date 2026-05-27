@@ -1,0 +1,344 @@
+{
+  "version": "1.0",
+  "productType": "iPhone7,2",
+  "cpid": "0x7000",
+  "bdid": "0x06",
+  "firmwares": [
+    {
+      "ios": "8.0",
+      "buildNumber": "12A365",
+      "urls": [
+        "http://appldnld.apple.com/iOS8/031-05647.20140917.b0n9s/iPhone7,2_8.0_12A365_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "54ea24be79829818a3a3c0997602b39a093309d29c9b0ce593c976987d70c1a4035ee645a14d36f7a5f42e0b2cedfe51",
+        "ibec": "3dec4f4ece26d07065af327bec0304f32007415a380ac0bf87d86af4ae8d928fae664c96d981bac195a7bc7a76c9af68",
+        "dtre": "7f113e63f2871ef58081cbbeaffc98d9d3c6f3861442541acca0a91e4c29ad99a8cdb94e0d017cca64a20dceeea7f894",
+        "krnl": "0ccacae4643c6f74382100dd9718aafae286cb129130a5ba02b4c76309137359b3e1781c23fae31a932b0ca016975344",
+        "rdsk": "ca79296858d6010a32646e8f851d7edd2310ed7e9bf0d7107cbf8e4dbe555bd4e951d965ebd9b3bb4d202a78f6c69097",
+        "fstm": "9319fe5171b21f038a1797d93f39954b40ad3681974e2144e46edb02d7c63cf4be1d0da4"
+      },
+      "buildTrain": "Okemo"
+    },
+    {
+      "ios": "8.0.1",
+      "buildNumber": "12A402",
+      "urls": [
+        "http://appldnld.apple.com/iOS8/031-07540.20140924.b41vK/iPhone7,2_8.0.1_12A402_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "c3be4894cd9b81f3bcd46edcc9c805067b9d5779a93dccf576936ea358fe69fadf9e026a6bc3da678fa9830b398bbb84",
+        "ibec": "61c710058fe004464287c39d65e8c3267b3f1ece86387c38973a60036ef8c61e3869ee0fc0692dcaf6aae9abd15d0c24",
+        "dtre": "3742fa34cc94097249269c4f84da85c02daa9d7aea0eef2e8031586ad61f42bc1ef8a1a4a64995b18beab86b294382cc",
+        "krnl": "84ce5144cdd9f981bbc4dbc079b989df726e561c83333b584381613d32a51aa19dc2b672c2e56938fa81bf92da476f7d",
+        "rdsk": "0d3474b2b0f925bfe4bde1aad0e021a8c3bc601165363d09ec36bb41dd407d5ba0b12814ac156e9b0c294e72514e1676",
+        "fstm": "3ea4b4a4c7909c9f1b07e7327169b1454f7b62a55e182de18f0de62873e57e62cf0e0f07"
+      },
+      "buildTrain": "Okemo"
+    },
+    {
+      "ios": "8.0.2",
+      "buildNumber": "12A405",
+      "urls": [
+        "http://appldnld.apple.com/iOS8/031-08344.20140925.j7t16/iPhone7,2_8.0.2_12A405_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "c3be4894cd9b81f3bcd46edcc9c805067b9d5779a93dccf576936ea358fe69fadf9e026a6bc3da678fa9830b398bbb84",
+        "ibec": "61c710058fe004464287c39d65e8c3267b3f1ece86387c38973a60036ef8c61e3869ee0fc0692dcaf6aae9abd15d0c24",
+        "dtre": "3742fa34cc94097249269c4f84da85c02daa9d7aea0eef2e8031586ad61f42bc1ef8a1a4a64995b18beab86b294382cc",
+        "krnl": "e39735870788322e46fbc048d111b6087d6ecc9e253a02c2645a8b3cfe715037e82b322ccd651e1b3b152c75ce681d6e",
+        "rdsk": "e20ddcbe5e1a0a7c077121a8d3e12a0dce54cdbca1ee9fd986024c7f20e8bfa244bf60505549017dd3780baf79e3dd80",
+        "fstm": "0d62e52ff99ea6c667722cdc8cf0749954f377dd2be1798e5afc0400f0127224961d7e30"
+      },
+      "buildTrain": "Okemo"
+    },
+    {
+      "ios": "8.1",
+      "buildNumber": "12B410",
+      "urls": [
+        "http://appldnld.apple.com/iOS8.1/031-08974.20141020.gidos/iphone7,2_8.1_12b410_restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "e333886392747745a0f29e01d8a509907decfc2813677dcb00d0b6ba89008fbbbe6f3028abfca2a5d0d01791bdd158c2",
+        "ibec": "2f71e974304d9fcf08988097d4aa0e401fd0f935155023d17c958c9e89f455bd9b307126d2a2312210dd3a6c23d2647f",
+        "dtre": "8b1e52e7a30e85d706a62b66bd7cbaeb1264a7d6639656b0956694e001c648f647e773bcbc2917cbfa6543db2eae1ac2",
+        "krnl": "02b0c547954fb12825de2b3ff3d05259f1efc6e523de464ba3cee1d6688c820217b234c314024698c36b69dd7dabf318",
+        "rdsk": "a32165326ce39078857c46b3f5eb0e2c02912dea84459b85b282ee97ef16417533ad8aa3db3fc5f9940a0f37cb4ad0e4",
+        "fstm": "84e374f0eab0acd7c2556da4cec604962ed329a3867459f88f5be7111d37a9fa42c022d3"
+      },
+      "buildTrain": "OkemoTaos"
+    },
+    {
+      "ios": "8.1",
+      "buildNumber": "12B411",
+      "urls": [
+        "http://appldnld.apple.com/iOS8.1/031-09552.20141020.HUR2S/iPhone7,2_8.1_12B411_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "e333886392747745a0f29e01d8a509907decfc2813677dcb00d0b6ba89008fbbbe6f3028abfca2a5d0d01791bdd158c2",
+        "ibec": "2f71e974304d9fcf08988097d4aa0e401fd0f935155023d17c958c9e89f455bd9b307126d2a2312210dd3a6c23d2647f",
+        "dtre": "8b1e52e7a30e85d706a62b66bd7cbaeb1264a7d6639656b0956694e001c648f647e773bcbc2917cbfa6543db2eae1ac2",
+        "krnl": "26aef9926eb10d67e54d01dac3996ca64642fc62fab8e0467a9ece2d9ee7379a764b9d6151050fed75f12a8501086008",
+        "rdsk": "1c2e0a32dd439505816e6c18feccb89494b48d577d7d4938d821bb1199eac9cdcc7dc83a80a5b454f8eb09bd66b1e549",
+        "fstm": "3b0809e53c9fead3092fa320a02ae9dbc602d8b940e2d303044265d979b2425c942f22c7"
+      },
+      "buildTrain": "OkemoTaos"
+    },
+    {
+      "ios": "8.1.1",
+      "buildNumber": "12B435",
+      "urls": [
+        "https://secure-appldnld.apple.com/iOS8.1.1/031-10048.20141117.wyy4r/iphone7,2_8.1.1_12b435_restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "dcc33d0fc4001f9d788048812c4f6117d74aaa3d50b3bb0d6b2782aba4be1b093fbc47700a10137a2d033c3c4ad5bf3c",
+        "ibec": "517264837ce8da76c556a51ac26bfd23af62142fd778f0a4fa234ac8338e4a3ecaaeee972785f2bfadce2ed24fe31099",
+        "dtre": "6266191b3d9589480bdfeee176d73bfb24f7bc8d72f58a5972c277afb4c516cffd5fc2d27b5b2fd1d93e0bbab9acee05",
+        "krnl": "dc8921c3b36e22c4b05e154383b6c90e1265c4f3154ddc7918eed6b432d35c8cffe52bf6e5a5a5c96a22468c293a1f12",
+        "rdsk": "2482fe34708b70a2793d40d83693791d4726d0eb6c0b32c83dd2025473adde933a333d8ed005f2c9dedb06dfbdaf6b95",
+        "fstm": "c0eb23f2685ae1d2d15d3db740d307edb6e7a45defdec5a78e91a3cf34e64606a3559247"
+      },
+      "buildTrain": "SUOkemoTaos"
+    },
+    {
+      "ios": "8.1.1",
+      "buildNumber": "12B436",
+      "urls": [
+        "https://secure-appldnld.apple.com/iOS8.1.1/031-12358.20141117.Jtg5t/iPhone7,2_8.1.1_12B436_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "dcc33d0fc4001f9d788048812c4f6117d74aaa3d50b3bb0d6b2782aba4be1b093fbc47700a10137a2d033c3c4ad5bf3c",
+        "ibec": "517264837ce8da76c556a51ac26bfd23af62142fd778f0a4fa234ac8338e4a3ecaaeee972785f2bfadce2ed24fe31099",
+        "dtre": "6266191b3d9589480bdfeee176d73bfb24f7bc8d72f58a5972c277afb4c516cffd5fc2d27b5b2fd1d93e0bbab9acee05",
+        "krnl": "c35a7c5e286387ba5e3a3f98ee4c31138a40009d734cb6d58ff50c99df92e14d0e8a01eecbc46c39836cbeedafc940c1",
+        "rdsk": "29528d60035884ed8d7053e7bc21cca99aedafb2df13c7e96f4174e1aaad8fcb82758689f24584297a8638712c81a319",
+        "fstm": "de0e84d991b5985d9add048bb6f7632958bd84c0dea2fdfa2daab45527e86c9ae94499cb"
+      },
+      "buildTrain": "SUOkemoTaos"
+    },
+    {
+      "ios": "8.1.2",
+      "buildNumber": "12B440",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios8.1.2/031-13199.20141208.MfFHn/iPhone7,2_8.1.2_12B440_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "dcc33d0fc4001f9d788048812c4f6117d74aaa3d50b3bb0d6b2782aba4be1b093fbc47700a10137a2d033c3c4ad5bf3c",
+        "ibec": "517264837ce8da76c556a51ac26bfd23af62142fd778f0a4fa234ac8338e4a3ecaaeee972785f2bfadce2ed24fe31099",
+        "dtre": "6266191b3d9589480bdfeee176d73bfb24f7bc8d72f58a5972c277afb4c516cffd5fc2d27b5b2fd1d93e0bbab9acee05",
+        "krnl": "e82ec9cb43b0cb1b1b4bf97634dea17a56c426e9d8a6511987f9960740171c8877de8593315e007021f19f630da8aa0b",
+        "rdsk": "6542d47964157fc69c4f8a97276600ecff0b2641d4bfe6264ca375cf3714f53c3514f24dc79b34fbdb46b49f3d33b220",
+        "fstm": "19068675b2bf9e0e160d00735f41fae0f861e0c5b2a9e4ad055eb284df024627aa9667d6"
+      },
+      "buildTrain": "SUOkemoTaos"
+    },
+    {
+      "ios": "8.1.3",
+      "buildNumber": "12B466",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios8.1.3/031-15471-20150119-8A82DD34-A005-11E4-966F-3D565BAA4ECA/iPhone7,2_8.1.3_12B466_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "05372287009cb0f83e0d5e459ffd5a458341df4773cc2fa622f8c235ff96ac2cad2b3dca4ed0bc5502ba2a58aa056f40",
+        "ibec": "0ca1224946604b0f478286597856f2cd037dac8f533ab508c19fa15e1bd1ca489823a414534b8d94be6284d2dfce1a6a",
+        "dtre": "a046a6ea7b411e16d8865c74a57fa5e8c7f0f7157cffa08e56e6fc2444cc294acf63df11a1f44f7a4efc1992668ba5d0",
+        "krnl": "5fdad6deacbe1abb9debfc7c1d3ddd82b0e31f7fe169410479dfd510582fcbc7e2c0ef0714190355c49c1b6c450ca1a3",
+        "rdsk": "a3119c8f3a89c7854e368ded8b50adef9ff4c32770c485674e17d2bcdd6b9c340551cb929269d3fb7f7a43ccda385bc8",
+        "fstm": "3bccbe26953d8b26ada86831f7a6825024de35ea4c8c5833d85ec1231b4061a73e41526b"
+      },
+      "buildTrain": "SUOkemoTaosTwo"
+    },
+    {
+      "ios": "8.2",
+      "buildNumber": "12D508",
+      "urls": [
+        "http://appldnld.apple.com/ios8.2/031-06600-20150309-BD5EBB9E-C1FF-11E4-88B0-88823780E501/iPhone7,2_8.2_12D508_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "3e99d0b58723288fe140db6082e2349a99686d4fbd4310ae59de40fa9e9c81126f58a57707a28d13ac13a8ea731e68a9",
+        "ibec": "851d32c255aaabac1804ab8df8c39c894d496b525c4a4258462be87141083ccee3b0dea074291f983d61fc38ccc53121",
+        "dtre": "1c028bde4b48c69c772bcbf716d483e7bae774aecc10096b49382200bfac226af1f9c07d7e240b4e6ad3fdf1e6efd28c",
+        "krnl": "bae6fac5f39048c28bd629487afd650e6c02716d75340e89206dcff1868fe3412d77fbfdcfb7ba0b4925a1bb9d96b2c5",
+        "rdsk": "1419a2aac2004f6780e9e1b978f87818cba5ac1cdd55df2ce6774c600232e8bd016bf1bba7dfd1b8a1e27afa37049988",
+        "fstm": "b794dd4039f920b473809802301f137f86e18630cd95871d8bf644af17ca5df232296897"
+      },
+      "buildTrain": "OkemoZurs"
+    },
+    {
+      "ios": "8.3",
+      "buildNumber": "12F69",
+      "urls": [
+        "http://appldnld.apple.com/ios8.3/031-14789-20150408-4297D9E4-D8B7-11E4-98BF-C81A90F2D2C2/iPhone7,2_8.3_12F69_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "17143db8bb520d906cba62d65e0aeda31d6dfa75f644f2d25a23a3c0564d209bcd579d59b7b90f1aa88f90950132048c",
+        "ibec": "832c6b64e1ca4c3f8c10547b648337cf3ef53904cb9fe5bcafe11894abcb3f61ca8821700491527806ce690a181474ee",
+        "dtre": "10e3f6392eafc9eb65be33679a409ba184c8233487a2d23393b746d1dac5571a019e128e9723260316e12001fb8539d3",
+        "krnl": "f3cbb1bdbc5dfee00f80f968aeec5651f3556ed693be3135b9f4dcb1e352cebdeab645f1c9fbd17566090183a73ac7cf",
+        "rdsk": "c716c920bac4bb4bbe9d7e2a238c635379a278a0274ff1189011cb9a656fd2c04297547493b67c9192c1d32b52ed25fb",
+        "fstm": "a22dd4404c6bbef1599869dc083956a688df3c91b08da98073b67ec11ce2693c2435d261"
+      },
+      "buildTrain": "Stowe"
+    },
+    {
+      "ios": "8.3",
+      "buildNumber": "12F70",
+      "urls": [
+        "http://appldnld.apple.com/ios8.3/058-14372-20150408-6F9D0D48-DAEB-11E4-B32A-926C90F2D2C2/iPhone7,2_8.3_12F70_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "17143db8bb520d906cba62d65e0aeda31d6dfa75f644f2d25a23a3c0564d209bcd579d59b7b90f1aa88f90950132048c",
+        "ibec": "832c6b64e1ca4c3f8c10547b648337cf3ef53904cb9fe5bcafe11894abcb3f61ca8821700491527806ce690a181474ee",
+        "dtre": "10e3f6392eafc9eb65be33679a409ba184c8233487a2d23393b746d1dac5571a019e128e9723260316e12001fb8539d3",
+        "krnl": "adecca1ae9d6eaceb871ee71e803ecde1961af0d0fe88ece5267ae0489b9a477ff752383dff5a379cbab9bbaf043b7a5",
+        "rdsk": "dfefa4c064458f7ffdaaa2c2990013d95afa0049a72db024799d667ef927f0d620622c9797f150d9374826ab9c95e3f8",
+        "fstm": "e61cceb9e9b1cc20db62e2775e41e93933269ad65a74bfa0e19f5720fbc0162399c6b28c"
+      },
+      "buildTrain": "Stowe"
+    },
+    {
+      "ios": "8.4",
+      "buildNumber": "12H143",
+      "urls": [
+        "http://appldnld.apple.com/ios8.4/ipsw/031-25977-20150630-4DAB0942-1B91-11E5-B438-2865BE268FF7/iPhone7,2_8.4_12H143_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "22caa29edca9edc18dff577764b2f9848a01948cb23b80e35742ed25d7871ee18b5df1aca7966e94d7e14f00d24bfbe0",
+        "ibec": "bc3de5965324dadd984753a08d2af1e783277eb3bf72a9071d88f70f78a0c70df69cb1072756504ae327b90137273fbb",
+        "dtre": "af5ed0af1e959f433fd8a96b3a31267b6a42a76077359a1854c4caf5ef35846c6cff92b6621edf75c995d4a400fbb77d",
+        "krnl": "8385c1e1601bf512a5080f1da78f8c656529d5f0478019a7076e3b129b030f33f7d3b9b864d665b23d145cf26204fb2f",
+        "rdsk": "3af18f48b7f1e6d4dcb74e261e0bba27498514640433de001d6cd006792c695656858dc52eea98776695fb75fc71e3db",
+        "fstm": "bb8ce36a952f27eb5e7e741ac2e19b4361269feee9905b3552c8f277a29dbdbbde677988"
+      },
+      "buildTrain": "Copper"
+    },
+    {
+      "ios": "8.4.1",
+      "buildNumber": "12H321",
+      "urls": [
+        "http://appldnld.apple.com/ios8.4.1/031-31156-20150812-751889C2-3C8F-11E5-9F80-AB1A3A53DB92/iPhone7,2_8.4.1_12H321_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "9c0a41897ee6ac44ef718e1210ca3d0565bf43d3f670ceb9411b30662f7f364e04717690d8a6a5d42b580751c525a05b",
+        "ibec": "a4943b333f9f5c6f990cddeb16c45c901c694ae800b1193c92da8ad12348595367a5435b32346cbbaf6e43de12a78266",
+        "dtre": "06c7b085825176dda42e3a1493b16797e56f0268d1cc1bf66bc9a24e468d3c022606be2ee888905f099e62a27c21eb02",
+        "krnl": "4a77ed3557b9c853de34b0837d5632eba23a1ed3d73f96904ea1c43e91f1bc257875ba5edbccb12d16fcbdc742d73101",
+        "rdsk": "25635b29a29006f30cedc6b81db472c1d9722a0db4206a51540137f792175ea755bbe49dfbcfe0d65256437797e9565c",
+        "fstm": "0413c39f23c6cdec5a013ffed4add28d3d410a0f6506ba51cb3b3f4971811b075939bdc8"
+      },
+      "buildTrain": "Donner"
+    },
+    {
+      "ios": "9.0",
+      "buildNumber": "13A344",
+      "urls": [
+        "http://appldnld.apple.com/ios9/031-29698-20150916-ECC56014-5678-11E5-9EA3-66F96CA99CB1/iPhone7,2_9.0_13A344_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "e6264c6b7035bfcd0d2885d3e8cac84d27f4c8cc21ff3be3eee3dfcfd2fa7faf5ae4ced26a8c844d8db28680b3b2acab",
+        "ibec": "50d282fdf80a18254451930e4ae0b9bd859d62d8f739e12b1ebe9159cce55382b4f22a32396c6c09f630b67d8a64e55f",
+        "dtre": "5838f9160b6bb26271f244340d5312db2d2ac8169fcca56bc1008867e9ffa67ef72d73086bd126af229d5fc943e8e696",
+        "krnl": "9bb0552d5b32a0d4dad4f4bcc0f644e47d1ac3264ae9f1c8a403f9f5b7156e4187c834cecfc4a62f3894b8edc3b61830",
+        "rdsk": "b4898a824c7ea3bed069247fa47e8affdf2684097b865fd82f317cfd8bccd2a977f39b2ee565dd486f2c9f0f4bf742c5",
+        "fstm": "a2ed3059069286309cf37d2f59411e2d989ac1cf171f47fe1547339f4f7194176d14e515"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.0.1",
+      "buildNumber": "13A404",
+      "urls": [
+        "http://appldnld.apple.com/ios9.0.1/031-35328-20150923-A8FAAC6A-5EFF-11E5-93D3-E45E51D92A8C/iPhone7,2_9.0.1_13A404_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "48c8660f5dcf7873fb95e6bee6a39ef34eb9b92cb49350ea1ea5d644eb96e292409c21ef0328da7054e40f64929620b6",
+        "ibec": "5ef5a7cf9da634c3a51a5df629330aba3404cfc82e239f9e14b6dc14e80a3056f55f2827fd05c33d66708185b32fa4f9",
+        "dtre": "d6ec4100e31f03eb7fbc3f3d771c8afb232a4eaf10b927f3bebf0989cebf5f99d8f8de4c449551e675c390608d9e7a0e",
+        "krnl": "e463647202e01b8d8285856356b87334cb48f48bffd64be3a3e8a49206ce428c25439527c843b7b64cdd2e6237512817",
+        "rdsk": "51457dd88526c82ba1fe368899853cdf1866629a29f35e0eb3f8f7e3cc8d239db4cde7732fc153410438167f651269a7",
+        "fstm": "ea7f2c9913b0f43c71757cc5a92b84c6377d9d96a82c5682ad62e70bfeb033768ba3749e"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.0.2",
+      "buildNumber": "13A452",
+      "urls": [
+        "http://appldnld.apple.com/ios9.0.2/031-37613-20150930-6145D2C6-64A1-11E5-B70C-14E351D92A8C/iPhone7,2_9.0.2_13A452_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "3255c0e67c3e1db6af4202dd99674a81b4c11e8e9f7e1cf9f1d2f4f24939c87efc918ac0ac37c404faa289aabe30912d",
+        "ibec": "c1fbd1012b7be08dc37ec88fc942f9ae2e2da51e1edb19d8368a3dd929da63039a7f6355bde82303b7d0770b805f3ee1",
+        "dtre": "20248ed3048ee3c419385a274e60bbf9330491fd05cf893c8914c67b32734e45cdaf86d77e1d98b00d8f93780ef3b2ea",
+        "krnl": "14b5d944c3dfd1cc1168ad956bc0c95269aaa707209cccadcaf576ec08f89dea23a220b31f74d50b48e44ac7be122822",
+        "rdsk": "c487b9f5d8dc058fd95f3a2924a118a0e310fd5317f97d5c6760ac7c4782bccd821dd03a55bd8f2b08f70313cdc25aa6",
+        "fstm": "841cfb41670d93ed376ecb8fcba4b61cbd51f5f5313652b9271448a9e968598864776ff1"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.1",
+      "buildNumber": "13B143",
+      "urls": [
+        "http://appldnld.apple.com/ios9.1/031-41110-20151021-BA1A8482-73FB-11E5-BDCC-A37243DA716B/iPhone7,2_9.1_13B143_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "efb18f10f1fa6ac433e056829a896f9d8df56cff6414ce0c5aa5a35fcc7c5d071cb16a06f39f30408e94d19ff3ac7698",
+        "ibec": "0ee0cf0b98e1427e1daa6f6e14026c1cc393afc5c72f8f30991f0566fb2a09d346073305cd74420b7782aef9dd4e46b0",
+        "dtre": "10ecb538cc71e0c6b5b37076a353950fd66b7006d0a7ed53cb638b44d328705891079332cb41602e0e82454194cff4cf",
+        "krnl": "947eca34b541fa3249fddda1fc1fe911341ece598474003809c4f25e2b061c570714154b88f7a38545b042f70c211c72",
+        "rdsk": "b906cfab7072c0113acc00cb6b8ca6c8a6fa3a0ea86f8babf04ec110aaaf20c1f0e9175b727bb9aca0ccb23ac4ec42ba",
+        "fstm": "6570f7f92bdc9260cdfad89a8e4e329e03f7185788957bdd61161fe3697dfe7e9ad6812f"
+      },
+      "buildTrain": "Boulder"
+    },
+    {
+      "ios": "9.2",
+      "buildNumber": "13C75",
+      "urls": [
+        "http://appldnld.apple.com/ios9.2/031-29182-20151203-45E8908C-8D8B-11E5-9D00-62638B8BECEB/iPhone7,2_9.2_13C75_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "6b90ca218f9d89fe11cfb615ff5b358683aaff5733c781149f5c32c0670d0b1eae1099cc805e0584f61c3b081208d636",
+        "ibec": "431234705f5cc88530a5b2f413c98cc1226d2ff5e7a2b0f5fda7c9d677ee7f83f24c91ee25f9b1603d2bc2ab0442e0e3",
+        "dtre": "66348db9b12875943da0cf6eb05ae3609f0c6df1132bb9ed7a6b2ffa78e0e3095ecc6e0316be8b505bf2084ba9c059b7",
+        "krnl": "858e9ec3a91c3ecc1210b6b38d2535a1c4842da987706dedbd1ff18d883f2a1211a2791e493852e159c36510534ce4be",
+        "rdsk": "ad64effed84bf0040ef2bf959c2705d8d3c532c9f0338c4c38d2d9287b4bab7e7d2f1da29a0fb07acf1ebf47cffa7379",
+        "fstm": "77ae18186f3d53f43877b21ea964b5cee54d0d875d256b58d4cf326f30269e59d5e22e77"
+      },
+      "buildTrain": "Castlerock"
+    },
+    {
+      "ios": "9.2.1",
+      "buildNumber": "13D15",
+      "urls": [
+        "http://appldnld.apple.com/ios9.2.1/031-47671-20160119-769A9036-B969-11E5-B51F-D14C8FD31F8F/iPhone7,2_9.2.1_13D15_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "791c215d4d4d4649707e2a7fbac9e0471266e236f45ed994dbcd3237b075ce83c9ab001fe06da987da7ce20f8678d38f",
+        "ibec": "b043e0920d7e795925843419ec433b76ccabfbbd28a22e62d1a818d9b2f62f2aa494b31b27b5c6869a255848790350f5",
+        "dtre": "29c57d277f3a4c987983dc21bc2d663635b49591056c641f901228534e375fe09f7576be16652155ed0c0af31ade794d",
+        "krnl": "08047721c55800f7d924807b293957ca52396d2fab5d65ad93b098cdf09f3dedcbde62b9a1668ab30cc6bfa2d5290d51",
+        "rdsk": "b81fc71cb8df0817799e8a56b666ff65857005d2368684131e7fb291bc55c4a6d2368dac06447e7600a2456f93d2d085",
+        "fstm": "d17c434ea4b8b3541c7c05753f0a449ce7c412d222687a949ab069ce9547c7a899703067"
+      },
+      "buildTrain": "Dillon"
+    },
+    {
+      "ios": "9.2.1",
+      "buildNumber": "13D20",
+      "urls": [
+        "http://appldnld.apple.com/ios9.2.1/031-49382-20160217-4BB652A2-D44D-11E5-89B0-0552919DCAD8/iPhone7,2_9.2.1_13D20_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "2264e88dd228334c7f202158f116015dcd8c5d40eeb54c0915f7ec7f866fa84f113b468f6ee975ec11d7506ff22a3972",
+        "ibec": "5aa14c184d6920c76eadb882a1e555684d240e1c07bd596ff6260f1a610932efa3813d6804d1f21c86f05f0e4369d3bf",
+        "dtre": "e59b12d5562a9cdeb3f05ce48a755d9d4464fd4616c0017178dd7c02621069d1e045b00659c020b51f20baf5647cdb21",
+        "krnl": "cdc753638d7d1589144ec7c539adbf31396d03a85caab1ce9768de223c14af0b86dcb25769be4be3a1e8831ec488ebf7",
+        "rdsk": "b330100586e4b7f93817db7b2defdd005e17874ff7ed09c82c719c549dfa0f6a8630ab179815d60834c019641f7e6849",
+        "fstm": "40648c35c96f28273626c5a919995ba8afbc966d1e0ee098e07d5816b0299e1034d5cad0"
+      },
+      "buildTrain": "Dillon"
+    }
+  ]
+}

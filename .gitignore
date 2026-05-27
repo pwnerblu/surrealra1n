@@ -60,6 +60,8 @@ jbresources/
 # Local helper scripts (not part of upstream repo)
 activate.sh
 backup.sh
+keys/.internal/
+keys/__pycache__/
 
 # Nested clones / dev trees (local build deps)
 openra1n/

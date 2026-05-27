@@ -18,11 +18,13 @@ Example: `./surrealra1n.sh --make-custom-ipsw [target ipsw] [latest ipsw] 11.4`
 
 Make a custom IPSW for tethered restore with seprmvr64 (7.0-9.3.5):
 
-Example: `./surrealra1n.sh --seprmvr64-ipsw [target ipsw] [latest ipsw] 8.4.1`
+Example: `./surrealra1n.sh --seprmvr64-ipsw 8.4.1`
+
+Stock IPSWs for seprmvr64 are downloaded or taken from `ipsws/<device>/` when already cached. If one iOS version has more than one stock build, surrealra1n asks which build to use.
 
 Make a custom IPSW for tethered restore with seprmvr64, and attempt activation record stitching (7.0-9.2.1), note that this IPSW type is device-specific:
 
-Example: `./surrealra1n.sh --seprmvr64-ipsw [target ipsw] [latest ipsw] 9.2.1 --stitch-activation`
+Example: `./surrealra1n.sh --seprmvr64-ipsw 9.2.1 --stitch-activation`
 
 Restore the device with an existing custom IPSW:
 

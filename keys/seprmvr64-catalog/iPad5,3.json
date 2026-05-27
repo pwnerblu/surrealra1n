@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "productType": "iPad5,3",
+  "cpid": "0x7001",
+  "bdid": "0x08",
+  "firmwares": [
+    {
+      "ios": "8.1",
+      "buildNumber": "12B410",
+      "urls": [
+        "http://appldnld.apple.com/iOS8.1/031-09027.20141020.TLRqV/iPad5,3_8.1_12B410_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "1cf5fa4321a17b76e8cde538e9d1df419a18ed657ac02dd7d6ac58b4a58c46c6f35bf624faea992858b979f1a0375283",
+        "ibec": "2b3391cce1c758a573cc0b193918d38522c7b5e40a3e316e23921ac9d63661f8df0fbb2882727a2e475094227dc2c1db",
+        "dtre": "9de8d1257a36ee45de29d8dd2b7482e11356bd51bfb62384b889def9122fa9e21ff9305fd6b679278378db1d9b1a267e",
+        "krnl": "284c30be60dac86f960b16b4493bd413dad24d4e35b923b659ed637121ef8b9b9b48c7625a7f9781377f76c83a2970d3",
+        "rdsk": "1da844b63a3d3af29d5f4b63422cd6fcb64a228bc4130b8f6ff2fdb74aaf9c2752f14a319cd8881e60169fc183f6b539",
+        "fstm": "8d1e40645fefc801779314017cef0e65be73dc20d8271eee2854cf98eaf7cff1dfb84284"
+      },
+      "buildTrain": "OkemoTaos"
+    },
+    {
+      "ios": "8.1.1",
+      "buildNumber": "12B436",
+      "urls": [
+        "http://appldnld.apple.com/iOS8.1.1/031-12503.20141117.842BD/iPad5,3_8.1.1_12B436_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "f51999cbf406f18aef7f7a5f740b2a62eb971a2d41b06466f8cce1e41b0f790f49636c261c5a1a6634b8908745de2976",
+        "ibec": "95dc34bc4a95e780191a382ab837364c50f591eb2888388a3280c58a1d1a3e463ae94feffcc4a79718f4815d64cc26ec",
+        "dtre": "f1749c18094046c1c59e5b8180787c1222f8a539c8305437ec74ff66c124630fcad4bf2223eaf3bf9f1d9fdaf2a0be3a",
+        "krnl": "ff54b928500177699ec5d1f6afe08ee019697206a07603444044290d52207370ebb05c1ecde07a9c54a8e88288f06dd7",
+        "rdsk": "d51a5c77210ef71a36c51f232c66dbed796498cecaf0e47ade87ab5c3e6cec6f92a3941189c4343dbb35f6d49b721360",
+        "fstm": "dc25f4d31127965ffc37114c47014c4bcfb7fe184ff68b934c043537fbc3e8e960b9a42c"
+      },
+      "buildTrain": "SUOkemoTaos"
+    },
+    {
+      "ios": "8.1.2",
+      "buildNumber": "12B440",
+      "urls": [
+        "http://appldnld.apple.com/ios8.1.2/031-13188.20141208.34blY/iPad5,3_8.1.2_12B440_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "f51999cbf406f18aef7f7a5f740b2a62eb971a2d41b06466f8cce1e41b0f790f49636c261c5a1a6634b8908745de2976",
+        "ibec": "95dc34bc4a95e780191a382ab837364c50f591eb2888388a3280c58a1d1a3e463ae94feffcc4a79718f4815d64cc26ec",
+        "dtre": "f1749c18094046c1c59e5b8180787c1222f8a539c8305437ec74ff66c124630fcad4bf2223eaf3bf9f1d9fdaf2a0be3a",
+        "krnl": "8056dd73ba7dff5f9369615de92a794e9ddc819a01545edb83a4b9788b7a5ea9708bbab57371019542f099c740984f4f",
+        "rdsk": "e0f7e4b4bfa5779f6d9b935149e4cb887883ccd4f17d1abc774ada9e75f49b380ff2a29393e3950280497ef3b9a51705",
+        "fstm": "40973d79329e677326a766eb20ec55727c1627e174aebe7450fa67dd5df85357b5850675"
+      },
+      "buildTrain": "SUOkemoTaos"
+    },
+    {
+      "ios": "8.1.3",
+      "buildNumber": "12B466",
+      "urls": [
+        "http://appldnld.apple.com/ios8.1.3/031-15519-20150119-24D36F28-A008-11E4-8D90-BD585BAA4ECA/iPad5,3_8.1.3_12B466_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "67fb418cbfb9c4a1817d2ee13de0fef42ecb45dec6310780b0c0068c76fd4517ede17fd2f0755886a85fe1c042004839",
+        "ibec": "c90dc94484b3c736215ee31f2a40df90d0e672c2277c3fb51600b8657648495638d620b00e9511b5466cdeb5add9e55b",
+        "dtre": "bba53613d4c80080a9b028d4a30f0b56c629d3c453ff122d1e7893ff154cab204054861c449a306ec4c7c467ddd0fe8d",
+        "krnl": "95b4759b45cb719e14abccd9e796d1d122571213ad4593a6fa45961c628e32ba215b61b81de4abbe34d55ccc420c62ff",
+        "rdsk": "f3e892ce5e421d02a07d65ad7c3a48e5d8fa1b6d866573ca8d6f3a4dd15e2c8897ddf295abdf39bb66282fee51f79ed1",
+        "fstm": "ba80c8e1b48c0ca95d3a3d442d5ab28f524c29d32ba9612548af34a451e202a0aadc6d30"
+      },
+      "buildTrain": "SUOkemoTaosTwo"
+    },
+    {
+      "ios": "8.2",
+      "buildNumber": "12D508",
+      "urls": [
+        "http://appldnld.apple.com/ios8.2/031-06593-20150309-A67DCA50-C1FF-11E4-B8A9-C7813780E501/iPad5,3_8.2_12D508_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "305e41abaefb667f6f68ddffb96e32e638c4f2fb4aa9c3d829a0cadefed69a06ffc6f8e505b92844ab9eeaebfd8a0424",
+        "ibec": "12846b31bdfa53b7f91c92561865d571d285cbf0fc8f69bc91e145a293b56b3f3b11e9475626a9fb8388fe487744594e",
+        "dtre": "148dcd631fa276934e7846675005d776f12be97d5515040545862dcdf8fad50142d5da3af363e26b830d191e34b8cb28",
+        "krnl": "414f4a9c4c78823db905e35135903ec3129e6a7db31871fa2f9e9c8284a90c6acaf60292c172f2cfd197a7a417a28127",
+        "rdsk": "95e02e345c07e7135272bc33c8db3349e3bf77664fc6eaa5a528243a7f9e4c7698e8e5c6919dbf4e512b817384792769",
+        "fstm": "95aceb964535b31196baa4ba328b79c71c3f8806dfc285d0c53766c18caf17accc64cbd1"
+      },
+      "buildTrain": "OkemoZurs"
+    },
+    {
+      "ios": "8.3",
+      "buildNumber": "12F69",
+      "urls": [
+        "http://appldnld.apple.com/ios8.3/031-15007-20150408-3CFD15D4-D8B8-11E4-BFA4-8B1D90F2D2C2/iPad5,3_8.3_12F69_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "8d9d9da766d160e864c7c1a778bb039fcc8f62eeef33cccbb67861af6d09f539ce0494b4a6324d0c14211186f7607c8f",
+        "ibec": "e9123a65d45d21967981e9d5681f0925a074892cbc420d6f35626b386a2fefb8ca8b95509d90acb4f397c6330e8f410b",
+        "dtre": "e2d6e76e4f2cc12b356e381f690a885ecba5ff797cec9ced04cf7a22cb52b11156e4534eb01f804d99e46dac8bf8efcb",
+        "krnl": "19af5c3c189e5b6a2fda24a2f4e3cd26eba295dda2720f4df3e8352d16802cf4542bb68a9af6f940ab8d8400a7c2d74d",
+        "rdsk": "0fc2fa4a6841941f83dc132cc9bf9aa074c64796078be996de3df9204b7f4da8fe34e270d591d4f2be853571d7e24eb8",
+        "fstm": "c23619a5f5e620ce715f8378225e91a86b01986fa3cc9765c46ebbecf510d701bba006da"
+      },
+      "buildTrain": "Stowe"
+    },
+    {
+      "ios": "8.4",
+      "buildNumber": "12H143",
+      "urls": [
+        "http://appldnld.apple.com/ios8.4/ipsw/031-26037-20150630-7A515AC4-1B90-11E5-AA71-8F63BE268FF7/iPad5,3_8.4_12H143_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "f2be82556d4922f16ee8dbb275b56f9ccbe08ae2411744a77d8df97ed4795d430a1ebada8b09c98e8982dcedfab9bc61",
+        "ibec": "572fa5559e9fe8deea70f034c20e538c31c051c20bef76dfd4dd268f53beffdef55962525cee6b7d43dbffe2db90f060",
+        "dtre": "076cb804de7c0513edee71ffa77c99cf2da9a5400b78dec420dcf44deefb4e94f3c3ed59e4b02463e7a76767260cebe9",
+        "krnl": "020dd940ce21c53d892c1e7436ce936a2e1219fc3d20ec379feb0129e1969bacf7b12403be9614e9d0dde449ef57a54e",
+        "rdsk": "ae4ae017b57422c184cf6c9d2cfb9c29e5b4c307cf6846c4be80956bec4912d5cb550e066e387131417653321ee35368",
+        "fstm": "29ec2c80587d654b1e8305ecf0cfdcffae96edc05e1c284e16ce95dad99370c2d74daaae"
+      },
+      "buildTrain": "Copper"
+    },
+    {
+      "ios": "8.4.1",
+      "buildNumber": "12H321",
+      "urls": [
+        "http://appldnld.apple.com/ios8.4.1/031-31386-20150812-A4FC2602-3C90-11E5-B036-A21D3A53DB92/iPad5,3_8.4.1_12H321_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "9517fbce84f2e0651545255757746018529e0f11cd620c4359cb5dd998ce1d16b6ba748db15c80e2f093ddd84493692e",
+        "ibec": "da48c2499a6ec41f305e8325b0c2d649cf7fc3d83e31a0caa4373180bdef8563f5aba7dd63be5f127d880a0a7e749e28",
+        "dtre": "55e2fd06f9280c45e57bc1c5c196636deccb0788ed9098d6ebca34bbb3b8e804ed544501462ac9044b5e8699960f5ea2",
+        "krnl": "9fccf2fccaa6a314c01f7b0ec8cda320be83540b95c2753e427f8b86db1560a66329a1099bdd42f911d2426aba5b1b63",
+        "rdsk": "78da6b27731d354265bd163ce0225eff96e1a9051533583d237bfaec362fcbcc2532be37d4151f64b449f07222fc6958",
+        "fstm": "88d37d78792242c46e44fb75738c2ec8570e376b341065e2fd11bc51c0c92bce9d64b44f"
+      },
+      "buildTrain": "Donner"
+    },
+    {
+      "ios": "9.0",
+      "buildNumber": "13A344",
+      "urls": [
+        "http://appldnld.apple.com/ios9/058-11516-20150916-2CFC6282-5678-11E5-BA4A-DDF76CA99CB1/iPad5,3_9.0_13A344_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "cb5bcdb87089811219e0d0951f8c5a817d3629bda0c64b9742465166f83e26cc359db04885ecca531c4b5a4646ab6ad9",
+        "ibec": "f15f47433b26df9265128dd8fb31665a67e5197a51d24c6bca5a098de1cb1d747851593a7c40138c9e6089dc3437cc84",
+        "dtre": "68e613f0fadac6a843f913a0efc79eb3106182ba28bb44ca70ef95fb80758af63f55c059afb43fc2fb8a3e0ab75a9842",
+        "krnl": "1b016bb79a247b4851f3dfc63c0737f62c6c301439fdd1c49d0f8229a405d218dc3310f5a646bb2e73f233d71208f4dd",
+        "rdsk": "c092c1d87812210b8fcf3d2580a53208d3b375805023126a0ca3c34165c6967536845a735945f96f434c3a05b893a142",
+        "fstm": "03434d25ea913033f3d767ce586ca490382f36df6b399ce7be5521f2507b0a78f8890677"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.0.1",
+      "buildNumber": "13A404",
+      "urls": [
+        "http://appldnld.apple.com/ios9.0.1/031-35356-20150923-C57BFAA2-5EFE-11E5-AA91-0F5D51D92A8C/iPad5,3_9.0.1_13A404_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "fcaec35ce230f94cb32ee5e1aac3d0698dd92f794f9dcac829bb9224e51240577a8ac967363fabcfc685f2be8b4c2346",
+        "ibec": "fd6c23945d8db09f9518c55d18b3bef93585d2302e6b4df08738101e1d9c4aef6631eafbfeb08c0877e84dfc01d8b6d0",
+        "dtre": "7197b4c4025cee26028a7886fa93842687354d6ebb2473fb4adf354bb9372162a766628a2c8496b6fb8d301a05c690af",
+        "krnl": "ada10474975c14150069c49bb7f68ebf5a4940c2e29fa32f9c4894875c22a183445df24486cf4ee07cf2b6ea60e7552b",
+        "rdsk": "9bf409bba4f1bb38dfba2623a27e32361f1a3734ba5ca76498ea2a907d675832c811b5be98d6ffd9e8a3677b8664c2a6",
+        "fstm": "905de1b81e34a17e0d6b861c63e64bae405a795b365c43cf9cb5054421a2dbfa6b63c416"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.0.2",
+      "buildNumber": "13A452",
+      "urls": [
+        "http://appldnld.apple.com/ios9.0.2/031-37601-20150930-7EC46192-64A0-11E5-B7FB-40E151D92A8C/iPad5,3_9.0.2_13A452_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "b4a62309e89f9a7497216597e6a158031e02ecd6c0667a40e40a5f4116d5792709e5eb4e23e7d662575ac9942dc619a6",
+        "ibec": "12f8a014127044dd5f81a317cf0c7574720bd56ccfd84d458b38289b1d1d30ab7440aab9765fbab9f21bae6547e8c7f2",
+        "dtre": "e29b0fbccb5fbfaffa16f4d0569f39f5c08e09b36b7250a035637e1ddf564e47194e1277790af9c888c6504f29ce2bb5",
+        "krnl": "fcd55d672e77f57bf7044943f83674092d7afdc757d57858f49ac7e625b1e8c43447657b29d7742a75ca01457c319ec9",
+        "rdsk": "d6eed8fc4c84b9143c4fa0caf4a792e554633781d24eb486865b2a39a9b0ec233d6c0ffea30edb955a54a331e71682d7",
+        "fstm": "585bf39a657ea62d250d7a16d02a2e39d73c0c9c5438d3d2d256ba71db93b63d09206139"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.1",
+      "buildNumber": "13B143",
+      "urls": [
+        "http://appldnld.apple.com/ios9.1/031-41505-20151021-CCEB6990-73FC-11E5-954E-927543DA716B/iPad5,3_9.1_13B143_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "971d4e60dc4d682496a836aec36a96583d4ac6e1dbe2dc17634aae75c1f37339905a01ea254d8f4f822323cf7d03887b",
+        "ibec": "edc3e9a448b9d05bc92570cdb0d2efd74e22b74c6210f587c2ab78d3a35422de6f0ddfb85272047b097f8a2a58e83e21",
+        "dtre": "8463666858dc87183551db4f68da0fd478d681c2516aa22ac67661ed708e4ec56e6b8a54873bc4d9ed83fa26afcb7611",
+        "krnl": "4a4bb8ff471fa97974e1bd6597bb7411f01d0be034d2b26822b8ced5512d03074918d445902b22aba1907bfd82628082",
+        "rdsk": "889c09ebdc3922e9c230f072f78f4bf51bc241bd183f383aedad6e371e8c7b66107210f3b36b24dc7ca8d3098190c48b",
+        "fstm": "e322217dfc41cf1cd0a0785985ed9fe25c552d4d60246daaf246fe5a46567e81d799fbd2"
+      },
+      "buildTrain": "Boulder"
+    },
+    {
+      "ios": "9.2",
+      "buildNumber": "13C75",
+      "urls": [
+        "http://appldnld.apple.com/ios9.2/031-29124-20151203-6746B4DA-8D8A-11E5-9EF4-41618B8BECEB/iPad5,3_9.2_13C75_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "06eb348e2b71c0287a9991aaa025a6226d5a00d38ac055a6169d8ab0cf061178ab7e8d796702da26857153988aaca2bf",
+        "ibec": "0379b9b502ba147e963e5f06974194b1b7e50abe5bc747825f7deaa9e7efd1f77d06bf3e9a79b8202ceb086d5919cab6",
+        "dtre": "90aaf8a49aff9ceab72d58b5f101c85635125c12c58f75f9fff8269bb4f6c616d2bbf5e830520dc1b5d9486323c480d7",
+        "krnl": "eed6c410f7cf9f8734f57055698c6416790f88bc83dbb2a0795783b1d65054236aae176d18b35eb6a571483bc8de31a4",
+        "rdsk": "39effc75260d8d68ab12acef329d0e58ce218381e744cec163f1c84c0bcd1e9dee33b389e6acc96be051e69e72035881",
+        "fstm": "d9f176f7787ba4e78d675280ad8202520a3a78c50f59ff86d8989a8fcdcf403936907181"
+      },
+      "buildTrain": "Castlerock"
+    },
+    {
+      "ios": "9.2.1",
+      "buildNumber": "13D15",
+      "urls": [
+        "http://appldnld.apple.com/ios9.2.1/031-47549-20160119-8C3BBC04-B968-11E5-A462-B84A8FD31F8F/iPad5,3_9.2.1_13D15_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "26e3b3db66ecc08acade7e0d76507484df943bb178f867a53e90b26aa58e8e91bc7c09e0b3c0457ff00a2ffd12fc32c9",
+        "ibec": "3c88c357140dfefffd06c2f4f47258043be08febb528e294c6ac6a072378beb1e5dd41979514efa67666aff726fca44b",
+        "dtre": "902fa197ea48a06d4e5b095861a7b10056cba5ec77667e9aafdb86b809185cbc0ed7c5bdc48f0e13a0d430e06c1a0524",
+        "krnl": "f6b5c62782fad2c51e668ed675a3f0a28b2ab6d6c600930d22e0863519362cd6cc9a93d4ca13fc866baf204d6a0795a3",
+        "rdsk": "933ebdc5dfe7bfe2a60ac8d6ecc0dff0aa586777d72b74661ba523a352c2663e9131a1a121257fc0d483c14a52ae54a9",
+        "fstm": "b3a3e49cad82a97b61ade0565af84cb649d00d7ec3b4b1215679feb7114c031b522aed28"
+      },
+      "buildTrain": "Dillon"
+    },
+    {
+      "ios": "9.2.1",
+      "buildNumber": "13D20",
+      "urls": [
+        "http://appldnld.apple.com/ios9.2.1/031-48986-20160217-4BB65360-D44D-11E5-89B0-0A52919DCAD8/iPad5,3_9.2.1_13D20_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "b605825fe00c76696890727d5c6518178cda40efa1d99107e7ef9ace1af8ac34ba592dcf1c919a6da2418abc82aedf80",
+        "ibec": "784cb3b8167181c5758ec6aa7c1f81da66bc1b3f90dc1d8c975d7211466bae833061202784bc3dca9d2328c6508ffcc9",
+        "dtre": "83685172228a93e8366d2192fab79a9dcffe1f211b738f02e8fe0816e28a15711a44a11b89708bd071471374ae4e664d",
+        "krnl": "fce02063a709df6cbd8f093adcde7254bc7d76fcc8f69c56b5cf7507577245e6152f1c07a5b5e10f12f06884754ab5d1",
+        "rdsk": "91d032c136580ee225b999a8ddac01bef789a067ea09f34d5f5d7a6bf9146a10765856859a0b53633f1078034b509e24"
+      },
+      "buildTrain": "Dillon"
+    }
+  ]
+}

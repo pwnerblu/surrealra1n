@@ -1,0 +1,136 @@
+{
+  "version": "1.0",
+  "productType": "iPod7,1",
+  "cpid": "0x7000",
+  "bdid": "0x0a",
+  "firmwares": [
+    {
+      "ios": "8.4",
+      "buildNumber": "12H143",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios8.4/ipsw/031-25940-20150630-7A549A0E-1B90-11E5-87A1-A763BE268FF7/iPod7,1_8.4_12H143_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "ae657a6fe05e35c399da90363525c808509894136e811d1c6d3f50e342a38357783fbb344a18ac12bdc410e7a247fd3f",
+        "ibec": "ce9309e17db3797c3cf3bc5b914c710fcbf7bc8b442526e2fc71f80830baae7709e4258a85fed8b78885fe463de7cf6f",
+        "dtre": "f707efe3f93f9af4ec47512cc1b65fcae09938cc0b627476f428f401a147b1894deabfe1da545205bda80de66bea3fdf",
+        "krnl": "62c8b27866d813de46ff9657c3520de7f2037d85ab071ac44a0e081964b37d7504521b3e81bb4234a8a4632ffab8f1c1",
+        "rdsk": "f9bc7df69942f502ef4156bcfe6341f2c72b57001fba724b58619ae6aea6d13b666e321e87f361c9cb712b9f91bd3105",
+        "fstm": "85f921de7d41ecb84f700bde123100a32da9c54d9a784a94dd5b13ebe943027dcf23a3f6"
+      },
+      "buildTrain": "Copper"
+    },
+    {
+      "ios": "8.4.1",
+      "buildNumber": "12H321",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios8.4.1/031-31024-20150812-751694AA-3C8F-11E5-B90B-9D1A3A53DB92/iPod7,1_8.4.1_12H321_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "155c13a85d2a6551052215b607e3c139e952961edd439c0f6228833bb938b8f91d3c031f44fc932618a0105a71791486",
+        "ibec": "da3f74ed0ed87681e48a39469943b842c5dda39f60ad3622025e2b7e24d13bcda90806429277c0441cc1510f4a5ebcb4",
+        "dtre": "24e089731d6544c0f088eb3071422bed056b1050257b5185ee0a2794a3add41007a5fc51c9e6d9911e6c665771c2f6ef",
+        "krnl": "98e517565260f82e396d5e1e1c937c1719782f26e724633aed12a282eea67c2ce25ce9b76b8ed7dbc5798e5495b58995",
+        "rdsk": "772bdfd5ee7ac2ca39814ee75cfc96bcf530d05d86808e2454384c181a397bfd6abaf8f8367491c9f5addfaf2488e1cc",
+        "fstm": "b2150f8ba60a1b3078af3f1837736a6e0b9bcbcb4116f89e8f8801948cc2904a889be6fd"
+      },
+      "buildTrain": "Donner"
+    },
+    {
+      "ios": "9.0",
+      "buildNumber": "13A344",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios9/058-11554-20150916-2D012EAC-5678-11E5-B1A1-F5F76CA99CB1/iPod7,1_9.0_13A344_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "e30c249d12ae3562ebd436aa2d83ceaea43802c7de4475a170c2f77c5f86b23a2086666ee46f721faa48a8c64e0412f1",
+        "ibec": "91775ed3e264422b806723bbab0da991ec962630bce09a8e53a03f3661b0f6a5dac903b147e7b194bcd19cf50d73de78",
+        "dtre": "eadf0ccc1c4bb2096a764435c093cba58149e744380562dd14d48d6153d7e00665144fbe0efcdfbddb14dee59ff057da",
+        "krnl": "8e8b308d76a4e3878f1f73d88619fa82a87ffc1b96de857ec9abc8dc39b106bc2193354940caef656654f8c5649d31e7",
+        "rdsk": "4c6b342e68df1fef70cd90c44da8e699e4bc1faacad90be3e0d23ff87ea14f9d12164b4127adfdde52a07f03b70716f3",
+        "fstm": "587f4edccb8ab3d98f639c0e022de6d68edd86c581a53c85641ad37a31be362f2bd8b335"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.0.1",
+      "buildNumber": "13A404",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios9.0.1/031-35484-20150923-C57EB5B2-5EFE-11E5-8968-2A5D51D92A8C/iPod7,1_9.0.1_13A404_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "4d744a30cb686c727ad77de223259b7ca71e139bc16ab3cbdb2309466d55c6513fcc678ed02be0565f2d388a8ecc6ae1",
+        "ibec": "4a84e0e0e07d04528ec519927fad927fcd7aae4d805dd180c601e826806ba012c5f33c271a0fb6a3ccf274d73bc817dc",
+        "dtre": "cf62c0232625afe342740829029c5c15a2b7d566d46bcaa3f46fd47c20641bda29bfe66914225caf45125dfcb43b7df0",
+        "krnl": "5a14e7592aa70bcf1a3360462879014fb79a25140ca034b236ed00da8b7bb900015c468b3bb06a9411765d9d8ca5d6d6",
+        "rdsk": "54275f246a3975edf3a81a6036728570018e4552686858dc9c00f03b71ef56f27ff1a804b27d12b054fd580ebb345cf7",
+        "fstm": "2207194de19bcc06609e15393902e62bb5940d5621bd28c6cdd9e4a1de09d704d5242a4a"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.0.2",
+      "buildNumber": "13A452",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios9.0.2/031-37266-20150930-7ECBB41A-64A0-11E5-AB00-5CE151D92A8C/iPod7,1_9.0.2_13A452_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "cd7c8897a5105ccfd355e57a564cfd1a9f580b5708ee45f6a5e9e11e92eec4787bae9e55aeebff510bffcf4f88e18a10",
+        "ibec": "0d030fa2d505d6c169b9712328c6d9e6424a79b2150ffa870ce209211bac41b9db945a97007ec1b6cc8fd3892399c4ec",
+        "dtre": "ba31e81dd4674b02d2acff7ffeeecfc80cf9810340bbb5582848bdeb6788120960eb060a9a1f1816511b1f45c12a44d3",
+        "krnl": "f92d6aea40945a5b00660cb2b61dd745ff383007246f1871752b8be3db057725da2cbf02aa5c05716dd86837836c030c",
+        "rdsk": "5c7eb1ba13b4bab11eb4b10753febce4858348b0f2509d333df024e917dc7c8b5344ee17480fc7cb29c0c689e705e73c",
+        "fstm": "24cbf4736536075bfeb8e0c184a1a04c8f6bfd1c1e66632afd71b87a3e00925e477db237"
+      },
+      "buildTrain": "Monarch"
+    },
+    {
+      "ios": "9.1",
+      "buildNumber": "13B143",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios9.1/031-41518-20151021-D781758E-73FC-11E5-938D-DB7543DA716B/iPod7,1_9.1_13B143_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "9a1fc5063e9c88793a3c3bc3182af42664d9b2c2b920196f0c891dcf8b5fca7f88f56a22e781c544a5df0f99e27ce237",
+        "ibec": "1bf5a3fb0f225fcd0d4e33f4998b9d7ac344cc7e6f1066a5279abfb3c1ac10db6dac515fce0b905db75e50cf328960cb",
+        "dtre": "0dc3f68d9bb86f82fc24e1c84ffa87c7511decd9ad9b7211a144aa12507e277a8b345305ec4ee229e5f0460ee3233019",
+        "krnl": "1f09c0e6933889573f81a079f81c8c9dbb73e35966e1f780cc248ba1a5618c5e080bfd0a73c6ee6693a3bf9c3b353039",
+        "rdsk": "1cc6f59fc5addaea8f92f34a69af1a0a2748370c995659282a3ff7c1b5dd7e6dbd7c14152aba4efd54825d396d249bd7",
+        "fstm": "adaa85a044a4dac0db34cc6987d44f372523e1efd97e036ea8a2c794ad0a3051f48c999c"
+      },
+      "buildTrain": "Boulder"
+    },
+    {
+      "ios": "9.2",
+      "buildNumber": "13C75",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios9.2/031-29236-20151203-674BA346-8D8A-11E5-A53F-61618B8BECEB/iPod7,1_9.2_13C75_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "d750d9baa402d1088666df2b5354b2360f2dc60fa6817ecee33751fda787dddd59ef24eacff0bf8f9ac282d1cdbd621f",
+        "ibec": "ec72201071219db7f89cf2214618f0cd75ec162a61061ace691e83aa93dc53fc1443c5bff37ffd8b78ec11d73c573a37",
+        "dtre": "1330e66a39b475509b4c7b141d407c92345d4e2746d83b336d562a6cda4eda78ab44178fe11bd4b766ebfef286964e42",
+        "krnl": "8fa0ecd2979aa7d52ded0a754562c0faca6d02bb9666f37c1999a08fc6ecc2725dcbd8e50b89bfd92d417f3a418caa34",
+        "rdsk": "b136b4690fc943578d3220f256eaf2ad10e299c4c719103dffc4806f68e5bd9afff1a79290b8ebc415e8502651eb9720",
+        "fstm": "dcab80166ef26206d016b5279cbde6ba2d1c641c44d910354a216bd9dc7e22b4028db360"
+      },
+      "buildTrain": "Castlerock"
+    },
+    {
+      "ios": "9.2.1",
+      "buildNumber": "13D15",
+      "urls": [
+        "https://secure-appldnld.apple.com/ios9.2.1/031-47640-20160119-8C3F835C-B968-11E5-92DD-D74A8FD31F8F/iPod7,1_9.2.1_13D15_Restore.ipsw"
+      ],
+      "keys": {
+        "ibss": "4342838d4469c69ca63e1a645f538244c5836f0446cc5511467d39cf7edd68a79676a0f164814311c0047eff46283fc6",
+        "ibec": "dc49f0c88a52fdd036a700c792f6ff6f8f52e6c22ec9530fabb1952a4e4b7bdb1a0bec03fee66bf3befcdb4ddd5b50ab",
+        "dtre": "1a6dbf5ebfcfe12a0bbb94ba0e5806fda74474f1ac82e016f58c8b926c129a6614fb529d7f74e9712a919aafab9368d0",
+        "krnl": "670fb5d6acecf545255ad6dabc96731af9eaa499e25a53d550ad97e7713645ec4d6739487f6f15babd6dee3e47932682",
+        "rdsk": "c2647ce1115e56e42b05bbbe4d258f75d87b49f3894186e45ddf84e8e4ff21b250883b21852d5f2a645688d3daeb02ea",
+        "fstm": "7c4562d5399acdb6c621c89228760dfea8c071b05787b955d1ec9e2ddd7070a83b9ef886"
+      },
+      "buildTrain": "Dillon"
+    }
+  ]
+}

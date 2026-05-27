@@ -235,6 +235,14 @@ iphone61_seprmvr64_supported() {
     return 1
 }
 
+# A7: iOS 8 dyld fix via Legacy-iOS-Kit SSH ramdisk (port 6414). A8+ uses embedded SSHRD.
+seprmvr64_ios8_dyld_fix_legacy_kit() {
+    case "$1" in
+        iPhone6,1|iPhone6,2) return 0 ;;
+    esac
+    return 1
+}
+
 # Devices supported by --seprmvr64-ipsw (must match version rules below).
 seprmvr64_device_allowed() {
     case "$1" in
@@ -248,7 +256,7 @@ seprmvr64_ipsw_supported() {
     local version="$2"
     case "$device" in
         iPhone6,1) iphone61_seprmvr64_supported "$version" ;;
-        iPhone6,2) [[ $version == 7.* ]] ;;
+        iPhone6,2) iphone61_seprmvr64_supported "$version" ;;
         iPhone7,1|iPhone7,2) iphone7_seprmvr64_supported "$version" ;;
         iPad5,3) ipad53_seprmvr64_supported "$version" ;;
         iPod7,1) [[ $version == 8.* || $version == 9.0* || $version == 9.1* || $version == 9.2* ]] ;;
@@ -259,7 +267,7 @@ seprmvr64_ipsw_supported() {
 seprmvr64_ipsw_version_error() {
     case "$1" in
         iPhone6,1) echo "iPhone6,1 only supports iOS 7.0-9.3.5 seprmvr64 restores via surrealra1n" ;;
-        iPhone6,2) echo "iPhone6,2 only supports iOS 7.x seprmvr64 restores via surrealra1n" ;;
+        iPhone6,2) echo "iPhone6,2 only supports iOS 7.0-9.3.5 seprmvr64 restores via surrealra1n" ;;
         iPhone7,1|iPhone7,2) echo "iPhone7,1 and iPhone7,2 only support iOS 8.0-9.2.1 seprmvr64 restores via surrealra1n" ;;
         iPad5,3) echo "iPad5,3 only supports iOS 8.1-9.2.1 seprmvr64 restores via surrealra1n" ;;
         iPod7,1) echo "iPod7,1 supports iOS 8.x and 9.0-9.2.1 seprmvr64 restores via surrealra1n" ;;
@@ -267,7 +275,7 @@ seprmvr64_ipsw_version_error() {
     esac
 }
 
-# Fetch stock IPSW from ipsw.me (cached under ipsws/<device>/). iPad5,3 9.2.1 uses a hardcoded 13D15 URL.
+# Fetch stock IPSW from ipsw.me (cached under ipsws/<device>/).
 ipsw_ensure_jq() {
     if [[ -x "./bin/jq" ]]; then
         echo "./bin/jq"
@@ -289,48 +297,275 @@ ipsw_ensure_jq() {
     exit 1
 }
 
-# iPad Air 2 Wi-Fi (iPad5,3) iOS 9.2.1: keys match 13D15 only (not 13D20).
-IPAD53_921_IPSW_URL="http://appldnld.apple.com/ios9.2.1/031-47549-20160119-8C3BBC04-B968-11E5-A462-B84A8FD31F8F/iPad5,3_9.2.1_13D15_Restore.ipsw"
+seprmvr64_catalog_file() {
+    local device="$1"
+    printf '%s' "keys/seprmvr64-catalog/${device}.json"
+}
 
-ipad53_require_921_ipsw() {
-    local ipsw_path="$1"
-    local device="${2:-$IDENTIFIER}"
-    local ios_version="${3:-$IOS_VERSION}"
+seprmvr64_build_choice_file() {
+    local device="$1"
+    printf '%s' "keys/seprmvr64-catalog/choices/${device}.json"
+}
 
-    [[ "$device" == iPad5,3 && "$ios_version" == 9.2.1 ]] || return 0
-    if [[ "$(basename "$ipsw_path")" != *"_13D15_"* ]]; then
-        echo "[!] iPad5,3 iOS 9.2.1 requires stock IPSW build 13D15."
-        echo "[!] Got: $(basename "$ipsw_path")"
-        echo "[!] Use auto/- or iPad5,3_9.2.1_13D15_Restore.ipsw"
-        exit 1
+seprmvr64_catalog_firmware_entry() {
+    local device="$1"
+    local ios_version="$2"
+    local catalog_file jqbin
+
+    catalog_file=$(seprmvr64_catalog_file "$device")
+    [[ -f "$catalog_file" ]] || return 1
+    jqbin=$(ipsw_ensure_jq)
+    "$jqbin" -c --arg ios "$ios_version" '
+        (.firmwares // [])
+        | map(select(.ios == $ios))
+        | .[0] // empty
+    ' "$catalog_file" 2>/dev/null
+}
+
+seprmvr64_saved_build_choice() {
+    local device="$1"
+    local ios_version="$2"
+    local choice_file jqbin saved
+
+    choice_file=$(seprmvr64_build_choice_file "$device")
+    [[ -f "$choice_file" ]] || return 1
+    jqbin=$(ipsw_ensure_jq)
+    saved=$("$jqbin" -r --arg ios "$ios_version" '.[$ios] // empty' "$choice_file" 2>/dev/null)
+    [[ -n "$saved" && "$saved" != "null" ]] || return 1
+    printf '%s' "$saved"
+}
+
+seprmvr64_save_build_choice() {
+    local device="$1"
+    local ios_version="$2"
+    local build="$3"
+    local choice_file jqbin tmp
+
+    choice_file=$(seprmvr64_build_choice_file "$device")
+    mkdir -p "$(dirname "$choice_file")"
+    jqbin=$(ipsw_ensure_jq)
+    if [[ -f "$choice_file" ]]; then
+        tmp=$("$jqbin" --arg ios "$ios_version" --arg build "$build" '. + {($ios): $build}' "$choice_file")
+    else
+        tmp=$("$jqbin" -n --arg ios "$ios_version" --arg build "$build" '{($ios): $build}')
     fi
+    printf '%s\n' "$tmp" >"$choice_file"
+}
+
+seprmvr64_resolve_build_id() {
+    local device="$1"
+    local ios_version="$2"
+    local catalog_file jqbin count saved choice picked line build
+
+    if [[ "$SEPRMVR64_RESOLVED_DEVICE" == "$device" && "$SEPRMVR64_RESOLVED_IOS" == "$ios_version" && -n "$SEPRMVR64_RESOLVED_BUILD" ]]; then
+        printf '%s' "$SEPRMVR64_RESOLVED_BUILD"
+        return 0
+    fi
+
+    catalog_file=$(seprmvr64_catalog_file "$device")
+    [[ -f "$catalog_file" ]] || return 1
+    jqbin=$(ipsw_ensure_jq)
+    count=$("$jqbin" -r --arg ios "$ios_version" '
+        (.firmwares // [])
+        | map(select(.ios == $ios))
+        | length
+    ' "$catalog_file" 2>/dev/null)
+    [[ -n "$count" && "$count" != "null" && "$count" -gt 0 ]] || return 1
+
+    if [[ "$count" -eq 1 ]]; then
+        build=$("$jqbin" -r --arg ios "$ios_version" '
+            (.firmwares // [])
+            | map(select(.ios == $ios))
+            | .[0].buildNumber
+        ' "$catalog_file")
+        SEPRMVR64_RESOLVED_DEVICE="$device"
+        SEPRMVR64_RESOLVED_IOS="$ios_version"
+        SEPRMVR64_RESOLVED_BUILD="$build"
+        printf '%s' "$build"
+        return 0
+    fi
+
+    if saved=$(seprmvr64_saved_build_choice "$device" "$ios_version"); then
+        if "$jqbin" -e --arg ios "$ios_version" --arg build "$saved" '
+            (.firmwares // [])
+            | map(select(.ios == $ios and .buildNumber == $build))
+            | length > 0
+        ' "$catalog_file" >/dev/null 2>&1; then
+            SEPRMVR64_RESOLVED_DEVICE="$device"
+            SEPRMVR64_RESOLVED_IOS="$ios_version"
+            SEPRMVR64_RESOLVED_BUILD="$saved"
+            printf '%s' "$saved"
+            return 0
+        fi
+    fi
+
+    echo "" >&2
+    echo "[*] iOS $ios_version has $count stock IPSW builds for $device." >&2
+    echo "[*] Pick the build you want to restore/boot:" >&2
+    line=0
+    while IFS= read -r build; do
+        [[ -n "$build" ]] || continue
+        line=$((line + 1))
+        url=$("$jqbin" -r --arg ios "$ios_version" --arg build "$build" '
+            (.firmwares // [])
+            | map(select(.ios == $ios and .buildNumber == $build))
+            | .[0].urls[0] // "no url"
+        ' "$catalog_file")
+        echo "  $line) iOS $ios_version build $build" >&2
+        echo "      $url" >&2
+    done < <("$jqbin" -r --arg ios "$ios_version" '
+        (.firmwares // [])
+        | map(select(.ios == $ios))
+        | .[].buildNumber
+    ' "$catalog_file")
+
+    while true; do
+        printf 'Enter choice [1-%s]: ' "$count" >&2
+        if [[ -r /dev/tty ]]; then
+            read -r choice </dev/tty
+        else
+            read -r choice
+        fi
+        picked=$("$jqbin" -r --arg ios "$ios_version" --argjson n "$choice" '
+            (.firmwares // [])
+            | map(select(.ios == $ios))
+            | .[$n - 1].buildNumber // empty
+        ' "$catalog_file" 2>/dev/null)
+        if [[ -n "$picked" && "$picked" != "null" ]]; then
+            seprmvr64_save_build_choice "$device" "$ios_version" "$picked"
+            SEPRMVR64_RESOLVED_DEVICE="$device"
+            SEPRMVR64_RESOLVED_IOS="$ios_version"
+            SEPRMVR64_RESOLVED_BUILD="$picked"
+            echo "[*] Using build $picked for $device iOS $ios_version" >&2
+            printf '%s' "$picked"
+            return 0
+        fi
+        echo "[!] Invalid choice. Enter a number from 1 to $count." >&2
+    done
+}
+
+seprmvr64_ensure_build_resolved() {
+    local device="$1"
+    local ios_version="$2"
+
+    if [[ "${SEPRMVR64_RESOLVED_DEVICE:-}" == "$device" && "${SEPRMVR64_RESOLVED_IOS:-}" == "$ios_version" && -n "${SEPRMVR64_RESOLVED_BUILD:-}" ]]; then
+        export SEPRMVR64_RESOLVED_DEVICE SEPRMVR64_RESOLVED_IOS SEPRMVR64_RESOLVED_BUILD
+        return 0
+    fi
+    seprmvr64_resolve_build_id "$device" "$ios_version" >/dev/null || return 1
+    export SEPRMVR64_RESOLVED_DEVICE SEPRMVR64_RESOLVED_IOS SEPRMVR64_RESOLVED_BUILD
+}
+
+seprmvr64_catalog_build_entry() {
+    local device="$1"
+    local ios_version="$2"
+    local build_id catalog_file jqbin
+
+    if [[ "${SEPRMVR64_RESOLVED_DEVICE:-}" == "$device" && "${SEPRMVR64_RESOLVED_IOS:-}" == "$ios_version" && -n "${SEPRMVR64_RESOLVED_BUILD:-}" ]]; then
+        build_id="$SEPRMVR64_RESOLVED_BUILD"
+    else
+        build_id=$(seprmvr64_resolve_build_id "$device" "$ios_version") || return 1
+    fi
+    catalog_file=$(seprmvr64_catalog_file "$device")
+    jqbin=$(ipsw_ensure_jq)
+    "$jqbin" -c --arg ios "$ios_version" --arg build "$build_id" '
+        (.firmwares // [])
+        | map(select(.ios == $ios and .buildNumber == $build))
+        | .[0] // empty
+    ' "$catalog_file" 2>/dev/null
+}
+
+seprmvr64_key_hex() {
+    local device="$1"
+    local ios_version="$2"
+    local tag="$3"
+    local entry jqbin
+
+    entry=$(seprmvr64_catalog_build_entry "$device" "$ios_version") || return 1
+    [[ -n "$entry" && "$entry" != "null" ]] || return 1
+    jqbin=$(ipsw_ensure_jq)
+    "$jqbin" -r --arg tag "$tag" '.keys[$tag] // empty' <<<"$entry"
+}
+
+seprmvr64_key_has_version() {
+    local device="$1"
+    local ios_version="$2"
+    local catalog_file jqbin
+
+    catalog_file=$(seprmvr64_catalog_file "$device")
+    [[ -f "$catalog_file" ]] || return 1
+    jqbin=$(ipsw_ensure_jq)
+    "$jqbin" -e --arg ios "$ios_version" '
+        (.firmwares // [])
+        | map(select(.ios == $ios))
+        | .[]
+        | select(.keys.ibss and .keys.ibec)
+    ' "$catalog_file" >/dev/null 2>&1
+}
+
+seprmvr64_required_key_tags() {
+    local device="$1"
+    local ios_version="$2"
+    local entry jqbin
+
+    entry=$(seprmvr64_catalog_build_entry "$device" "$ios_version")
+    if [[ -n "$entry" && "$entry" != "null" ]]; then
+        jqbin=$(ipsw_ensure_jq)
+        "$jqbin" -r '.keys | keys[]' <<<"$entry" 2>/dev/null && return 0
+    fi
+
+    printf '%s\n' "ibss" "ibec"
+}
+
+seprmvr64_key_build() {
+    if [[ "${SEPRMVR64_RESOLVED_DEVICE:-}" == "$1" && "${SEPRMVR64_RESOLVED_IOS:-}" == "$2" && -n "${SEPRMVR64_RESOLVED_BUILD:-}" ]]; then
+        printf '%s' "$SEPRMVR64_RESOLVED_BUILD"
+        return 0
+    fi
+    seprmvr64_resolve_build_id "$1" "$2"
+}
+
+seprmvr64_catalog_url() {
+    local device="$1"
+    local ios_version="$2"
+    local entry url jqbin
+
+    entry=$(seprmvr64_catalog_build_entry "$device" "$ios_version") || return 1
+    [[ -n "$entry" && "$entry" != "null" ]] || return 1
+    jqbin=$(ipsw_ensure_jq)
+    url=$("$jqbin" -r '.urls[0] // empty' <<<"$entry")
+    [[ -n "$url" ]] || return 1
+    printf '%s' "$url"
+}
+
+ipsw_build_from_filename() {
+    local ipsw_path="$1"
+    basename "$ipsw_path" | sed -nE 's/.*_([0-9A-Z]+)_Restore\.ipsw$/\1/p'
 }
 
 ipsw_me_url() {
     local device="$1"
     local ios_version="$2"
+    local required_build="${3:-}"
     local jqbin url buildid
-
-    if [[ $device == iPad5,3 && $ios_version == 9.2.1 ]]; then
-        echo "[*] iPad5,3 iOS 9.2.1: stock IPSW 13D15" >&2
-        printf '%s' "$IPAD53_921_IPSW_URL"
-        return 0
-    fi
 
     jqbin=$(ipsw_ensure_jq)
     read -r url buildid < <(
         curl -fsSL "https://api.ipsw.me/v4/device/${device}?type=ipsw" |
-            "$jqbin" -r --arg ver "$ios_version" '
+            "$jqbin" -r --arg ver "$ios_version" --arg build "$required_build" '
                 [.firmwares[] | select(.version == $ver)]
+                | if ($build != "") then map(select(.buildid == $build)) else . end
                 | sort_by(.releasedate)
                 | reverse
-                | .[0]
-                | [.url, .buildid]
-                | @tsv
+                | if length == 0 then empty else .[0] | [.url, .buildid] | @tsv end
             '
     )
     if [[ -z "$url" || "$url" == "null" ]]; then
-        echo "[!] Could not find a stock IPSW for $device iOS $ios_version on ipsw.me."
+        if [[ -n "$required_build" ]]; then
+            echo "[!] Could not find a stock IPSW for $device iOS $ios_version build $required_build on ipsw.me."
+        else
+            echo "[!] Could not find a stock IPSW for $device iOS $ios_version on ipsw.me."
+        fi
         exit 1
     fi
     echo "[*] ipsw.me: iOS $ios_version build $buildid" >&2
@@ -340,48 +575,27 @@ ipsw_me_url() {
 ipsw_find_cached() {
     local device="$1"
     local ios_version="$2"
+    local required_build="${3:-}"
     local cache_dir f basename_f
 
     cache_dir="ipsws/$device"
     [[ -d "$cache_dir" ]] || return 1
 
-    if [[ $device == iPad5,3 && $ios_version == 9.2.1 ]]; then
-        shopt -s nullglob
-        local cached=("$cache_dir"/iPad5,3_9.2.1_13D15_*.ipsw)
-        shopt -u nullglob
-        if [[ ${#cached[@]} -gt 0 && -f "${cached[0]}" ]]; then
-            printf '%s' "${cached[0]}"
-            return 0
-        fi
-        for f in "$cache_dir"/*.ipsw; do
-            [[ -f "$f" ]] || continue
-            basename_f=$(basename "$f")
-            if [[ "$basename_f" == *"_9.2.1_13D15_"* ]]; then
-                printf '%s' "$f"
-                return 0
-            fi
-            if [[ "$basename_f" == *"_9.2.1_"* ]]; then
-                echo "[!] Ignoring cached iPad5,3 9.2.1 IPSW (need 13D15): $f" >&2
-            fi
-        done
-        return 1
-    fi
-
     shopt -s nullglob
-    local cached=("$cache_dir"/${device}_"${ios_version}"_*.ipsw)
-    shopt -u nullglob
-    if [[ ${#cached[@]} -gt 0 && -f "${cached[0]}" ]]; then
-        printf '%s' "${cached[0]}"
-        return 0
-    fi
-
-    for f in "$cache_dir"/*.ipsw; do
+    for f in "$cache_dir"/${device}_"${ios_version}"_*.ipsw "$cache_dir"/*.ipsw; do
         [[ -f "$f" ]] || continue
-        if [[ "$(basename "$f")" == *"_${ios_version}_"* ]]; then
+        basename_f=$(basename "$f")
+        [[ "$basename_f" == *"_${ios_version}_"* ]] || continue
+        if [[ -n "$required_build" && "$(ipsw_build_from_filename "$f")" != "$required_build" ]]; then
+            echo "[!] Ignoring cached $device iOS $ios_version IPSW (need build $required_build): $f" >&2
+            continue
+        fi
+        if [[ -z "$required_build" || "$(ipsw_build_from_filename "$f")" == "$required_build" ]]; then
             printf '%s' "$f"
             return 0
         fi
     done
+    shopt -u nullglob
     return 1
 }
 
@@ -389,29 +603,42 @@ seprmvr64_post_boot_ipsw_prompt() {
     local savedir="$1"
     local ipsw_path="$2"
     local ios_version="$3"
+    local choice=""
 
     [[ -n "$ipsw_path" && -f "$ipsw_path" ]] || return 0
     [[ "$ipsw_path" == ipsws/* ]] || return 0
 
-    if $zenity --question \
-        --title="surrealra1n" \
-        --width=460 \
-        --text="Boot files for iOS $ios_version are ready:\n$savedir\n\nThe stock IPSW is still cached at:\n$ipsw_path\n\nKeep it for the next restore or boot build, or delete it to free disk space?" \
-        --ok-label="Keep IPSW" \
-        --cancel-label="Delete IPSW" 2>/dev/null; then
-        echo "[*] Keeping cached IPSW."
-    else
+    echo ""
+    echo "[*] Boot files saved in: $savedir"
+    echo "[*] Cached stock IPSW: $ipsw_path"
+    while true; do
+        if [[ -r /dev/tty ]]; then
+            read -r -p "Delete cached IPSW? (y/N): " choice </dev/tty
+        else
+            read -r -p "Delete cached IPSW? (y/N): " choice
+        fi
+        case "$choice" in
+            [yY]|[yY][eE][sS]) choice="y"; break ;;
+            [nN]|[nN][oO]|"") choice="n"; break ;;
+            *) echo "[!] Enter y (delete) or n/Enter (keep)." ;;
+        esac
+    done
+
+    if [[ "$choice" == "y" ]]; then
         rm -f "$ipsw_path"
         echo "[*] Deleted cached IPSW: $ipsw_path"
+    else
+        echo "[*] Keeping cached IPSW."
     fi
 }
 
 ipsw_download_for_device() {
     local device="$1"
     local ios_version="$2"
+    local required_build="${3:-}"
     local cache_dir dest url filename cached_path
 
-    if cached_path=$(ipsw_find_cached "$device" "$ios_version"); then
+    if cached_path=$(ipsw_find_cached "$device" "$ios_version" "$required_build"); then
         echo "[*] Using cached IPSW: $cached_path" >&2
         printf '%s' "$cached_path"
         return 0
@@ -420,7 +647,7 @@ ipsw_download_for_device() {
     cache_dir="ipsws/$device"
     mkdir -p "$cache_dir"
 
-    url=$(ipsw_me_url "$device" "$ios_version")
+    url=$(ipsw_me_url "$device" "$ios_version" "$required_build")
     filename=$(basename "$url")
     dest="$cache_dir/$filename"
 
@@ -430,33 +657,65 @@ ipsw_download_for_device() {
         return 0
     fi
 
-    echo "[*] Downloading $device iOS $ios_version IPSW..." >&2
+    if [[ -n "$required_build" ]]; then
+        echo "[*] Downloading $device iOS $ios_version build $required_build IPSW..." >&2
+    else
+        echo "[*] Downloading $device iOS $ios_version IPSW..." >&2
+    fi
     echo "[*] $url" >&2
     curl -fL --progress-bar -C - -o "$dest" "$url"
     echo "[*] Saved to $dest" >&2
     printf '%s' "$dest"
 }
 
-resolve_seprmvr64_ipsw() {
-    local path="$1"
+seprmvr64_download_target_ipsw() {
+    local device="$1"
     local ios_version="$2"
-    local device="$3"
-    local resolved
+    local required_build="" required_keys="" catalog_url=""
+    local cache_dir dest filename cached_path
 
-    case "$path" in
-        auto|"-"|"")
-            resolved=$(ipsw_download_for_device "$device" "$ios_version")
-            ;;
-        *)
-            if [[ ! -f "$path" ]]; then
-                echo "[!] IPSW not found: $path"
-                exit 1
-            fi
-            resolved="$path"
-            ;;
-    esac
-    ipad53_require_921_ipsw "$resolved" "$device" "$ios_version"
-    printf '%s' "$resolved"
+    if ! seprmvr64_catalog_firmware_entry "$device" "$ios_version" >/dev/null; then
+        exit 1
+    fi
+
+    if ! seprmvr64_key_has_version "$device" "$ios_version"; then
+        exit 1
+    fi
+
+    if [[ "${SEPRMVR64_RESOLVED_DEVICE:-}" == "$device" && "${SEPRMVR64_RESOLVED_IOS:-}" == "$ios_version" && -n "${SEPRMVR64_RESOLVED_BUILD:-}" ]]; then
+        required_build="$SEPRMVR64_RESOLVED_BUILD"
+    else
+        required_build=$(seprmvr64_key_build "$device" "$ios_version" || true)
+    fi
+    if cached_path=$(ipsw_find_cached "$device" "$ios_version" "$required_build"); then
+        echo "[*] Using cached IPSW: $cached_path" >&2
+        printf '%s' "$cached_path"
+        return 0
+    fi
+
+    if catalog_url=$(seprmvr64_catalog_url "$device" "$ios_version"); then
+        cache_dir="ipsws/$device"
+        mkdir -p "$cache_dir"
+        filename=$(basename "$catalog_url")
+        dest="$cache_dir/$filename"
+        if [[ -f "$dest" ]]; then
+            echo "[*] Using cached IPSW: $dest" >&2
+            printf '%s' "$dest"
+            return 0
+        fi
+        if [[ -n "$required_build" ]]; then
+            echo "[*] Downloading $device iOS $ios_version build $required_build IPSW (catalog)..." >&2
+        else
+            echo "[*] Downloading $device iOS $ios_version IPSW (catalog)..." >&2
+        fi
+        echo "[*] $catalog_url" >&2
+        curl -fL --progress-bar -C - -o "$dest" "$catalog_url"
+        echo "[*] Saved to $dest" >&2
+        printf '%s' "$dest"
+        return 0
+    fi
+
+    ipsw_download_for_device "$device" "$ios_version" "$required_build"
 }
 
 prepare_restore_ramdisk() {
@@ -1181,13 +1440,12 @@ Options:
         - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
         - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
 
-  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --jailbreak]
+  --seprmvr64-ipsw [iOS_VERSION] [optional: --stitch-activation] [optional: --jailbreak]
         Create a custom IPSW for tethered restore, with seprmvr64. If you're going to 9.2.1 and lower, you can choose to attempt stitching activation records to pre-activate the seprmvr64 restore.
-        - TARGET_IPSW_PATH: Path for the stock IPSW for target version
-        - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
-        - iOS_VERSION: Target iOS version to restore
-        - Supported devices: use "auto" (or "-") for TARGET/BASE to download from ipsw.me, or run: --seprmvr64-ipsw [iOS_VERSION]
-        - iPhone6,1 (7.0-9.3.5), iPhone6,2 (7.x), iPhone7,1 (8.0-9.2.1), iPhone7,2 (8.0-9.2.1), iPad5,3 (8.1-9.2.1), iPod7,1 (8.x, 9.0-9.2.1)
+        - iOS_VERSION: Target iOS version to restore.
+        - Stock IPSWs are always downloaded/cached automatically from ipsw.me.
+        - If an iOS version has multiple stock IPSW builds, surrealra1n asks you to pick one.
+        - iPhone6,1 (7.0-9.3.5), iPhone6,2 (7.0-9.3.5), iPhone7,1 (8.0-9.2.1), iPhone7,2 (8.0-9.2.1), iPad5,3 (8.1-9.2.1), iPod7,1 (8.x, 9.0-9.2.1)
         - [--stitch-activation]: Attempt to stitch activation records into rootfs to pre-activate a restore (7.0 - 9.2.1 only). Device must be legitimately activated to save activation records, it can't be iCloud/MDM bypassed.
 
   --restore [iOS_VERSION]
@@ -1203,7 +1461,7 @@ Options:
 
   --seprmvr64-boot [iOS_VERSION]
         Perform a tethered boot of the specified iOS version with seprmvr64.
-        - Uses stock IPSW from ipsws/<device>/ if present, otherwise asks you to select the IPSW file.
+        - Uses stock IPSW from ipsws/<device>/ if present, otherwise downloads it automatically.
         - You must be on that iOS version already.
         - Put your device into DFU mode before proceeding.
 
@@ -1233,29 +1491,28 @@ case "$1" in
         TARGET_IPSW=""
         BASE_IPSW=""
         IOS_VERSION=""
-        if seprmvr64_device_allowed "$IDENTIFIER" && [[ $# -ge 2 && $# -le 7 ]]; then
-            if [[ $# -eq 2 && ! -f "$2" ]]; then
-                IOS_VERSION="$2"
-                TARGET_IPSW="auto"
-                BASE_IPSW="auto"
-            elif [[ $# -ge 4 ]]; then
-                TARGET_IPSW="$2"
-                BASE_IPSW="$3"
-                IOS_VERSION="$4"
-            else
-                echo "[!] Usage: --seprmvr64-ipsw [iOS_VERSION] [--stitch-activation] [--jailbreak]"
-                echo "[!]    or: --seprmvr64-ipsw [TARGET_IPSW|auto] [BASE_IPSW|auto] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
-                exit 1
-            fi
-        elif [[ $# -lt 4 || $# -gt 7 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+        if [[ $# -lt 2 || "$2" == *.ipsw || -f "$2" || "$2" == "auto" || "$2" == "-" ]]; then
+            echo "[!] Usage: --seprmvr64-ipsw [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+            echo "[!] Manual TARGET_IPSW/BASE_IPSW arguments were removed; seprmvr64 auto-downloads stock IPSWs."
             exit 1
-        else
-            TARGET_IPSW="$2"
-            BASE_IPSW="$3"
-            IOS_VERSION="$4"
         fi
+        IOS_VERSION="$(printf '%s' "$2" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+        SEPRMVR64_RESOLVED_DEVICE=""
+        SEPRMVR64_RESOLVED_IOS=""
+        SEPRMVR64_RESOLVED_BUILD=""
+        TARGET_IPSW="auto"
+        BASE_IPSW="auto"
         FORCE_ACTIVATE="0"
+        for arg in "${@:3}"; do
+            case "$arg" in
+                --stitch-activation|--jailbreak) ;;
+                *)
+                    echo "[!] Unknown --seprmvr64-ipsw argument: $arg"
+                    echo "[!] Usage: --seprmvr64-ipsw [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+                    exit 1
+                    ;;
+            esac
+        done
         for arg in "$@"; do
             if [[ "$arg" == "--stitch-activation" ]]; then
                 case "$IOS_VERSION" in
@@ -1404,46 +1661,39 @@ case "$1" in
         echo "[!] 3. Encrypted Wi-Fi networks will not work. Use an open network instead."
         echo "[!] 4. You will have deep sleep issues, and POTENTIALLY other issues."
         read -p "Press enter to continue. Or press CTRL + C to cancel."
-        if [[ "$TARGET_IPSW" == "auto" || "$TARGET_IPSW" == "-" || "$BASE_IPSW" == "auto" || "$BASE_IPSW" == "-" ]]; then
-            echo "[*] Resolving IPSW files for $IDENTIFIER..."
-            TARGET_IPSW=$(resolve_seprmvr64_ipsw "$TARGET_IPSW" "$IOS_VERSION" "$IDENTIFIER")
-            BASE_IPSW=$(resolve_seprmvr64_ipsw "$BASE_IPSW" "$LATEST_VERSION" "$IDENTIFIER")
-            echo "[*] Target IPSW: $TARGET_IPSW"
-            echo "[*] Base IPSW (iOS $LATEST_VERSION): $BASE_IPSW"
-        else
-            if [[ ! -f "$TARGET_IPSW" || ! -f "$BASE_IPSW" ]]; then
-                echo "[!] TARGET_IPSW and BASE_IPSW must be existing files, or use auto/- to download."
-                exit 1
-            fi
-            ipad53_require_921_ipsw "$TARGET_IPSW"
+        if ! seprmvr64_key_has_version "$IDENTIFIER" "$IOS_VERSION"; then
+            exit 1
         fi
+        seprmvr64_ensure_build_resolved "$IDENTIFIER" "$IOS_VERSION"
+
+        IBSS_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" ibss)
+        IBEC_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" ibec)
+        DTRE_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" dtre)
+        RDSK_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" rdsk)
+        KRNL_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" krnl)
+        ROOT_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" fstm)
+
+        if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
+            echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in seprmvr64 catalog. Aborting."
+            exit 1
+        fi
+        if [[ -z "$ROOT_KEY" ]] && [[ $IOS_VERSION == 8.* || $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPhone6,1 || $IDENTIFIER == iPhone6,2 || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $FORCE_ACTIVATE == 1 ]]; then
+            echo "[!] Missing root filesystem key for $IDENTIFIER iOS $IOS_VERSION build $SEPRMVR64_RESOLVED_BUILD."
+            exit 1
+        fi
+
+        echo "[*] Found keys (catalog build $SEPRMVR64_RESOLVED_BUILD):"
+        echo "[*] Resolving IPSW files for $IDENTIFIER..."
+        TARGET_IPSW=$(seprmvr64_download_target_ipsw "$IDENTIFIER" "$IOS_VERSION")
+        BASE_IPSW=$(ipsw_download_for_device "$IDENTIFIER" "$LATEST_VERSION")
+        echo "[*] Target IPSW: $TARGET_IPSW"
+        echo "[*] Base IPSW (iOS $LATEST_VERSION): $BASE_IPSW"
         echo "[*] Making custom IPSW..."
         savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
         mkdir -p "$savedir"
         echo ""
-        unzip "$TARGET_IPSW" -d tmp1
-        unzip "$BASE_IPSW" -d tmp2
-        # Read decryption keys
-        KEY_FILE="keys/$IDENTIFIER.txt"
-        if [[ ! -f "$KEY_FILE" ]]; then
-            echo "[!] Key file $KEY_FILE not found. Aborting."
-            exit 1
-        fi
-
-        # Extract iBSS and iBEC keys
-        IBSS_KEY=$(grep "ibss-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        IBEC_KEY=$(grep "ibec-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        DTRE_KEY=$(grep "dtre-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        RDSK_KEY=$(grep "rdsk-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        KRNL_KEY=$(grep "krnl-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        ROOT_KEY=$(grep "fstm-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-
-        if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
-            echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in $KEY_FILE. Aborting."
-            exit 1
-        fi
-
-        echo "[*] Found keys:"
+        unzip -o "$TARGET_IPSW" -d tmp1
+        unzip -o "$BASE_IPSW" -d tmp2
         echo "    iBSS Key: $IBSS_KEY"
         echo "    iBEC Key: $IBEC_KEY"
         if [[ $IOS_VERSION == 7.1* || $IOS_VERSION == 8.* || $IOS_VERSION == 9.* ]]; then
@@ -1457,11 +1707,11 @@ case "$1" in
         mkdir work
         rm -rf "$rootfs12_dmg"
         ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
-        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
+        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone6,1 || $IDENTIFIER == iPhone6,2 || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
             prepare_restore_ramdisk 30000000
             ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
-            ./bin/asr64_patcher asr asr_patch 
+            ./bin/asr64_patcher asr asr_patch
             ./bin/ldid -e asr > ents.plist
             ./bin/ldid -Sents.plist asr_patch
             ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
@@ -1572,11 +1822,11 @@ case "$1" in
                 ./bin/hfsplus "tmp1/rootfs.raw" untar $untether_tar
             fi
             ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
-        elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
+        elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone6,1 || $IDENTIFIER == iPhone6,2 || $FORCE_ACTIVATE == 1 ]]; then
             # patch asr, and if A8, patch restored_external FDR step
             prepare_restore_ramdisk 40000000
             ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
-            ./bin/asr64_patcher asr asr_patch 
+            ./bin/asr64_patcher asr asr_patch
             ./bin/ldid -e asr > ents.plist
             ./bin/ldid -Sents.plist asr_patch
             ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
@@ -1719,14 +1969,42 @@ case "$1" in
         sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -e $savedir/custom.ipsw -y
         echo "Restore has completed! If it's successful, you can boot with: ./surrealra1n.sh --seprmvr64-boot $IOS_VERSION"
         if [[ $IOS_VERSION == 8.* ]]; then
-            echo "[*] iOS 8 detected, running automatic dyld fix now..."
-            "$0" --fix-ios8
+            if seprmvr64_ios8_dyld_fix_legacy_kit "$IDENTIFIER"; then
+                echo "We are not done yet. Run: ./surrealra1n.sh --fix-ios8"
+                echo "It will wait while you boot the SSH ramdisk in Legacy iOS Kit; press Enter when ready, then the dyld fix runs automatically."
+                echo "Only after that can you boot normally (otherwise you get stuck at Slide to Upgrade)."
+            else
+                echo "[*] iOS 8 detected, running automatic dyld fix now..."
+                "$0" --fix-ios8
+            fi
         fi
         exit 0
         ;;
 
     --fix-ios8)
         echo "[!] IMPORTANT: Your device should be freshly restored to iOS 8.x and never be booted!"
+        if seprmvr64_ios8_dyld_fix_legacy_kit "$IDENTIFIER"; then
+            echo ""
+            echo "[*] Boot an SSH ramdisk with Legacy iOS Kit on this device first."
+            echo "[*] https://github.com/LukeZGD/Legacy-iOS-Kit"
+            echo "[*] surrealra1n will wait here until you confirm the ramdisk is up."
+            echo ""
+            if [[ -r /dev/tty ]]; then
+                read -r -p "Press Enter when the SSH ramdisk is running in Legacy iOS Kit: " _ </dev/tty
+            else
+                read -r -p "Press Enter when the SSH ramdisk is running in Legacy iOS Kit: " _
+            fi
+            echo ""
+            echo "[*] Running dyld fix (this may take 15-30 minutes)..."
+            ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p6414 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+            ./bin/sshpass -p "alpine" scp -P6414 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+            ./bin/dsc64patcher dyld.raw dyld.patched -8
+            ./bin/sshpass -p "alpine" scp -P6414 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+            rm -rf dyld.patched dyld.raw
+            ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p6414 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/reboot || true"
+            echo "dyld fix is complete. You can now boot iOS 8."
+            exit 0
+        fi
         SSHRD_DIR="./bin/SSHRD_Script"
         SSHRD_SSHPASS="$SSHRD_DIR/$(uname)/sshpass"
         SSHRD_IPROXY="$SSHRD_DIR/$(uname)/iproxy"
@@ -1788,7 +2066,10 @@ case "$1" in
             echo "[!] Usage: --seprmvr64-boot [iOS_VERSION]"
             exit 1
         fi
-        IOS_VERSION="$2"
+        IOS_VERSION="$(printf '%s' "$2" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+        SEPRMVR64_RESOLVED_DEVICE=""
+        SEPRMVR64_RESOLVED_IOS=""
+        SEPRMVR64_RESOLVED_BUILD=""
         savedir="seprmvr64boot/$IDENTIFIER/$IOS_VERSION"
         shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
         if [[ -z "$shshpath" ]]; then
@@ -1798,20 +2079,13 @@ case "$1" in
         if [[ ! -d "$savedir" ]] || [[ ! -f "$savedir"/iBSS.img4 || ! -f "$savedir"/iBEC.img4 || ! -f "$savedir"/DeviceTree.img4 || ! -f "$savedir"/Kernelcache.img4 ]]; then
             echo "[!] Boot files not found in $savedir — building from stock IPSW..."
             SEPRMVR64_BUILT_BOOT=1
-            if IPSW_PATH=$(ipsw_find_cached "$IDENTIFIER" "$IOS_VERSION"); then
-                echo "[*] Using cached IPSW: $IPSW_PATH"
-            else
-                echo "[*] No cached IPSW in ipsws/$IDENTIFIER/ for iOS $IOS_VERSION."
-                echo "[*] Please select the stock iOS $IOS_VERSION IPSW file."
-                IPSW_PATH=$($zenity --file-selection --title="Select iOS $IOS_VERSION IPSW for $IDENTIFIER")
-                sleep 1
-                if [[ -z "$IPSW_PATH" ]]; then
-                    echo "[!] No IPSW selected. Aborting."
-                    exit 1
-                fi
-                echo "[*] Using IPSW: $IPSW_PATH"
+            if ! seprmvr64_key_has_version "$IDENTIFIER" "$IOS_VERSION"; then
+                exit 1
             fi
-            ipad53_require_921_ipsw "$IPSW_PATH"
+            seprmvr64_ensure_build_resolved "$IDENTIFIER" "$IOS_VERSION"
+            echo "[*] Resolving stock IPSW for $IDENTIFIER iOS $IOS_VERSION (build $SEPRMVR64_RESOLVED_BUILD)..."
+            IPSW_PATH=$(seprmvr64_download_target_ipsw "$IDENTIFIER" "$IOS_VERSION")
+            echo "[*] Using IPSW: $IPSW_PATH"
         else
             echo "first, your device needs to be in pwndfu mode. pwning with gaster"
             echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
@@ -1853,29 +2127,28 @@ case "$1" in
         fi
         rm -rf "$savedir"
         mkdir -p "$savedir"
-        echo ""
-        unzip "$IPSW_PATH" -d tmp1
-        # Read decryption keys
-        KEY_FILE="keys/$IDENTIFIER.txt"
-        if [[ ! -f "$KEY_FILE" ]]; then
-            echo "[!] Key file $KEY_FILE not found. Aborting."
-            exit 1
+        if [[ -z "${SEPRMVR64_RESOLVED_BUILD:-}" ]]; then
+            if ! seprmvr64_key_has_version "$IDENTIFIER" "$IOS_VERSION"; then
+                exit 1
+            fi
+            seprmvr64_ensure_build_resolved "$IDENTIFIER" "$IOS_VERSION"
         fi
+        echo ""
+        unzip -o "$IPSW_PATH" -d tmp1
         ./bin/img4tool -s "$shshpath" -e -m "$IDENTIFIER-im4m"
         im4m="$IDENTIFIER-im4m"
 
-        # Extract iBSS and iBEC keys
-        IBSS_KEY=$(grep "ibss-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        IBEC_KEY=$(grep "ibec-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        DTRE_KEY=$(grep "dtre-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        KRNL_KEY=$(grep "krnl-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+        IBSS_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" ibss)
+        IBEC_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" ibec)
+        DTRE_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" dtre)
+        KRNL_KEY=$(seprmvr64_key_hex "$IDENTIFIER" "$IOS_VERSION" krnl)
 
         if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
-            echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in $KEY_FILE. Aborting."
+            echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in seprmvr64 catalog. Aborting."
             exit 1
         fi
 
-        echo "[*] Found keys:"
+        echo "[*] Found keys (catalog build $SEPRMVR64_RESOLVED_BUILD):"
         echo "    iBSS Key: $IBSS_KEY"
         echo "    iBEC Key: $IBEC_KEY"
         mkdir work
