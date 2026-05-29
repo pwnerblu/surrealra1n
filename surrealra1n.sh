@@ -226,6 +226,107 @@ require_dir() {
     fi
 }
 
+fix_ios8_wait_ssh() {
+    local sshpass_bin="$1"
+    local port="$2"
+    local tries="${3:-50}"
+    local i
+
+    for ((i = 1; i <= tries; i++)); do
+        if "$sshpass_bin" -p "alpine" ssh root@127.0.0.1 -p"$port" -o ConnectTimeout=2 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "echo ready" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+fix_ios8_apply_dyld_patch() {
+    local sshpass_bin="$1"
+    local port="$2"
+
+    echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
+    "$sshpass_bin" -p "alpine" ssh root@127.0.0.1 -p"$port" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
+    "$sshpass_bin" -p "alpine" scp -P"$port" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+    ./bin/dsc64patcher dyld.raw dyld.patched -8
+    "$sshpass_bin" -p "alpine" scp -P"$port" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    rm -rf dyld.patched dyld.raw
+    "$sshpass_bin" -p "alpine" ssh root@127.0.0.1 -p"$port" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/reboot || true"
+}
+
+fix_ios8_legacy_kit_sshrd() {
+    killall iproxy >/dev/null 2>&1 || true
+    echo ""
+    echo "[!] Embedded SSH ramdisk did not start or did not become reachable."
+    echo "[*] Falling back to Legacy-iOS-Kit SSH ramdisk (port 6414)."
+    echo "[*] Boot an SSH ramdisk with Legacy iOS Kit on this device first:"
+    echo "[*] https://github.com/LukeZGD/Legacy-iOS-Kit"
+    echo "[*] surrealra1n will wait here until you confirm the ramdisk is up."
+    echo ""
+    if [[ -r /dev/tty ]]; then
+        read -r -p "Press Enter when the SSH ramdisk is running in Legacy iOS Kit: " _ </dev/tty
+    else
+        read -r -p "Press Enter when the SSH ramdisk is running in Legacy iOS Kit: " _
+    fi
+    echo ""
+    echo "[*] Running dyld fix via Legacy-iOS-Kit SSH (port 6414)..."
+    fix_ios8_apply_dyld_patch "./bin/sshpass" 6414
+    killall iproxy >/dev/null 2>&1 || true
+    echo "dyld fix is complete. You can now boot iOS 8."
+}
+
+build_patched_idevicerestore() {
+    local build_root="tmp_idevicerestore_build"
+    local src_root="$build_root/idevicerestore-master"
+    local jobs
+
+    if command -v sysctl >/dev/null 2>&1; then
+        jobs="$(sysctl -n hw.logicalcpu 2>/dev/null || echo 4)"
+    else
+        jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
+    fi
+    [[ -z "$jobs" ]] && jobs=4
+
+    echo "[*] Building idevicerestore with surrealra1n timeout injector..."
+    rm -rf "$build_root"
+    mkdir -p "$build_root"
+
+    curl -L -o "$build_root/idevicerestore.tar.gz" https://github.com/libimobiledevice/idevicerestore/archive/refs/heads/master.tar.gz
+    tar -xzf "$build_root/idevicerestore.tar.gz" -C "$build_root"
+    rm -f "$build_root/idevicerestore.tar.gz"
+
+    # Keep version deterministic for tarball source builds.
+    sed -i.bak \
+        's|AC_INIT(\[idevicerestore\], \[m4_esyscmd(./git-version-gen $RELEASE_VERSION)\], \[https://github.com/libimobiledevice/idevicerestore/issues\], \[\], \[https://libimobiledevice.org\])|AC_INIT([idevicerestore], [1.0.0-surrealra1n], [https://github.com/libimobiledevice/idevicerestore/issues], [], [https://libimobiledevice.org])|' \
+        "$src_root/configure.ac"
+    rm -f "$src_root/configure.ac.bak"
+
+    # Injector: increase post-iBEC DFU -> Recovery reconnect windows (10s -> 30s).
+    python3 - "$src_root/src/dfu.c" <<'PY'
+from pathlib import Path
+import re
+path = Path(__import__("sys").argv[1])
+text = path.read_text()
+text = re.sub(
+    r'cond_wait_timeout\(&client->device_event_cond,\s*&client->device_event_mutex,\s*10000\);',
+    'cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 30000);',
+    text
+)
+path.write_text(text)
+PY
+
+    (
+        cd "$src_root"
+        ./autogen.sh --disable-silent-rules
+        make -j"$jobs"
+    )
+
+    cp "$src_root/src/idevicerestore" "bin/idevicerestore"
+    chmod +x "bin/idevicerestore"
+    rm -rf "$build_root"
+    echo "[*] Installed $(./bin/idevicerestore -v)"
+}
+
 #
 
 echo "Checking for updates..."
@@ -371,8 +472,8 @@ elif [[ $dist == 3 ]]; then
     curl -L -o activate.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/activate.sh
     curl -L -o backup.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/backup.sh
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-macOS-RELEASE-main.zip
-    # fetch idevicerestore for 7.0-9.3.5 restores 
-    curl -L -o bin/idevicerestore https://github.com/NyanSatan/SundanceInH2A/raw/refs/heads/master/executables/Darwin/idevicerestore
+    # build idevicerestore with timeout injector for 7.0-9.3.5 restores
+    build_patched_idevicerestore
     # libs
     chmod +x bin/*
     chmod +x *.sh
@@ -457,8 +558,8 @@ elif [[ $dist == 4 ]]; then
     curl -L -o activate.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/activate.sh
     curl -L -o backup.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/backup.sh
     curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-macOS-RELEASE-main.zip
-    # fetch idevicerestore for 7.0-9.3.5 restores 
-    curl -L -o bin/idevicerestore https://github.com/NyanSatan/SundanceInH2A/raw/refs/heads/master/executables/Darwin/idevicerestore
+    # build idevicerestore with timeout injector for 7.0-9.3.5 restores
+    build_patched_idevicerestore
     # libs
     chmod +x bin/*
     chmod +x *.sh
@@ -815,6 +916,10 @@ if [[ $IDENTIFIER == iPhone6* ]]; then
     LATEST_VERSION="12.5.8"
     DOWNGRADE_RANGE="10.1 to 12.5.7"
     NOSEP_DOWNGRADE="7.0.1 to 9.3.5"
+elif [[ $IDENTIFIER == iPad4,1 ]]; then
+     LATEST_VERSION="12.5.8"
+    # DOWNGRADE_RANGE="10.1 to 12.5.7" TODO: add the support for this device
+    NOSEP_DOWNGRADE="7.0.3 to 9.3.5"
 elif [[ $IDENTIFIER == iPhone7* ]]; then
     LATEST_VERSION="12.5.8"
     DOWNGRADE_RANGE="11.3 to 12.5.7"
@@ -906,6 +1011,19 @@ if [[ $IDENTIFIER == iPhone6,2 ]]; then
     cd ..
 fi
 
+if [[ $IDENTIFIER == iPad4,1 ]]; then
+    IBSS10="iBSS.j71.RELEASE.im4p"
+    IBEC10="iBEC.j71.RELEASE.im4p"
+    IBSS7="iBSS.j71ap.RELEASE.im4p"
+    IBEC7="iBEC.j71ap.RELEASE.im4p"
+    ALLFLASH="all_flash.j71ap.production"
+    KERNELCACHE10="kernelcache.release.j71"
+    DEVICETREE="DeviceTree.j71ap.im4p"
+    IBSS="iBSS.ipad4.RELEASE.im4p"
+    IBEC="iBEC.ipad4.RELEASE.im4p"
+    KERNELCACHE="kernelcache.release.ipad4"
+fi
+
 mnifst="tmpmanifest/Manifest.plist"
 
 #!/bin/bash
@@ -989,7 +1107,7 @@ case "$1" in
                     ;;
             esac
         fi
-        if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad4* ]]; then
+        if [[ ( $IDENTIFIER == iPad4* && $IDENTIFIER != iPad4,1 ) || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
             echo "Device is not supported yet for seprmvr64-ipsw"
             exit 1
         fi
@@ -1051,19 +1169,21 @@ case "$1" in
             fi
             CACHE_FILE="cache/$ECID_DEC"
 
-            # check cached serial
             if [[ -f "$CACHE_FILE" ]]; then
                 CACHED_SERIAL=$(cat "$CACHE_FILE")
             else
                 CACHED_SERIAL=""
             fi
 
-            # save serial to cache if empty
             if [[ -z "$CACHED_SERIAL" ]]; then
-                mkdir -p cache
-                echo "$SERIAL" > "$CACHE_FILE"
-                # temporary workaround
-                CACHED_SERIAL="$SERIAL"
+                if [[ -n "${SERIAL:-}" ]]; then
+                    mkdir -p cache
+                    echo "$SERIAL" > "$CACHE_FILE"
+                    CACHED_SERIAL="$SERIAL"
+                else
+                    echo "[!] Serial number unknown. Connect the device in normal mode once (or create cache/$ECID_DEC with the serial)."
+                    exit 1
+                fi
             fi
         fi
         if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "activation_records/$CACHED_SERIAL/IC-Info.sisv" ]] && [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then
@@ -1425,58 +1545,56 @@ case "$1" in
 
     --fix-ios8)
         echo "[!] IMPORTANT: Your device should be freshly restored to iOS 8.x and never be booted!"
+        EMBEDDED_SSHRD_OK=0
         SSHRD_DIR="./bin/SSHRD_Script"
         SSHRD_SSHPASS="$SSHRD_DIR/$(uname)/sshpass"
         SSHRD_IPROXY="$SSHRD_DIR/$(uname)/iproxy"
         if [[ ! -f "$SSHRD_DIR/sshrd.sh" ]]; then
             echo "[!] SSHRD_Script is missing at $SSHRD_DIR."
-            echo "[!] Re-run surrealra1n so dependency bootstrap can install it."
-            exit 1
-        fi
-        if [[ ! -x "$SSHRD_SSHPASS" || ! -x "$SSHRD_IPROXY" ]]; then
+            echo "[!] Skipping embedded SSH ramdisk boot."
+        elif [[ ! -x "$SSHRD_SSHPASS" || ! -x "$SSHRD_IPROXY" ]]; then
             echo "[!] SSHRD binaries are missing for $(uname): $SSHRD_SSHPASS / $SSHRD_IPROXY"
-            exit 1
-        fi
-        if [[ ! -f "$SSHRD_DIR/sshramdisk/iBSS.img4" || ! -f "$SSHRD_DIR/sshramdisk/iBEC.img4" || ! -f "$SSHRD_DIR/sshramdisk/ramdisk.img4" || ! -f "$SSHRD_DIR/sshramdisk/devicetree.img4" || ! -f "$SSHRD_DIR/sshramdisk/kernelcache.img4" ]]; then
-            echo "[*] SSHRD ramdisk payload not found, generating with 12.0..."
-            (
-                cd "$SSHRD_DIR" || exit 1
-                chmod +x ./sshrd.sh
-                sudo ./sshrd.sh 12.0
-            ) || exit 1
-        fi
-        echo "[*] Booting SSH ramdisk with SSHRD..."
-        (
-            cd "$SSHRD_DIR" || exit 1
-            chmod +x ./sshrd.sh
-            sudo ./sshrd.sh boot
-        ) || exit 1
-        killall iproxy >/dev/null 2>&1 || true
-        "$SSHRD_IPROXY" 2222 22 >/dev/null 2>&1 &
-        echo "[*] Waiting for SSH ramdisk on 127.0.0.1:2222..."
-        SSH_READY=0
-        for _ in {1..50}; do
-            if "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o ConnectTimeout=2 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "echo ready" >/dev/null 2>&1; then
-                SSH_READY=1
-                break
+            echo "[!] Skipping embedded SSH ramdisk boot."
+        else
+            if [[ ! -f "$SSHRD_DIR/sshramdisk/iBSS.img4" || ! -f "$SSHRD_DIR/sshramdisk/iBEC.img4" || ! -f "$SSHRD_DIR/sshramdisk/ramdisk.img4" || ! -f "$SSHRD_DIR/sshramdisk/devicetree.img4" || ! -f "$SSHRD_DIR/sshramdisk/kernelcache.img4" ]]; then
+                echo "[*] SSHRD ramdisk payload not found, generating with 12.0..."
+                if ! (
+                    cd "$SSHRD_DIR" || exit 1
+                    chmod +x ./sshrd.sh
+                    sudo ./sshrd.sh 12.0
+                ); then
+                    echo "[!] Failed to generate embedded SSHRD ramdisk payload."
+                fi
             fi
-            sleep 2
-        done
-        if [[ "$SSH_READY" -ne 1 ]]; then
-            echo "[!] SSH ramdisk did not become reachable on port 2222."
-            killall iproxy >/dev/null 2>&1 || true
-            exit 1
+            if [[ -f "$SSHRD_DIR/sshramdisk/iBSS.img4" && -f "$SSHRD_DIR/sshramdisk/iBEC.img4" && -f "$SSHRD_DIR/sshramdisk/ramdisk.img4" && -f "$SSHRD_DIR/sshramdisk/devicetree.img4" && -f "$SSHRD_DIR/sshramdisk/kernelcache.img4" ]]; then
+                echo "[*] Booting SSH ramdisk with SSHRD..."
+                if (
+                    cd "$SSHRD_DIR" || exit 1
+                    chmod +x ./sshrd.sh
+                    sudo ./sshrd.sh boot
+                ); then
+                    killall iproxy >/dev/null 2>&1 || true
+                    "$SSHRD_IPROXY" 2222 22 >/dev/null 2>&1 &
+                    echo "[*] Waiting for SSH ramdisk on 127.0.0.1:2222..."
+                    if fix_ios8_wait_ssh "$SSHRD_SSHPASS" 2222; then
+                        EMBEDDED_SSHRD_OK=1
+                    else
+                        echo "[!] SSH ramdisk did not become reachable on port 2222."
+                        killall iproxy >/dev/null 2>&1 || true
+                    fi
+                else
+                    echo "[!] Embedded SSHRD boot failed."
+                    killall iproxy >/dev/null 2>&1 || true
+                fi
+            fi
         fi
-        echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
-        "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-        "$SSHRD_SSHPASS" -p "alpine" scp -P2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
-        ./bin/dsc64patcher dyld.raw dyld.patched -8
-        "$SSHRD_SSHPASS" -p "alpine" scp -P2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
-        rm -rf dyld.patched
-        rm -rf dyld.raw
-        "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/reboot || true"
-        killall iproxy >/dev/null 2>&1 || true
-        echo "dyld fix is complete. You can now boot iOS 8."
+        if [[ "$EMBEDDED_SSHRD_OK" -eq 1 ]]; then
+            fix_ios8_apply_dyld_patch "$SSHRD_SSHPASS" 2222
+            killall iproxy >/dev/null 2>&1 || true
+            echo "dyld fix is complete. You can now boot iOS 8."
+            exit 0
+        fi
+        fix_ios8_legacy_kit_sshrd
         exit 0
         ;;
 
