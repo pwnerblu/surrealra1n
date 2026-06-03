@@ -1,9 +1,11 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.21"
+CURRENT_VERSION="v1.3.22"
 
 clear
 
 set -euo pipefail
+
+USE_WIKIPROXY=1
 
 error_handler() {
     local exit_code=$?
@@ -234,7 +236,7 @@ curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/he
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+if [[ $LATEST_VERSION == $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
     echo "RELEASE NOTES:"
     echo "$RELEASE_NOTES"
@@ -558,6 +560,30 @@ else
     cd ..
 fi
 
+
+echo "Checking for dependencies that are required in wikiproxy, assuming Python3 is on your system"
+# Check required packages
+PACKAGES=("requests" "pyquery" "flask")
+for pkg in "${PACKAGES[@]}"; do
+    if pip3 show "$pkg" &>/dev/null; then
+        version=$(pip3 show "$pkg" | grep Version | awk '{print $2}')
+        echo "$pkg: $version"
+    else
+        echo "$pkg not installed"
+        echo "Running: pip3 install $pkg"
+        if pip3 install "$pkg" 2>&1 | grep -q "externally-managed"; then
+            echo "Externally managed environment detected, retrying with --break-system-packages"
+            pip3 install "$pkg" --break-system-packages
+        fi
+    fi
+done
+
+echo "Downloading wikiproxy"
+curl -L -o wikiproxy.py https://github.com/tihmstar/libipatcher/raw/refs/heads/master/wikiproxy.py
+
+if [[ $USE_WIKIPROXY == 1 ]]; then
+    python3 wikiproxy.py &
+fi
 
 # Run ideviceinfo and capture both output and return code
 IDEVICE_INFO=$(ideviceinfo 2>&1) || true
