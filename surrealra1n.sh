@@ -236,7 +236,7 @@ curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/he
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-if [[ $LATEST_VERSION == $CURRENT_VERSION ]]; then
+if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
     echo "RELEASE NOTES:"
     echo "$RELEASE_NOTES"
@@ -582,6 +582,10 @@ echo "Downloading wikiproxy"
 curl -L -o wikiproxy.py https://github.com/tihmstar/libipatcher/raw/refs/heads/master/wikiproxy.py
 
 if [[ $USE_WIKIPROXY == 1 ]]; then
+    PID=$(lsof -ti:8888)
+    if [[ -n "$PID" ]]; then
+        kill -9 $PID
+    fi
     python3 wikiproxy.py &
 fi
 
