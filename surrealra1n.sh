@@ -1,9 +1,11 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.21"
+CURRENT_VERSION="v1.3.22"
 
 clear
 
 set -euo pipefail
+
+USE_WIKIPROXY=1
 
 error_handler() {
     local exit_code=$?
@@ -558,6 +560,34 @@ else
     cd ..
 fi
 
+
+echo "Checking for dependencies that are required in wikiproxy, assuming Python3 is on your system"
+# Check required packages
+PACKAGES=("requests" "pyquery" "flask")
+for pkg in "${PACKAGES[@]}"; do
+    if pip3 show "$pkg" &>/dev/null; then
+        version=$(pip3 show "$pkg" | grep Version | awk '{print $2}')
+        echo "$pkg: $version"
+    else
+        echo "$pkg not installed"
+        echo "Running: pip3 install $pkg"
+        if pip3 install "$pkg" 2>&1 | grep -q "externally-managed"; then
+            echo "Externally managed environment detected, retrying with --break-system-packages"
+            pip3 install "$pkg" --break-system-packages
+        fi
+    fi
+done
+
+echo "Downloading wikiproxy"
+curl -L -o wikiproxy.py https://github.com/tihmstar/libipatcher/raw/refs/heads/master/wikiproxy.py
+
+if [[ $USE_WIKIPROXY == 1 ]]; then
+    PID=$(lsof -ti:8888)
+    if [[ -n "$PID" ]]; then
+        kill -9 $PID
+    fi
+    python3 wikiproxy.py &
+fi
 
 # Run ideviceinfo and capture both output and return code
 IDEVICE_INFO=$(ideviceinfo 2>&1) || true
