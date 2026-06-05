@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.4 beta 5"
+CURRENT_VERSION="v1.4 beta 6"
 
 clear
 
@@ -45,7 +45,7 @@ echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1"
 echo ""
 echo "Uses latest SHSH blobs (for tethered downgrades)"
 echo "iSuns9 fork of asr64_patcher is used for patching ASR"
-echo "Huge thanks to bodyc1m (discord username: cashcart1capone) for iPod touch 6 support, including the Arch Linux port they did."
+echo "Huge thanks to bodyc1m for iPod touch 6 support, including the Arch Linux/Fedora port they did."
 echo "Huge thanks to Mineek for openra1n and seprmvr64."
 
 # Request sudo password upfront
@@ -88,6 +88,10 @@ elif [[ -r /etc/os-release ]]; then
         DISTRO="Debian"
         dist=1
         read -n 1 -s -r -p "Press any key to continue"
+    elif [[ "$ID" == "fedora" || "${ID_LIKE:-}" == *fedora* || "${ID_LIKE:-}" == *rhel* ]]; then
+        DISTRO="Fedora"
+        dist=5
+        read -n 1 -s -r -p "Press any key to continue"
     fi
 fi
 
@@ -121,7 +125,7 @@ fi
 # Unsupported check
 if [[ "$DISTRO" == "Unsupported" ]]; then
     echo "Unsupported Linux distribution."
-    echo "This script only supports Debian-based, Arch-based and macOS systems."
+    echo "This script only supports Debian-based, Arch-based, Fedora-based and macOS systems."
     exit 1
 fi
 
@@ -173,9 +177,26 @@ elif [[ $dist == 2 ]]; then
     else
         echo "All dependencies are already installed."
     fi
+elif [[ $dist == 5 ]]; then
+    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc)
+    MISSING_PACKAGES=()
+
+    for pkg in "${DEPENDENCIES[@]}"; do
+        if ! rpm -q "$pkg" &>/dev/null; then
+            MISSING_PACKAGES+=("$pkg")
+        fi
+    done
+
+    if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+        echo "Missing packages detected: ${MISSING_PACKAGES[*]}"
+        echo "Installing missing dependencies..."
+        sudo dnf install -y "${MISSING_PACKAGES[@]}"
+    else
+        echo "All dependencies are already installed."
+    fi
 elif [[ "$DISTRO" == "unknown" ]]; then
     echo "Unsupported Linux distribution."
-    echo "This script only supports Debian-based and Arch-based systems."
+    echo "This script only supports Debian-based, Arch-based, Fedora-based and macOS systems."
     exit 1
 fi
 
