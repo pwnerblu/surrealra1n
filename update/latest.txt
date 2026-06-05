@@ -1,5 +1,5 @@
-v1.3.21
+v1.3.22
 
 RELEASE NOTES:
 
-More linux fixes
+Add wikiproxy workarounds for firmware key issues.
