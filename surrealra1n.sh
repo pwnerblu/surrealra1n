@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.23"
+CURRENT_VERSION="v1.3.24"
 
 clear
 
@@ -582,10 +582,7 @@ echo "Downloading wikiproxy"
 curl -L -o wikiproxy.py https://github.com/tihmstar/libipatcher/raw/refs/heads/master/wikiproxy.py
 
 if [[ $USE_WIKIPROXY == 1 ]]; then
-    PID=$(lsof -ti:8888) || true
-    if [[ -n "$PID" ]]; then || true
-        kill -9 $PID || true
-    fi
+    # workaround some issues
     python3 wikiproxy.py &
 fi
 
