@@ -1,5 +1,5 @@
-v1.3.23
+v1.3.24
 
 RELEASE NOTES:
 
-Maybe workaround the lsof issue that some users have?
+Try and fix the workaround
