@@ -1,5 +1,5 @@
-v1.3.22
+v1.3.23
 
 RELEASE NOTES:
 
-Add wikiproxy workarounds for firmware key issues.
+Maybe workaround the lsof issue that some users have?
