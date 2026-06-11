@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.25"
+CURRENT_VERSION="v1.3.26"
 
 clear
 
@@ -265,8 +265,7 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
         exit 1
     else
         echo "You have declined the update."
-        echo "Until you update, surrealra1n can't be used."
-        exit 1
+        echo "Until you update, surrealra1n support will not be provided. I (pwnerblu) only support the latest version."
     fi
 else
     echo "surrealra1n is up to date."
@@ -2461,6 +2460,49 @@ case "$1" in
             mkdir tmp/Firmware/all_flash
             mv $SEP tmp/Firmware/all_flash/
             SEP_PATH="tmp/Firmware/all_flash/$SEP"
+            if [[ $IOS_VERSION == 10.3.3 ]]; then
+                BUILD_ID="14G60"
+            elif [[ $IOS_VERSION == 10.3.2 ]]; then
+                BUILD_ID="14F89"
+            elif [[ $IOS_VERSION == 10.3.1 ]]; then
+                BUILD_ID="14E304"
+            elif [[ $IOS_VERSION == 10.3 ]]; then
+                BUILD_ID="14E277"
+            fi
+            # workaround to an issue regarding iBSS and iBEC pwnrestores
+            if [[ $IDENTIFIER == iPhone7,2 ]]; then
+                boardcfg="n61ap"
+            elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+                boardcfg="n56ap"
+            fi
+            KEY_FILE="keys/$IDENTIFIER.txt"
+            if [[ ! -f "$KEY_FILE" ]]; then
+                echo "[!] Key file $KEY_FILE not found. Aborting."
+                exit 1
+            fi
+
+            # Extract iBSS and iBEC keys
+            IBSS_KEY=$(grep "ibss-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+            IBEC_KEY=$(grep "ibec-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+            # patch iBSS and iBEC pwnrestore and do restore
+            ./bin/img4tool -s "$shshpath" -e -m "$IDENTIFIER-im4m"
+            im4m="$IDENTIFIER-im4m"
+            if [[ $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 10.3* ]]; then
+                unzip -j "$restoredir/custom.ipsw" "Firmware/dfu/$IBSS" -d tmp
+                unzip -j "$restoredir/custom.ipsw" "Firmware/dfu/$IBEC" -d tmp
+                ./bin/img4 -i tmp/$IBSS -o tmp/iBSS.raw -k $IBSS_KEY
+                ./bin/img4 -i tmp/$IBEC -o tmp/iBEC.raw -k $IBEC_KEY
+                ./bin/iBoot64Patcher tmp/iBSS.raw tmp/iBSS.patch
+                ./bin/iBoot64Patcher tmp/iBEC.raw tmp/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1" -n
+                sudo mkdir -p /tmp/futurerestore
+                sudo ./bin/img4 -i tmp/iBSS.patch -o /tmp/futurerestore/ibss.$boardcfg.$BUILD_ID.patched.img4 -A -T ibss -M $im4m
+                sudo ./bin/img4 -i tmp/iBEC.patch -o /tmp/futurerestore/ibec.$boardcfg.$BUILD_ID.patched.img4 -A -T ibec -M $im4m
+                sleep 3
+                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
+                echo "Restore has finished! Read above if there's any errors"
+                rm -rf "tmp" 
+                exit 0          
+            fi
             if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
                 if [[ $update_prompt == y || $update_prompt == Y ]]; then
                     sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
@@ -2499,8 +2541,7 @@ case "$1" in
             sudo rm -rf "boot/$IDENTIFIER/$IOS_VERSION"
         fi
         exit 1
-        ;;
-# deprecate ota downgrade option
+        ;;  
     --downgrade)
         if [[ $# -ne 3 ]]; then
             echo "[!] Usage: --downgrade [IPSW FILE] [SHSH BLOB]"
