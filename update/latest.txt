@@ -1,5 +1,5 @@
-v1.3.25
+v1.3.26
 
 RELEASE NOTES:
 
-Fix a serious bug
+Workarounds
