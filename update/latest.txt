@@ -1,4 +1,4 @@
-v1.3.26
+v1.3.27
 
 RELEASE NOTES:
 
