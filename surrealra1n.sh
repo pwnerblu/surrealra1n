@@ -1,5 +1,8 @@
 #!/bin/bash
-CURRENT_VERSION="v1.3.26"
+CURRENT_VERSION="v1.3.27"
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 clear
 
