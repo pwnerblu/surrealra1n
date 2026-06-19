@@ -77,7 +77,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
         echo
     fi
 
-# Linux detection
+# linux detection
 elif [[ -r /etc/os-release ]]; then
     . /etc/os-release
 
@@ -91,6 +91,26 @@ elif [[ -r /etc/os-release ]]; then
     elif [[ "$ID" == "fedora" || "${ID_LIKE:-}" == *fedora* || "${ID_LIKE:-}" == *rhel* ]]; then
         DISTRO="Fedora"
         dist=5
+        read -n 1 -s -r -p "Press any key to continue"
+    # generic Linux fallback
+    elif command -v apt-get &>/dev/null; then
+        DISTRO="Debian"
+        dist=1
+        echo "Unrecognized distro; treating as Debian-based (apt-get detected)."
+        read -n 1 -s -r -p "Press any key to continue"
+    elif command -v pacman &>/dev/null; then
+        DISTRO="Arch"
+        dist=2
+        echo "Unrecognized distro; treating as Arch-based (pacman detected)."
+    elif command -v dnf &>/dev/null; then
+        DISTRO="Fedora"
+        dist=5
+        echo "Unrecognized distro; treating as Fedora-based (dnf detected)."
+        read -n 1 -s -r -p "Press any key to continue"
+    elif command -v zypper &>/dev/null; then
+        DISTRO="Fedora"
+        dist=5
+        echo "Unrecognized distro; treating as Fedora-based (zypper detected, using dnf flow)."
         read -n 1 -s -r -p "Press any key to continue"
     fi
 fi
@@ -125,6 +145,7 @@ fi
 # Unsupported check
 if [[ "$DISTRO" == "Unsupported" ]]; then
     echo "Unsupported Linux distribution."
+    echo "Could not detect a compatible package manager (apt-get, pacman, dnf, or zypper)."
     echo "This script only supports Debian-based, Arch-based, Fedora-based and macOS systems."
     exit 1
 fi
