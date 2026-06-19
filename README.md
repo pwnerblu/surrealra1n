@@ -1,6 +1,6 @@
 # surrealra1n 
 
-A tethered downgrade tool for iPhone 5S, all A8(X), and A11 devices
+A tethered downgrade tool for iPhone 5S, all A8(X), and A11 devices.
 
 Supports macOS and Linux
 
