@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v1.4 beta 6"
+CURRENT_VERSION="v1.4 beta 7"
 
 clear
 
