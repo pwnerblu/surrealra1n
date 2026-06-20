@@ -1,5 +1,22 @@
-v1.4 beta 7
+v2.0 beta
 
 RELEASE NOTES:
 
-Fallback linux support
+Refractor a lot of code, hopefully fix some bugs. (only tested on macOS for now)
+
+Remove CLI flags in favor of a menu-driven UX approach.
+
+Auto-check dependencies when possible even on macOS.
+Bump up minimum macOS version to 10.15.
+Fix deep sleep panics on 7.x seprmvr64 restores without needing jailbreak
+
+Add iPad Air 1 support (normal and seprmvr64).
+Add iOS 10.1-10.2.1 tether restore support for A8 (excluding A8X) devices
+Improve iPad mini 4 11.3-12.4.1 tethered downgrade by using iPhone 6 12.5.8 SEP instead of 15.x SEP.
+Add iPad mini 2 seprmvr64 stuff
+iOS 8 seprmvr64 restores are not supported anymore. And A8(X) seprmvr64 restores are currently not supported in this beta.
+
+iPad Air 2 11.3-12.4.1 restores are currenty not added in this rewrite.
+iPad mini 3 support is not added yet.
+A11 16.6.x downgrades are also not added for now in this rewrite.
+And possibly more!
