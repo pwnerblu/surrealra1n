@@ -1,15 +1,31 @@
 #!/bin/bash
-CURRENT_VERSION="v1.4 beta 7"
+CURRENT_VERSION="v2.0 beta"
+
+if [ "$EUID" -eq 0 ]; then
+  echo "ERROR: Do not run this script with sudo or as root."
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 clear
+
+IPSW_PATH=""
+IPSW_PATH_LATEST=""
+SHSH_PATH=""
+dfu_instructions=""
+restorefiles_remake=""
+VERSION=""
+BUILD=""
+VERSION_LATEST=""
+outdated=""
 
 set -euo pipefail
 
 error_handler() {
     local exit_code=$?
     local failed_command="$BASH_COMMAND"
-
-    # THIS is the real line of the failing command
     local line_number="${BASH_LINENO[0]}"
     local script_file="${BASH_SOURCE[1]:-$0}"
 
@@ -40,17 +56,15 @@ error_handler() {
 
 trap 'error_handler $LINENO' ERR
 
-echo "surrealra1n - $CURRENT_VERSION"
-echo "Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1"
-echo ""
-echo "Uses latest SHSH blobs (for tethered downgrades)"
-echo "iSuns9 fork of asr64_patcher is used for patching ASR"
-echo "Huge thanks to bodyc1m for iPod touch 6 support, including the Arch Linux/Fedora port they did."
-echo "Huge thanks to Mineek for openra1n and seprmvr64."
-
+echo "Your surrealra1n version: $CURRENT_VERSION"
 # Request sudo password upfront
 echo "Enter your user password when prompted to"
 sudo -v || exit 1
+
+sudo rm -rf "tmp"
+sudo rm -rf "tmp1"
+sudo rm -rf "tmp2"
+sudo rm -rf "work"
 
 dist=0
 
@@ -62,22 +76,16 @@ ARCH="$(uname -m)"
 # macOS detection
 if [[ "$(uname)" == "Darwin" ]]; then
     DISTRO="macOS"
-
     if [[ "$ARCH" == "arm64" ]]; then
         echo "You are running surrealra1n on an Apple Silicon Mac."
-        echo "Please read the following guide before continuing: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
-        read -n 1 -s -r -p "Press any key to continue"
         dist=3
         echo
     elif [[ "$ARCH" == "x86_64" ]]; then
         echo "You are running surrealra1n on Intel macOS."
-        echo "Please read the following guide before continuing: https://github.com/pwnerblu/surrealra1n/wiki/Getting-started-with-surrealra1n-(macOS)"
-        read -n 1 -s -r -p "Press any key to continue"
         dist=4
         echo
     fi
-
-# linux detection
+# Linux detection
 elif [[ -r /etc/os-release ]]; then
     . /etc/os-release
 
@@ -115,6 +123,11 @@ elif [[ -r /etc/os-release ]]; then
     fi
 fi
 
+if [[ $dist == 3 || $dist == 4 ]]; then
+    # prevent finder from annoying you
+    killall -STOP AMPDevicesAgent AMPDeviceDiscoveryAgent MobileDeviceUpdater 2>/dev/null
+fi
+
 # Run macOS version check only if you're on macOS, should fix Linux
 if [[ $dist == 3 || $dist == 4 ]]; then
     macmodel=$(sysctl -n hw.model) 
@@ -124,23 +137,54 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    if [[ "$(printf '%s\n' "10.11" "$macos_ver" | sort -V | head -n1)" != "$macos_ver" ]]; then
+    if [[ "$(printf '%s\n' "10.15" "$macos_ver" | sort -V | head -n1)" == "10.15" ]]; then
         echo "Your macOS version $macos_ver is supported."
     else
-        echo "surrealra1n only supports macOS versions 10.11 and later at the moment."
-        echo "Your macOS version: $macos_ver"
-        echo "This may change in the future though"
+        echo "surrealra1n only supports macOS 10.15 and later."
         exit 1
-    fi
-    if [[ "$macmodel" == "Mac17,5" ]]; then
-        echo "There is a problem with the MacBook Neo in which openra1n fails to compile."
-        echo "You cannot boot jailbroken with palera1n on tethered downgrades without openra1n, however for everything else it should be fine."
-        echo "It will be fixed soon enough."
-        read -n 1 -s -r -p "Press any key to continue"
-        echo
     fi
 fi
 
+if [[ $dist == 3 || $dist == 4 ]]; then
+    # Check for Xcode Command Line Tools
+    if ! xcode-select -p &>/dev/null; then
+        echo "Xcode Command Line Tools are not installed. Installing..."
+        xcode-select --install
+        echo "Please re-run surrealra1n after the installation completes."
+        exit 1
+    else
+        echo "Xcode Command Line Tools are installed."
+    fi
+
+    # Check for Homebrew
+    if ! command -v brew &>/dev/null; then
+        echo "[!] Homebrew is not installed. You will need to install Homebrew from https://brew.sh"
+        exit 1
+    else
+        echo "Homebrew is installed."
+    fi
+
+    # Check for missing brew dependencies
+    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils")
+    for dep in "${BREW_DEPS[@]}"; do
+        if ! brew list "$dep" &>/dev/null; then
+            echo "[$dep] is not installed. Installing..."
+            brew install "$dep"
+        else
+            echo "[$dep] is installed."
+        fi
+    done
+fi
+
+# Check for Rosetta 2 (Apple Silicon only)
+if [[ $dist == 3 ]]; then
+    if ! /usr/bin/pgrep -q oahd; then
+        echo "Rosetta 2 is not installed. Installing..."
+        softwareupdate --install-rosetta --agree-to-license
+    else
+        echo "Rosetta 2 is installed."
+    fi
+fi
 
 # Unsupported check
 if [[ "$DISTRO" == "Unsupported" ]]; then
@@ -284,29 +328,37 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
     echo "It is strongly recommended to update to get the latest features + bug fixes."
     read -p "Would you like to update now? (y/n): " update
     if [[ $update == y || $update == Y ]]; then
+        rm -rf "updatefiles"
         mkdir updatefiles
-        rm -rf bin
-        rm -rf futurerestore
+        rm -rf "updatefiles/repo"
+        git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
+        if [[ ! -d updatefiles/repo ]]; then
+            echo "Failed to clone repository."
+            exit 1
+        fi
+        rm -rf "surrealra1n.old"
+        mkdir -p surrealra1n.old # make folder to back up old surrealra1n installation
+        echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
+        echo "Backing up your current surrealra1n installation..."
+        mv -v bin surrealra1n.old/
+        mv -v futurerestore surrealra1n.old/
+        mv -v keys surrealra1n.old/
+        mv -v surrealra1n.sh surrealra1n.old/
+        rm -rf "bin"
+        rm -rf "futurerestore"
         rm -rf "keys"
-        rm -rf "manifest"
-        curl -L -o updatefiles/surrealra1n.sh https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/surrealra1n.sh
-        rm -rf surrealra1n.sh
-        mv updatefiles/surrealra1n.sh surrealra1n.sh
+        echo "Copying new files..."
+        cp -av updatefiles/repo/. ./
         chmod +x surrealra1n.sh
-        cd updatefiles
-        git clone --branch development https://github.com/pwnerblu/surrealra1n --recursive
-        mv surrealra1n/keys keys
-        mv surrealra1n/manifest manifest
-        cd ..
-        mv updatefiles/manifest manifest
-        mv updatefiles/keys keys
+
         rm -rf "updatefiles"
         echo "surrealra1n has been updated! Please run the script again"
-        exit 1
+        exit 0
     else
         echo "You have declined the update."
-        echo "Until you update, surrealra1n can't be used."
-        exit 1
+        echo "This version of surrealra1n is no longer supported, so it is recommended to update as soon as possible."
+        outdated=1
+        read -p "Press enter to continue"
     fi
 else
     echo "surrealra1n is up to date."
@@ -338,6 +390,9 @@ if [[ -f "./bin/img4" && \
       -f "./bin/hfsplus" && \
       -f "./bin/tsschecker" && \
       -f "./bin/ipatcher" && \
+      -f "./bin/iproxy" && \
+      -f "./bin/dtree_patcher" && \
+      -f "./bin/sshpass" && \
       -f "./bin/dsc64patcher" && \
       -f "./bin/idevicerestore" && \
       -f "./bin/ldid" && \
@@ -357,6 +412,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
+    curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
@@ -364,6 +420,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
+    curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iproxy
     curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dmg
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iPatcher
     # install additional restored_external patcher (iPhone X only)
@@ -443,6 +500,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
+    curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
@@ -450,6 +508,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
+    curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iproxy
     curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dmg
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iPatcher
     # install additional restored_external patcher (iPhone X only)
@@ -529,12 +588,14 @@ else
     curl -L -o bin/pzb https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/pzb
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kerneldiff
+    curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass
+    curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iproxy
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/zenity
     curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dmg
     curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/ipatcher
@@ -600,2414 +661,1840 @@ else
     cd ..
 fi
 
-echo "Checking for SSHRD_Script dependency..."
-if [[ -f "./bin/SSHRD_Script/sshrd.sh" ]]; then
-    echo "Found SSHRD_Script in bin/SSHRD_Script."
-else
-    echo "SSHRD_Script is missing. Installing into bin/SSHRD_Script..."
-    rm -rf "./bin/SSHRD_Script"
-    git clone --recursive https://github.com/verygenericname/SSHRD_Script "./bin/SSHRD_Script"
-    chmod +x "./bin/SSHRD_Script/sshrd.sh" || true
-fi
-
-
-# Run ideviceinfo and capture both output and return code
 IDEVICE_INFO=$(ideviceinfo 2>&1) || true
 IDEVICE_STATUS=$?
-
 if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
-    echo "[*] Device is in normal mode."
-
-    # Extract ProductType and UniqueChipID
     IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
     ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
     SERIAL=$(echo "$IDEVICE_INFO" | grep "^SerialNumber:" | cut -d ':' -f2 | xargs)
     DEVICE_VERSION=$(echo "$IDEVICE_INFO" | grep "^ProductVersion:" | cut -d ':' -f2 | xargs)
-
-    echo "[+] Device Identifier: $IDENTIFIER"
-    echo "[+] ECID: $ECID"
-
-else
-    echo "[*] Device is not in normal mode. Trying recovery/DFU mode..."
-
-    # Try irecovery
-    IRECOVERY_INFO=$(./bin/irecovery -q 2>/dev/null) || true
-
-    if [[ -n "$IRECOVERY_INFO" ]]; then
-        echo "[*] Device is in Recovery or DFU mode."
-
-        # Extract PRODUCT and ECID
-        IDENTIFIER=$(echo "$IRECOVERY_INFO" | grep "^PRODUCT:" | cut -d ':' -f2 | xargs)
-        ECID=$(echo "$IRECOVERY_INFO" | grep "^ECID:" | cut -d ':' -f2 | xargs)
-
-        echo "[+] Device Identifier: $IDENTIFIER"
-        echo "[+] ECID: $ECID"
-
+    MODE="Normal"
+elif [[ "$IDEVICE_INFO" != *"No device found!"* ]]; then
+    # ideviceinfo ran but failed for another reason, try -s
+    IDEVICE_INFO=$(ideviceinfo -s 2>&1) || true
+    IDEVICE_STATUS=$?
+    if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
+        IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
+        ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
+        DEVICE_VERSION=$(echo "$IDEVICE_INFO" | grep "^ProductVersion:" | cut -d ':' -f2 | xargs)
+        SERIAL="none"
+        MODE="Normal"
     else
-        echo "[!] No device detected in normal or recovery mode."
+        echo "ideviceinfo failed after two attempts."
         exit 1
     fi
-fi
-
-if [[ $IDENTIFIER == iPhone6* ]]; then
-    KERNELCACHE="kernelcache.release.iphone6"
-    LLB="LLB.iphone6.RELEASE.im4p"
-    BASEBAND10="Mav7Mav8-7.60.00.Release.bbfw"
-    IBOOT="iBoot.iphone6.RELEASE.im4p"
-    IBSS="iBSS.iphone6.RELEASE.im4p"
-    IBEC="iBEC.iphone6.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
-    IBSS="iBSS.d20.RELEASE.im4p"
-    IBEC="iBEC.d20.RELEASE.im4p"
-    LLB="LLB.d20.RELEASE.im4p"
-    BASEBAND10="Mav7Mav8-7.60.00.Release.bbfw"
-    IBOOT="iBoot.d20.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-    IBSS="iBSS.d22.RELEASE.im4p"
-    IBEC="iBEC.d22.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-    IBSS="iBSS.d21.RELEASE.im4p"
-    IBEC="iBEC.d21.RELEASE.im4p"
-fi
-
-# devicetree determiner, for iPhone 8 and X
-
-if [[ $IDENTIFIER == iPhone10,1 ]]; then
-    DEVICETREE="DeviceTree.d20ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,2 ]]; then
-    DEVICETREE="DeviceTree.d21ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,5 ]]; then
-    DEVICETREE="DeviceTree.d211ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,4 ]]; then
-    DEVICETREE="DeviceTree.d201ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,3 ]]; then
-    DEVICETREE="DeviceTree.d22ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone10,6 ]]; then
-    DEVICETREE="DeviceTree.d221ap.im4p"
-fi
-
-# devicetree determiner, for iPad air 2 and mini 4
-
-if [[ $IDENTIFIER == iPad5,1 ]]; then
-    DEVICETREE="DeviceTree.j96ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPad5,2 ]]; then
-    DEVICETREE="DeviceTree.j97ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPad5,3 ]]; then
-    DEVICETREE="DeviceTree.j81ap.im4p"
-    ALLFLASH="all_flash.j81ap.production"
-    IBSS10="iBSS.j81.RELEASE.im4p"
-    IBEC10="iBEC.j81.RELEASE.im4p"
-    IBSS7="iBSS.j81ap.RELEASE.im4p"
-    IBEC7="iBEC.j81ap.RELEASE.im4p"
-    KERNELCACHE10="kernelcache.release.j81"
-fi
-
-if [[ $IDENTIFIER == iPad5,4 ]]; then
-    DEVICETREE="DeviceTree.j82ap.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone* ]]; then
-    USE_BASEBAND="--latest-baseband"
-fi 
-
-# iBSS and iBEC specification for iPhone 6, and DeviceTree. finish A8 support
-
-if [[ $IDENTIFIER == iPhone7,2 ]]; then
-    IBSS="iBSS.n61.RELEASE.im4p"
-    IBEC="iBEC.n61.RELEASE.im4p"
-    DEVICETREE="DeviceTree.n61ap.im4p"
-    ALLFLASH="all_flash.n61ap.production"
-    IBSS10="iBSS.n61.RELEASE.im4p"
-    IBEC10="iBEC.n61.RELEASE.im4p"
-    # ik this device did not get ios 7
-    IBSS7="iBSS.n61ap.RELEASE.im4p"
-    IBEC7="iBEC.n61ap.RELEASE.im4p"
-    KERNELCACHE10="kernelcache.release.n61"
-fi
-
-# iBSS and iBEC specification for iPhone 6 Plus, and DeviceTree. finish A8 support
-
-if [[ $IDENTIFIER == iPhone7,1 ]]; then
-    IBSS="iBSS.n56.RELEASE.im4p"
-    IBEC="iBEC.n56.RELEASE.im4p"
-    DEVICETREE="DeviceTree.n56ap.im4p"
-    ALLFLASH="all_flash.n56ap.production"
-    IBSS10="iBSS.n56.RELEASE.im4p"
-    IBEC10="iBEC.n56.RELEASE.im4p"
-    # ik this device did not get ios 7
-    IBSS7="iBSS.n56ap.RELEASE.im4p"
-    IBEC7="iBEC.n56ap.RELEASE.im4p"
-    KERNELCACHE10="kernelcache.release.n56"
-fi
-
-# important, for iPad air 2 and mini 4 tethered restores
-if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
-    USE_BASEBAND="--latest-baseband"
-fi 
-
-if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
-    USE_BASEBAND="--no-baseband"
-fi 
-
-# ipad mini 2 support
-
-if [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]]; then
-    DOWNGRADE_RANGE="10.3 to 12.5.7"
-    NOSEP_DOWNGRADE="7.0.3 to 9.3.5 (seprmvr64 downgrades to these versions not added yet)"
-    IBSS="iBSS.ipad4b.RELEASE.im4p"
-    IBEC="iBEC.ipad4b.RELEASE.im4p"
-    if [[ $IDENTIFIER == iPad4,4 ]]; then
-        DEVICETREE="DeviceTree.j85ap.im4p"
-        USE_BASEBAND="--no-baseband"
-    else
-        DEVICETREE="DeviceTree.j86ap.im4p"
-        USE_BASEBAND="--latest-baseband"
-    fi
-    KERNELCACHE="kernelcache.release.ipad4b"
-    LLB="LLB.ipad4b.RELEASE.im4p"
-    IBOOT="iBoot.ipad4b.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPad4,6 ]]; then
-    DOWNGRADE_RANGE="11.3 to 12.5.7"
-    NOSEP_DOWNGRADE="7.1 to 9.3.5 (seprmvr64 downgrades to these versions not added yet)"
-    USE_BASEBAND="--latest-baseband"
-    DEVICETREE="DeviceTree.j87ap.im4p"
-    IBSS="iBSS.ipad4b.RELEASE.im4p"
-    IBEC="iBEC.ipad4b.RELEASE.im4p"
-    KERNELCACHE="kernelcache.release.ipad4b"
-fi
-
-if [[ $IDENTIFIER == iPad4,4 ]]; then
-    SEP="sep-firmware.j85.RELEASE.im4p"
-    IBSS10="iBSS.j85.RELEASE.im4p"
-    IBEC10="iBEC.j85.RELEASE.im4p"
-    IBSS7="iBSS.j85ap.RELEASE.im4p"
-    IBEC7="iBEC.j85ap.RELEASE.im4p"
-    IBOOT10="iBoot.j85.RELEASE.im4p"
-    LLB10="LLB.j85.RELEASE.im4p"
-    ALLFLASH="all_flash.j85ap.production"
-    KERNELCACHE10="kernelcache.release.j85"
-    sudo rm -rf "tmpmanifest"
-    mkdir -p tmpmanifest
-    cd tmpmanifest
-    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPad4,4_10.3.3.plist
-    cd ..
-fi
-
-if [[ $IDENTIFIER == iPad4,5 ]]; then
-    SEP="sep-firmware.j86.RELEASE.im4p"
-    IBSS10="iBSS.j86.RELEASE.im4p"
-    IBEC10="iBEC.j86.RELEASE.im4p"
-    IBSS7="iBSS.j86ap.RELEASE.im4p"
-    IBEC7="iBEC.j86ap.RELEASE.im4p"
-    IBOOT10="iBoot.j86.RELEASE.im4p"
-    LLB10="LLB.j86.RELEASE.im4p"
-    ALLFLASH="all_flash.j86ap.production"
-    KERNELCACHE10="kernelcache.release.j86"
-    sudo rm -rf "tmpmanifest"
-    mkdir -p tmpmanifest
-    cd tmpmanifest
-    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPad4,5_10.3.3.plist
-    cd ..
-fi
-
-if [[ $IDENTIFIER == iPad4,6 ]]; then
-    IBSS10="iBSS.j87.RELEASE.im4p"
-    IBEC10="iBEC.j87.RELEASE.im4p"
-    IBSS7="iBSS.j87ap.RELEASE.im4p"
-    IBEC7="iBEC.j87ap.RELEASE.im4p"
-    IBOOT10="iBoot.j87.RELEASE.im4p"
-    LLB10="LLB.j87.RELEASE.im4p"
-    ALLFLASH="all_flash.j87ap.production"
-    KERNELCACHE10="kernelcache.release.j87"
-fi
-
-# other stuff
-
-if [[ $IDENTIFIER == iPhone7,2 ]]; then
-    LLB="LLB.n61.RELEASE.im4p"
-    IBOOT="iBoot.n61.RELEASE.im4p"
-elif [[ $IDENTIFIER == iPhone7,1 ]]; then
-    LLB="LLB.n56.RELEASE.im4p"
-    IBOOT="iBoot.n56.RELEASE.im4p"
-fi
-
-if [[ $IDENTIFIER == iPhone6* ]]; then
-    LATEST_VERSION="12.5.8"
-    DOWNGRADE_RANGE="10.1 to 12.5.7"
-    NOSEP_DOWNGRADE="7.0.1 to 9.3.5"
-elif [[ $IDENTIFIER == iPhone7* ]]; then
-    LATEST_VERSION="12.5.8"
-    DOWNGRADE_RANGE="11.3 to 12.5.7"
-    NOSEP_DOWNGRADE="8.0 to 9.3.5"
-    KERNELCACHE="kernelcache.release.iphone7"
-elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-    LATEST_VERSION="16.7.16"
-    DOWNGRADE_RANGE="14.3 to 15.6.1"
-    KERNELCACHE="kernelcache.release.iphone10"
-elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-    LATEST_VERSION="16.7.16"
-    DOWNGRADE_RANGE="14.3 to 15.6.1"
-    KERNELCACHE="kernelcache.release.iphone10b"
-elif [[ $IDENTIFIER == iPod7,1 ]]; then
-    # ipod touch 6 support, huge thanks to bodyc1m
-    LATEST_VERSION="12.5.8"
-    DOWNGRADE_RANGE="10.3 to 12.5.7"
-    NOSEP_DOWNGRADE="8.4 to 9.3.5"
-    KERNELCACHE="kernelcache.release.n102"
-    KERNELCACHE10="kernelcache.release.n102"
-    LLB="LLB.n102.RELEASE.im4p"
-    IBOOT="iBoot.n102.RELEASE.im4p"
-    IBSS="iBSS.n102.RELEASE.im4p"
-    IBEC="iBEC.n102.RELEASE.im4p"
-    DEVICETREE="DeviceTree.n102ap.im4p"
-    # parser for iOS 8.4-9.3.5 no SEP tethered (ios 7 doesnt exist on that device ik)
-    IBSS10="iBSS.n102.RELEASE.im4p"
-    IBEC10="iBEC.n102.RELEASE.im4p"
-    IBSS7="iBSS.n102ap.RELEASE.im4p"
-    IBEC7="iBEC.n102ap.RELEASE.im4p"
-    ALLFLASH="all_flash.n102ap.production"
-    USE_BASEBAND="--no-baseband"
-elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]]; then
-    LATEST_VERSION="15.8.8"
-    DOWNGRADE_RANGE="11.3 to 15.8.5"
-    NOSEP_DOWNGRADE="9.0 to 9.3.5"
-    IBSS="iBSS.ipad5.RELEASE.im4p"
-    IBEC="iBEC.ipad5.RELEASE.im4p"
-    KERNELCACHE="kernelcache.release.ipad5"
-    LLB="LLB.ipad5.RELEASE.im4p"
-    IBOOT="iBoot.ipad5.RELEASE.im4p"
-elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
-    LATEST_VERSION="15.8.8"
-    DOWNGRADE_RANGE="11.3 to 15.8.5"
-    NOSEP_DOWNGRADE="8.1 to 9.3.5"
-    IBSS="iBSS.ipad5b.RELEASE.im4p"
-    IBEC="iBEC.ipad5b.RELEASE.im4p"
-    KERNELCACHE="kernelcache.release.ipad5b"
-elif [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 ]]; then
-    LATEST_VERSION="12.5.8"
 else
-    echo "Unsupported device, press enter to continue if you are going to do an untethered downgrade with saved SHSH (use --downgrade [IPSW FILE] [SHSH BLOB])"
-    read -p ""
+    echo "[*] Device is not in normal mode. Trying recovery/DFU mode..."
+    # Try irecovery
+    IRECOVERY_INFO=$(./bin/irecovery -q 2>/dev/null) || true
+    if [[ -n "$IRECOVERY_INFO" ]]; then
+        echo "[*] Device is in Recovery or DFU mode."
+        IDENTIFIER=$(echo "$IRECOVERY_INFO" | grep "^PRODUCT:" | cut -d ':' -f2 | xargs)
+        ECID=$(echo "$IRECOVERY_INFO" | grep "^ECID:" | cut -d ':' -f2 | xargs)
+        MODE=$(echo "$IRECOVERY_INFO" | grep "^MODE:" | cut -d ':' -f2 | xargs)
+        echo "[+] Device Identifier: $IDENTIFIER"
+        echo "[+] ECID: $ECID"
+    else
+        echo "[!] No device detected in normal or recovery mode."
+        IDENTIFIER="NONE"
+        MODE="None"
+        ECID="None"
+        REFER2=""
+        BOARDID2=""
+        REFER=""
+        BOARDID=""
+        NAME="No device"
+    fi
 fi
 
-if [[ $IDENTIFIER == iPhone6,1 ]]; then
-    SEP="sep-firmware.n51.RELEASE.im4p"
-    IBSS10="iBSS.n51.RELEASE.im4p"
-    IBEC10="iBEC.n51.RELEASE.im4p"
-    IBSS7="iBSS.n51ap.RELEASE.im4p"
-    IBEC7="iBEC.n51ap.RELEASE.im4p"
-    IBOOT10="iBoot.n51.RELEASE.im4p"
-    LLB10="LLB.n51.RELEASE.im4p"
-    ALLFLASH="all_flash.n51ap.production"
-    KERNELCACHE10="kernelcache.release.n51"
-    DEVICETREE="DeviceTree.n51ap.im4p"
-    sudo rm -rf "tmpmanifest"
-    mkdir -p tmpmanifest
-    cd tmpmanifest
-    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPhone6,1_10.3.3.plist
-    cd ..
+if [[ -d "seprmvr64boot" ]]; then
+    mkdir -p boot
+    mv -v seprmvr64boot/* boot/
+    rm -rf "seprmvr64boot"
 fi
 
-if [[ $IDENTIFIER == iPhone6,2 ]]; then
-    SEP="sep-firmware.n53.RELEASE.im4p"
-    IBOOT10="iBoot.n53.RELEASE.im4p"
-    LLB10="LLB.n53.RELEASE.im4p"
-    ALLFLASH="all_flash.n53ap.production"
-    KERNELCACHE10="kernelcache.release.n53"
-    IBSS10="iBSS.n53.RELEASE.im4p"
-    IBEC10="iBEC.n53.RELEASE.im4p"
-    IBSS7="iBSS.n53ap.RELEASE.im4p"
-    IBEC7="iBEC.n53ap.RELEASE.im4p"
-    DEVICETREE="DeviceTree.n53ap.im4p"
-    sudo rm -rf "tmpmanifest"
-    mkdir -p tmpmanifest
-    cd tmpmanifest
-    curl -L -o Manifest.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_iPhone6,2_10.3.3.plist
-    cd ..
-fi
-
-mnifst="tmpmanifest/Manifest.plist"
-
-#!/bin/bash
-
-function usage() {
-    cat <<EOF
-Usage: $0 [OPTIONS]
-
-Options:
-  --make-custom-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]
-        Create a custom IPSW for tethered restore.
-        - TARGET_IPSW_PATH: Path for the stock IPSW for target version
-        - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
-        - iOS_VERSION: Target iOS version to restore ($DOWNGRADE_RANGE)
-
-  --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [optional: --jailbreak]
-        Create a custom IPSW for tethered restore, with seprmvr64. If you're going to 9.2.1 and lower, you can choose to attempt stitching activation records to pre-activate the seprmvr64 restore.
-        - TARGET_IPSW_PATH: Path for the stock IPSW for target version
-        - BASE_IPSW_PATH: Must be iOS $LATEST_VERSION IPSW
-        - iOS_VERSION: Target iOS version to restore 
-        - [--stitch-activation]: Attempt to stitch activation records into rootfs to pre-activate a restore (7.0 - 9.2.1 only). Device must be legitimately activated to save activation records, it can't be iCloud/MDM bypassed.
-
-  --restore [iOS_VERSION]
-        Restore the device to a previously created custom IPSW.
-        - You can also choose to tethered update (no data loss, but may only work if going from a lower version to a newer version (13.6 to 15.4.1 for example)
-        - Requires a custom IPSW already built for the specified iOS version.
-        - Put your device into DFU mode before proceeding.
-
-  --seprmvr64-restore [iOS_VERSION]
-        Restore the device to a previously created custom IPSW for seprmvr64.
-        - Requires a custom IPSW already built for the specified iOS version.
-        - Put your device into DFU mode before proceeding.
-
-  --seprmvr64-boot [iOS_VERSION] [ipsw file]
-        Perform a tethered boot of the specified iOS version with seprmvr64.
-        - You must be on that iOS version already.
-        - Put your device into DFU mode before proceeding.
-
-  --downgrade [IPSW FILE] [SHSH BLOB]
-        Downgrade a device with SHSH blobs.
-        - NOTE: the shsh blob must be for the iOS version you're downgrading to! 
-        - if you dont have shsh blobs for the version you want to downgrade to, please make a custom ipsw and use the restore flag instead to do a tethered downgrade.
-
-  --boot [iOS_VERSION]
-        Perform a tethered boot of the specified iOS version.
-        - You must be on that iOS version already.
-        - Put your device into DFU mode before proceeding.
-   
-  -h, --help
-        Show this help message and exit.
-
-EOF
-}
-
-if [[ $# -eq 0 ]]; then
-    usage
+if [[ $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 ]]; then
+    echo "iPad mini 3 is not supported yet"
     exit 1
 fi
 
-case "$1" in
-    --seprmvr64-ipsw)
-        if [[ $# -lt 4 || $# -gt 7 ]]; then
-            echo "[!] Usage: --seprmvr64-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION] [--stitch-activation] [--jailbreak]"
+KEY_FILE="keys/$IDENTIFIER.txt"
+
+# BB update determine check
+
+if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
+    updatebb_flag="--latest-baseband"
+elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
+    updatebb_flag="--no-baseband"
+fi
+
+# changes to device detection stuff
+
+if [[ $IDENTIFIER == iPhone6* ]]; then
+    REFER="iphone6"
+    REFER2="iphone6"
+elif [[ $IDENTIFIER == iPhone7* ]]; then
+    REFER="iphone7"
+elif [[ $IDENTIFIER == iPod7* ]]; then
+    REFER="n102"
+    REFER2="n102"
+    BOARDID="n102ap"
+    NAME="iPod touch 6 ($BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+    REFER="iphone10"
+elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    REFER="iphone10b"
+elif [[ $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 ]]; then
+    REFER="ipad4"
+    REFER2="ipad4"
+elif [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 ]]; then
+    REFER="ipad4b"
+    REFER2="ipad4b"
+elif [[ $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 ]]; then
+    REFER="ipad4bm"
+    REFER2="ipad4bm"
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]]; then
+    REFER="ipad5"
+    REFER2="ipad5"
+elif [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
+    REFER="ipad5b"
+    REFER2="ipad5b"
+fi
+
+if [[ $IDENTIFIER == iPhone6,1 ]]; then
+    BOARDID="n51ap"
+    BOARDID2="n51"
+    NAME="iPhone 5S (GSM, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone6,2 ]]; then
+    BOARDID="n53ap"
+    BOARDID2="n53"
+    NAME="iPhone 5S (Global, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone7,2 ]]; then
+    BOARDID="n61ap"
+    BOARDID2="n61"
+    REFER2="$BOARDID2"
+    NAME="iPhone 6 ($BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+    BOARDID="n56ap"
+    BOARDID2="n56"
+    REFER2="$BOARDID2"
+    NAME="iPhone 6 Plus ($BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,1 ]]; then
+    BOARDID="d20ap"
+    BOARDID2="d20"
+    REFER2="$BOARDID2"
+    NAME="iPhone 8 (Global, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,4 ]]; then
+    BOARDID="d201ap"
+    BOARDID2="d201"
+    REFER2="$BOARDID2"
+    NAME="iPhone 8 (GSM, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,2 ]]; then
+    BOARDID="d21ap"
+    BOARDID2="d21"
+    REFER2="$BOARDID2"
+    NAME="iPhone 8 Plus (Global, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,5 ]]; then
+    BOARDID="d211ap"
+    BOARDID2="d211"
+    REFER2="$BOARDID2"
+    NAME="iPhone 8 Plus (GSM, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,3 ]]; then
+    BOARDID="d22ap"
+    BOARDID2="d22"
+    REFER2="$BOARDID2"
+    NAME="iPhone X (Global, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPhone10,6 ]]; then
+    BOARDID="d221ap"
+    BOARDID2="d221"
+    REFER2="$BOARDID2"
+    NAME="iPhone X (GSM, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,1 ]]; then
+    BOARDID="j71ap"
+    BOARDID2="j71"
+    NAME="iPad Air (Wi-Fi only, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,2 ]]; then
+    BOARDID="j72ap"
+    BOARDID2="j72"
+    NAME="iPad Air (Cellular, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,3 ]]; then
+    BOARDID="j73ap"
+    BOARDID2="j73"
+    NAME="iPad Air (China, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,4 ]]; then
+    BOARDID="j85ap"
+    BOARDID2="j85"
+    NAME="iPad mini 2 (Wi-Fi only, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,5 ]]; then
+    BOARDID="j86ap"
+    BOARDID2="j86"
+    NAME="iPad mini 2 (Cellular, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,6 ]]; then
+    BOARDID="j87ap"
+    BOARDID2="j87"
+    NAME="iPad mini 2 (China, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,7 ]]; then
+    BOARDID="j85map"
+    BOARDID2="j85m"
+    NAME="iPad mini 3 (Wi-Fi only, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,8 ]]; then
+    BOARDID="j86map"
+    BOARDID2="j86m"
+    NAME="iPad mini 3 (Cellular, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad4,9 ]]; then
+    BOARDID="j87map"
+    BOARDID2="j87m"
+    NAME="iPad mini 3 (China, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad5,1 ]]; then
+    BOARDID="j96ap"
+    BOARDID2="j96"
+    NAME="iPad mini 4 (Wi-Fi only, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad5,2 ]]; then
+    BOARDID="j97ap"
+    BOARDID2="j97"
+    NAME="iPad mini 4 (Cellular, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad5,3 ]]; then
+    BOARDID="j81ap"
+    BOARDID2="j81"
+    NAME="iPad Air 2 (Wi-Fi only, $BOARDID) - $IDENTIFIER"
+elif [[ $IDENTIFIER == iPad5,4 ]]; then
+    BOARDID="j82ap"
+    BOARDID2="j82"
+    NAME="iPad Air 2 (Cellular, $BOARDID) - $IDENTIFIER"
+fi
+
+if [[ $IDENTIFIER == iPad5* ]]; then
+    LATEST_VERSION="15.8.8"
+elif [[ $IDENTIFIER == iPhone10* ]]; then
+    LATEST_VERSION="16.7.16"
+else
+    LATEST_VERSION="12.5.8"
+fi
+
+IBSS="iBSS.$REFER2.RELEASE.im4p"
+IBEC="iBEC.$REFER2.RELEASE.im4p"
+LLB="LLB.$REFER2.RELEASE.im4p"
+IBOOT="iBoot.$REFER2.RELEASE.im4p"
+LLB10="LLB.$BOARDID2.RELEASE.im4p"
+IBOOT10="iBoot.$BOARDID2.RELEASE.im4p"
+DEVICETREE="DeviceTree.$BOARDID.im4p"
+ALLFLASH="all_flash.$BOARDID.production"
+KERNEL="kernelcache.release.$REFER"
+IBSS10="iBSS.$BOARDID2.RELEASE.im4p"
+IBEC10="iBEC.$BOARDID2.RELEASE.im4p"
+IBSS7="iBSS.$BOARDID.RELEASE.im4p"
+IBEC7="iBEC.$BOARDID.RELEASE.im4p"
+KERNEL10="kernelcache.release.$BOARDID2"
+
+INFO_TEXT="surrealra1n - $CURRENT_VERSION
+Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5
+This build is an early beta. Use at your own risk, and expect bugs.
+
+Uses latest SHSH blobs (for tethered downgrades)
+iSuns9 fork of asr64_patcher is used for patching ASR
+Huge thanks to bodyc1m for iPod touch 6 support, including the Arch Linux/Fedora port they did.
+Huge thanks to Mineek for openra1n and seprmvr64.
+
+Device: $NAME
+ECID: $ECID
+
+Device is in $MODE mode."
+
+misc_utils(){
+
+clear
+echo "$INFO_TEXT"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Reinstall surrealra1n"
+echo "2. Clear all created boot files and restore files"
+if [[ -d "surrealra1n.old" ]]; then
+    echo "3. Go back to previous version of surrealra1n"
+    echo "4. Back"
+else
+    echo "3. Back"
+fi
+if [[ -d "surrealra1n.old" ]]; then
+    read -p "Please input an option (1-4): " misc_utils_options
+else
+    read -p "Please input an option (1-3): " misc_utils_options
+fi
+if [[ $misc_utils_options == 1 ]]; then
+    echo "WARNING: All of your boot files, and other things will be deleted (if any files are in the surrealra1n directory, they will be erased), and surrealra1n will be fresh installed."
+    read -p "Are you sure you want to reinstall surrealra1n? (y/N): " surrealra1n_reinstall
+    if [[ $surrealra1n_reinstall == Y || $surrealra1n_reinstall == y ]]; then
+        sudo rm -rf ./*
+        git clone --branch development https://github.com/pwnerblu/surrealra1n repo --recursive
+        if [[ ! -d repo ]]; then
+            echo "Failed to clone repository. You will need to fetch surrealra1n from releases on GitHub"
             exit 1
         fi
-        TARGET_IPSW="$2"
-        BASE_IPSW="$3"
-        IOS_VERSION="$4"
-        FORCE_ACTIVATE="0"
-        if [[ "${5:-}" == "--stitch-activation" || "${6:-}" == "--stitch-activation" ]]; then
-            case "$IOS_VERSION" in
-                7.*|8.*|9.0*|9.1*|9.2*)
-                    FORCE_ACTIVATE=1
-                    ;;
-                9.3*)
-                    FORCE_ACTIVATE=0
-                    ;;
-                *)
-                    echo "[!] Unsupported iOS version for stitch-activation: $IOS_VERSION"
-                    exit 1
-                    ;;
-            esac
-        fi
-        if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad4* ]]; then
-            echo "Device is not supported yet for seprmvr64-ipsw"
-            exit 1
-        fi
-        # A8(X) iOS 8.0-9.x activation error candidates
-        if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 9.3* ]]; then
-            echo "[!] 9.3.x restores are blocked on A8(X) devices for the following reason."
-            echo "Recently, Apple blocked activation for A8(X) iOS 8 and 9. This means that you will not be able to activate normally, getting \"Activation Error\"."
-            if [[ $IDENTIFIER == iPhone7* ]]; then
-                echo "Since the restore will not have baseband, activation will not work, so it is strongly recommended to stitch activation records"
-            fi
-            echo "Note: stitching activation records is only for 9.2.1 and lower, and you are trying to restore to 9.3.x. Please do iOS 9.2.1 and lower."
-            exit 1
-        elif [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION != 9.3* ]]; then
-            # set FORCE_ACTIVATE=1 automatically because these are affected A8/A8X candidates, override --stitch-activation flag here
-            FORCE_ACTIVATE=1
-            echo "[!] Activation records are REQUIRED for this restore."
-            echo "[!] This is due to Apple blocking activation recently for A8(X) iOS 8 and 9."
-            echo "[!] Make sure you are on the latest iOS (must be a functional device), and fully activated via Apple's servers. Make sure to jailbreak and install OpenSSH as well."
-            read -p "Press enter to continue"
-        fi
-        if [[ $FORCE_ACTIVATE == 1 ]] && [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 8.2* || $IOS_VERSION == 8.1* || $IOS_VERSION == 8.0* ]]; then
-            echo "Stitching activation may work on this version, but there is a much higher chance of the device deactivating especially right after the first boot."
-            echo "It is recommended to do iOS 8.3 or later instead."
-            read -p "Press enter to continue"
-        fi
-        if [[ "${5:-}" == "--jailbreak" || "${6:-}" == "--jailbreak" ]]; then
-            JAILBREAK=1
-        fi
-        if [[ $JAILBREAK != 1 ]]; then
-            echo "Jailbreak option disabled."
-            echo "Cydia will not be installed with this restore."
-            read -p "Press enter to continue"
-        fi
-        if [[ $JAILBREAK == 1 ]] && [[ $IOS_VERSION != 7.* ]]; then
-            echo "Jailbreak option not supported for iOS 8.0-9.3.5 yet, only 7.0-7.1.2."
-            JAILBREAK=0
-            read -p "Press enter to continue"
-        fi
-        if [[ $JAILBREAK == 1 ]]; then
-            mkdir jbresources
-            curl -L -o jbresources/pangu-untether.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/panguaxe.tar
-            curl -L -o jbresources/evasi0n7-untether.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether.tar
-            curl -L -o jbresources/evasi0n7-untether-70.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether-70.tar
-            curl -L -o jbresources/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
-            gzip -dc jbresources/freeze.tar.gz > jbresources/freeze.tar
-        fi
-        if [[ "$FORCE_ACTIVATE" == "0" ]]; then
-            echo "[*] iOS version is not supported for stitch-activation. Skipping pre-activation of IPSW."
-        elif [[ "$FORCE_ACTIVATE" == "1" ]]; then
-            echo "[!] Before you can proceed, make sure your device is legitimately activated via Apple's servers on the Latest iOS (activated, not iCloud/MDM bypassed)."
-            # normalize ECID (hex -> decimal if needed)
-            if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
-                ECID_CLEAN="${ECID#0x}"
-                ECID_CLEAN="${ECID_CLEAN#0X}"
-                ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
-            else
-                ECID_CLEAN="$ECID"
-                ECID_DEC="$ECID"
-            fi
-            CACHE_FILE="cache/$ECID_DEC"
+        echo "Copying new files..."
+        cp -av repo/. ./
+        chmod +x surrealra1n.sh
 
-            # check cached serial
-            if [[ -f "$CACHE_FILE" ]]; then
-                CACHED_SERIAL=$(cat "$CACHE_FILE")
-            else
-                CACHED_SERIAL=""
-            fi
-
-            # save serial to cache if empty
-            if [[ -z "$CACHED_SERIAL" ]]; then
-                mkdir -p cache
-                echo "$SERIAL" > "$CACHE_FILE"
-                # temporary workaround
-                CACHED_SERIAL="$SERIAL"
-            fi
-        fi
-        if [[ $FORCE_ACTIVATE == 1 ]] && [[ ! -f "activation_records/$CACHED_SERIAL/activation_record.plist" ]] && [[ ! -f "activation_records/$CACHED_SERIAL/IC-Info.sisv" ]] && [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then
-            echo "[!] Make sure your device is in a jailbroken state, and OpenSSH is installed."
-            echo "[!] Please DO NOT USE THIS IN THE INTENT OF BYPASSING ICLOUD, THANK YOU." 
-            mkdir -p activation_records
-            mkdir -p activation_records/$CACHED_SERIAL/
-            read -p "Press enter when it is ready. The SSH password you must input during this is "alpine" or your device's SSH password"
-            # determine what it connects by, on iOS 15.0 and later, connect as mobile, otherwise connect as root
-            if [[ $DEVICE_VERSION == 15.* ]]; then
-                CONNECT_AS="mobile"
-            else
-                CONNECT_AS="root"
-            fi
-            echo "SSH will connect as $CONNECT_AS"
-            echo "Make sure your computer and device is connected to the same Wi-Fi network."
-            read -p "Insert the IP of your device, go to Settings/Wi-Fi/Wi-Fi network/Information/IP Address: " ip_address
-            read -p "Enter the SSH Password of your device: " sshpwd
-            sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/containers/Data/System/*/Library/activation_records/activation_record.plist activation_records/$CACHED_SERIAL/activation_record.plist
-            if [[ ! -f "activation_records/$CACHED_SERIAL/activation_record.plist" ]]; then
-                echo "activation_record.plist did not save correctly. Cannot continue --stitch-activation with this."
-                exit 1
-            fi
-            sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv activation_records/$CACHED_SERIAL/IC-Info.sisv
-            if [[ ! -f "activation_records/$CACHED_SERIAL/IC-Info.sisv" ]]; then
-                echo "IC-Info.sisv did not save correctly. Certain things may be broken."
-                read -p "You can press enter to continue, but it is usually not recommended to have an incomplete backup of activation records."
-            fi
-            if [[ $DEVICE_VERSION == 15.* ]]; then
-                # re-set permissions for com.apple.commcenter.device_specific_nobackup.plist and move to different dir, so you can download it when connected via mobile
-                sudo ./bin/sshpass -p "$sshpwd" ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address" "echo "$sshpwd" | sudo -S cp /private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist /private/var/containers/Data/System/"
-                sudo ./bin/sshpass -p "$sshpwd" ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address" "echo "$sshpwd" | sudo -S chown mobile:mobile /private/var/containers/Data/System/com.apple.commcenter.device_specific_nobackup.plist"
-                sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/containers/Data/System/com.apple.commcenter.device_specific_nobackup.plist activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist
-            else
-                sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist
-            fi
-            if [[ ! -f "activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist" ]]; then 
-                echo "com.apple.commcenter.device_specific_nobackup.plist did not save correctly."
-                read -p "You can press enter to continue, but you will not have cellular signal after activation records are stitched (that is if of course, baseband update doesn't have to be skipped)."
-            fi
-        fi        
-        echo "[!] IMPORTANT: This feature is only supported on iOS 7.0 - 9.3.5. DO NOT TRY THIS on 10.0 or later"
-        echo "[!] Warning: Before you proceed with a seprmvr64 restore, please understand the following issues you will have afterwards:"
-        echo "[!] 1. Touch ID will NOT work, at all."
-        echo "[!] 2. Passcode will NOT work, at all. Your passcode is technically NULL."
-        echo "[!] 3. Encrypted Wi-Fi networks will not work. Use an open network instead."
-        echo "[!] 4. You will have deep sleep issues, and POTENTIALLY other issues."
-        read -p "Press enter to continue. Or press CTRL + C to cancel."
-        echo "[*] Making custom IPSW..."
-        savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
-        mkdir -p "$savedir"
-        echo ""
-        unzip "$TARGET_IPSW" -d tmp1
-        unzip "$BASE_IPSW" -d tmp2
-        # Read decryption keys
-        KEY_FILE="keys/$IDENTIFIER.txt"
-        if [[ ! -f "$KEY_FILE" ]]; then
-            echo "[!] Key file $KEY_FILE not found. Aborting."
-            exit 1
-        fi
-
-        # Extract iBSS and iBEC keys
-        IBSS_KEY=$(grep "ibss-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        IBEC_KEY=$(grep "ibec-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        DTRE_KEY=$(grep "dtre-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        RDSK_KEY=$(grep "rdsk-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        KRNL_KEY=$(grep "krnl-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        ROOT_KEY=$(grep "fstm-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-
-        if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
-            echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in $KEY_FILE. Aborting."
-            exit 1
-        fi
-
-        echo "[*] Found keys:"
-        echo "    iBSS Key: $IBSS_KEY"
-        echo "    iBEC Key: $IBEC_KEY"
-        if [[ $IOS_VERSION == 7.1* || $IOS_VERSION == 8.* || $IOS_VERSION == 9.* ]]; then
-            smallest_dmg=$(find_dmg tmp1 smallest)
-        else
-            smallest_dmg=$(find_dmg tmp1 largest 10370000)
-        fi
-        smallest12_dmg=$(find_dmg tmp2 smallest)
-        rootfs_dmg=$(find_dmg tmp1 largest)
-        rootfs12_dmg=$(find_dmg tmp2 largest)
-        mkdir work
-        rm -rf "$rootfs12_dmg"
-        ./bin/img4 -i "$smallest_dmg" -o "$smallest12_dmg" -k $RDSK_KEY -D
-        if [[ $IOS_VERSION == 8.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
-            # patch asr, and if A8, patch restored_external FDR step
-            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
-            ./bin/hfsplus "work/ramdisk.raw" grow 30000000
-            ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
-            ./bin/asr64_patcher asr asr_patch 
-            ./bin/ldid -e asr > ents.plist
-            ./bin/ldid -Sents.plist asr_patch
-            ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
-            ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
-            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
-            if [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
-                ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
-                ./bin/restoredpatcher restored_external restored_patch -b
-                ./bin/ldid -e restored_external > ents.plist
-                ./bin/ldid -Sents.plist restored_patch
-                ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
-                ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
-                ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
-                if [[ $IDENTIFIER == iPad5,3 ]]; then
-                    # options plist change
-                    curl -L -o options.n61.plist https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/dualboot/options.n61.plist
-                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/share/restore/options.j81.plist
-                    ./bin/hfsplus "work/ramdisk.raw" add options.n61.plist usr/local/share/restore/options.j81.plist
-                    rm -rf options.n61.plist
-                fi
-                if [[ $IDENTIFIER == iPhone7,2 ]]; then
-                    # options plist change
-                    curl -L -o options.n61.plist https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/dualboot/options.n61.plist
-                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/share/restore/options.n61.plist
-                    ./bin/hfsplus "work/ramdisk.raw" add options.n61.plist usr/local/share/restore/options.n61.plist
-                elif [[ $IDENTIFIER == iPhone7,1 ]]; then
-                    # options plist change
-                    curl -L -o options.n56.plist https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/dualboot/options.n56.plist
-                    ./bin/hfsplus "work/ramdisk.raw" rm usr/local/share/restore/options.n56.plist
-                    ./bin/hfsplus "work/ramdisk.raw" add options.n56.plist usr/local/share/restore/options.n56.plist
-                fi
-            fi
-            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
-            ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
-            ./bin/hfsplus "tmp1/rootfs.raw" grow 3500000000
-            if [[ $FORCE_ACTIVATE == 1 ]]; then
-                echo "Preparing activation files..."
-                sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
-                sudo cp activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
-                sudo cp activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist com.apple.commcenter.device_specific_nobackup.plist
-                echo "Making dirs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
-                echo "Injecting activation files into rootfs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                sudo ./bin/hfsplus "tmp1/rootfs.raw" add com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
-                echo "Setting permissions..."
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
-                echo "Cleaning up..."
-                sudo rm -rf activation.plist
-                sudo rm -rf IC-Info.sisv
-            fi
-            ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
-        elif [[ $IOS_VERSION == 7.* ]] && [[ $FORCE_ACTIVATE == 1 || $JAILBREAK == 1 ]]; then
-            # patch asr...
-            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
-            ./bin/hfsplus "work/ramdisk.raw" grow 30000000
-            ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
-            ./bin/asr64_patcher asr asr_patch 
-            ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
-            ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
-            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
-            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
-            ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
-            ./bin/hfsplus "tmp1/rootfs.raw" grow 2500000000
-            if [[ $FORCE_ACTIVATE == 1 ]]; then
-                echo "Preparing activation files..."
-                sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
-                sudo cp activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
-                sudo cp activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist com.apple.commcenter.device_specific_nobackup.plist
-                echo "Making dirs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
-                echo "Injecting activation files into rootfs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                sudo ./bin/hfsplus "tmp1/rootfs.raw" add com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
-                echo "Setting permissions..."
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
-                echo "Cleaning up..."
-                sudo rm -rf activation.plist
-                sudo rm -rf IC-Info.sisv
-                sudo rm -rf com.apple.commcenter.device_specific_nobackup.plist
-            fi
-            if [[ $JAILBREAK == 1 ]]; then
-                echo "Doing jailbreak stuff..."
-                if [[ $IOS_VERSION == 7.1* ]]; then
-                    untether_tar="jbresources/pangu-untether.tar"
-                elif [[ $IOS_VERSION == 7.0.1* || $IOS_VERSION == 7.0.2* || $IOS_VERSION == 7.0.3* || $IOS_VERSION == 7.0.4* || $IOS_VERSION == 7.0.5* || $IOS_VERSION == 7.0.6* ]]; then
-                    untether_tar="jbresources/evasi0n7-untether.tar"
-                else
-                    untether_tar="jbresources/evasi0n7-untether-70.tar"
-                fi
-                ./bin/hfsplus "tmp1/rootfs.raw" untar jbresources/freeze.tar
-                ./bin/hfsplus "tmp1/rootfs.raw" untar $untether_tar
-            fi
-            ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
-        elif [[ $IOS_VERSION == 9.* ]] && [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $FORCE_ACTIVATE == 1 ]]; then
-            # patch asr, and if A8, patch restored_external FDR step
-            ./bin/img4 -i "$smallest_dmg" -o "work/ramdisk.raw" -k $RDSK_KEY 
-            ./bin/hfsplus "work/ramdisk.raw" grow 40000000
-            ./bin/hfsplus "work/ramdisk.raw" extract usr/sbin/asr
-            ./bin/asr64_patcher asr asr_patch 
-            ./bin/ldid -e asr > ents.plist
-            ./bin/ldid -Sents.plist asr_patch
-            ./bin/hfsplus "work/ramdisk.raw" rm usr/sbin/asr
-            ./bin/hfsplus "work/ramdisk.raw" add asr_patch usr/sbin/asr
-            ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/sbin/asr
-            if [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
-                ./bin/hfsplus "work/ramdisk.raw" extract usr/local/bin/restored_external
-                ./bin/restoredpatcher restored_external restored_patch -b
-                ./bin/ldid -e restored_external > ents.plist
-                ./bin/ldid -Sents.plist restored_patch
-                ./bin/hfsplus "work/ramdisk.raw" rm usr/local/bin/restored_external
-                ./bin/hfsplus "work/ramdisk.raw" add restored_patch usr/local/bin/restored_external
-                ./bin/hfsplus "work/ramdisk.raw" chmod 100755 usr/local/bin/restored_external
-                ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
-            fi
-            ./bin/img4 -i "work/ramdisk.raw" -o "$smallest12_dmg" -A -T rdsk
-            ./bin/dmg extract "$rootfs_dmg" "tmp1/rootfs.raw" -k $ROOT_KEY
-            if [[ $FORCE_ACTIVATE == 1 ]]; then
-                echo "Preparing activation files..."
-                sudo cp activation_records/$CACHED_SERIAL/activation_record.plist activation.plist
-                sudo cp activation_records/$CACHED_SERIAL/IC-Info.sisv IC-Info.sisv
-                sudo cp activation_records/$CACHED_SERIAL/com.apple.commcenter.device_specific_nobackup.plist com.apple.commcenter.device_specific_nobackup.plist
-                echo "Making dirs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
-                ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
-                echo "Injecting activation files into rootfs..."
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add activation.plist private/var/mobile/Library/mad/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" add IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                sudo ./bin/hfsplus "tmp1/rootfs.raw" add com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
-                echo "Setting permissions..."
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
-                ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
-                echo "Cleaning up..."
-                sudo rm -rf activation.plist
-                sudo rm -rf IC-Info.sisv
-            fi
-            ./bin/dmg build "tmp1/rootfs.raw" "$rootfs12_dmg"
-        else
-            mv "$rootfs_dmg" "$rootfs12_dmg"
-        fi
-        ./bin/img4 -i "tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE" -o "work/dtre.raw" -k $DTRE_KEY
-        # patch content-protect string devicetree, to prevent restore freezes at keybag step
-        perl -pi -e 's/content-protect/content-protecV/g' work/dtre.raw 
-        ./bin/img4 -i "work/dtre.raw" -o "tmp2/Firmware/all_flash/$DEVICETREE" -A -T rdtr
-        if [[ $IOS_VERSION != 7.* ]]; then
-            mv "tmp1/Firmware/dfu/$IBSS10" "tmp1/Firmware/dfu/$IBSS7"
-            mv "tmp1/Firmware/dfu/$IBEC10" "tmp1/Firmware/dfu/$IBEC7"
-        fi
-        ./bin/img4 -i "tmp1/Firmware/dfu/$IBSS7" -o "work/iBSS.dec" -k "$IBSS_KEY"
-        ./bin/img4 -i "tmp1/Firmware/dfu/$IBEC7" -o "work/iBEC.dec" -k "$IBEC_KEY"
-        if [[ $IOS_VERSION == 7.* || $IOS_VERSION == 8.* ]]; then
-            ./bin/ipatcher work/iBSS.dec work/iBSS.patched
-            ./bin/ipatcher work/iBEC.dec work/iBEC.patched -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
-        else
-            ./bin/kairos work/iBSS.dec work/iBSS.patched
-            ./bin/kairos work/iBEC.dec work/iBEC.patched -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
-        fi
-        ./bin/img4 -i "work/iBSS.patched" -o "tmp2/Firmware/dfu/$IBSS" -A -T ibss   
-        ./bin/img4 -i "work/iBEC.patched" -o "tmp2/Firmware/dfu/$IBEC" -A -T ibec 
-        ./bin/img4 -i "tmp1/$KERNELCACHE10" -o "work/kcache.raw" -k $KRNL_KEY  
-        ./bin/img4 -i "tmp1/$KERNELCACHE10" -o "work/kcache.im4p" -k $KRNL_KEY -D
-        if [[ $IOS_VERSION == 7.* ]]; then
-            ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 7 -m 7 -e 7 -f 7 -k
-        elif [[ $IOS_VERSION == 8.* ]]; then
-            ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
-        else
-            ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 9 -f 9 -k -v
-        fi     
-        ./bin/kerneldiff "work/kcache.raw" "work/kcache.patched" "work/kcache.bpatch"
-        # wrap kcache into im4p
-        ./bin/img4 -i "work/kcache.im4p" -o "tmp2/$KERNELCACHE" -T rkrn -P "work/kcache.bpatch" -J || true
-        echo "Patching complete!"
-        rm -rf "work"
-        rm -rf "tmp1"
-        cd tmp2
-        zip -0 -r ../$savedir/custom.ipsw *
-        cd ..
-        rm -rf "tmp2"
-        echo "Custom IPSW is created! You can restore with: ./surrealra1n.sh --seprmvr64-restore $IOS_VERSION"
-        rm -rf "jbresources"
+        rm -rf "repo"
+        echo "surrealra1n has been reinstalled! Please run the script again"
         exit 0
-        ;;
+    else
+        echo "surrealra1n reinstall has been canceled."
+        misc_utils
+    fi
+elif [[ $misc_utils_options == 2 ]]; then
+    echo "WARNING: All of your boot files and restore files will be deleted. You will need to re-create them afterwards if you proceed."
+    echo "This may be useful if you want more disk space."
+    read -p "Are you sure you want to clear these files? (y/N): " clear_files    
+    if [[ $clear_files == y || $clear_files == Y ]]; then
+        sudo rm -rf "boot"
+        sudo rm -rf "restorefiles"
+        sudo rm -rf "noseprestore"
+    else
+        echo "Clearing boot files/restore files has been canceled"
+        misc_utils
+    fi
+elif [[ $misc_utils_options == 3 ]] && [[ -d "surrealra1n.old" ]]; then
+    old_version=$(cat surrealra1n.old/oldversion.txt)
+    if [[ "$old_version" == *beta* ]]; then
+        echo "Rollback feature is not supported if you update from a beta."
+        rm -rf "surrealra1n.old"
+        sleep 4
+        misc_utils
+        return
+    fi
+    echo "WARNING: This will restore surrealra1n to the previous version backed up in surrealra1n.old."
+    echo "Any new features from this surrealra1n release may not exist in the previous version"
+    read -p "Are you sure you want to go back to the previous version? (y/N): " rollback_confirm
+    if [[ $rollback_confirm == Y || $rollback_confirm == y ]]; then
+        rm -rf "bin"
+        rm -rf "futurerestore"
+        rm -rf "keys"
+        rm -rf surrealra1n.sh
+        cp -av surrealra1n.old/. ./
+        chmod +x surrealra1n.sh
+        rm -rf "surrealra1n.old"
+        echo "surrealra1n has been restored to the previous version! Please run the script again."
+        echo "You can upgrade to the latest version at any time later if you want to be on latest again."
+        exit 0
+    else
+        echo "Rollback has been canceled."
+        misc_utils
+    fi
+elif [[ $misc_utils_options == 3 ]] || [[ $misc_utils_options == 4 ]]; then
+    main_menu
+else
+    echo "Invalid option. Exiting."
+    exit 1
+fi
 
-    --seprmvr64-restore)
-        if [[ $# -ne 2 ]]; then
-            echo "[!] Usage: --seprmvr64-restore [iOS_VERSION]"
-            exit 1
-        fi
-        IOS_VERSION="$2"
-        echo "[!] IMPORTANT: This feature is only supported on iOS 7.0 - 9.3.5. DO NOT TRY THIS on 10.0 or later"
-        echo "[!] Warning: Before you proceed with a seprmvr64 restore, please understand the following issues you will have afterwards:"
-        echo "[!] 1. Touch ID will NOT work, at all."
-        echo "[!] 2. Passcode will NOT work, at all. Your passcode is technically NULL. Any time you're asked for a passcode, input anything."
-        echo "[!] 3. Encrypted Wi-Fi networks will not work. Use an open network instead."
-        echo "[!] 4. You will have deep sleep issues, and POTENTIALLY other issues."
-        echo "[!] 5. iOS 7.0 - 7.0.6 will likely freeze a lot after tether booting. It is recommended to do iOS 7.1 or later instead."
-        echo "[!] 6. iOS 8.x will be stuck at Slide to Upgrade afterwards. It is recommended to do 7.x or 9.x instead"
-        read -p "Press enter to continue. Or press CTRL + C to cancel."
-        echo "[*] Starting Restore to iOS $IOS_VERSION..."
-        savedir="noseprestore/$IDENTIFIER/$IOS_VERSION"
-        echo "Fetching shsh blobs for iOS $LATEST_VERSION (to extract im4m later)"
-        rm -rf "shsh"
-        mkdir -p shsh
-        sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+}
 
-        # Find the .shsh2 file in the shsh directory
-        shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
-        if [[ -z "$shshpath" ]]; then
-            echo "[!] No .shsh2 blob found in shsh folder. Aborting."
-            exit 1
-        fi
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        echo "You can ignore this message if you are restoring an A8(X) device or newer."
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
+pwn_device(){
+
+if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+    echo "A7 devices may have issues pwning on Linux"
+    echo "If you have a MacBook, use surrealra1n on that instead"
+    echo "You may choose to continue attempting to pwn with Linux"
+    read -p "Press enter to continue"
+fi
+
+echo "Checking if this device is in pwned DFU already"
+irecovery_output=$(./bin/irecovery -q)
+if echo "$irecovery_output" | grep -q "PWND"; then
+    echo "Device is pwned!"
+    ./bin/gaster reset
+    return
+else
+    echo "Device is not pwned yet, attempting to pwn"
+    ./bin/gaster pwn 
+    ./bin/gaster reset
+    if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+        ./bin/irecovery -f surrealra1n.sh
         ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
-        sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -e $savedir/custom.ipsw -y
-        echo "Restore has completed! If it's successful, you can boot with: ./surrealra1n.sh --seprmvr64-boot $IOS_VERSION"
-        if [[ $IOS_VERSION == 8.* ]]; then
-            echo "[*] iOS 8 detected, running automatic dyld fix now..."
-            "$0" --fix-ios8
-        fi
-        exit 0
-        ;;
+    fi
+fi
 
-    --fix-ios8)
-        echo "[!] IMPORTANT: Your device should be freshly restored to iOS 8.x and never be booted!"
-        SSHRD_DIR="./bin/SSHRD_Script"
-        SSHRD_SSHPASS="$SSHRD_DIR/$(uname)/sshpass"
-        SSHRD_IPROXY="$SSHRD_DIR/$(uname)/iproxy"
-        if [[ ! -f "$SSHRD_DIR/sshrd.sh" ]]; then
-            echo "[!] SSHRD_Script is missing at $SSHRD_DIR."
-            echo "[!] Re-run surrealra1n so dependency bootstrap can install it."
+echo "Checking if this device has pwned successfully"
+irecovery_output=$(./bin/irecovery -q)
+if echo "$irecovery_output" | grep -q "PWND"; then
+    echo "Device is pwned!"
+else
+    echo "Device has not pwned successfully"
+    exit 1
+fi
+
+}
+
+dfu_helper(){
+
+if [[ $MODE == Normal || $MODE == Recovery ]]; then
+    echo "You need to put your device into DFU mode."
+    read -p "Would you like instructions on how to do this? (y/n): " dfu_instructions
+    if [[ $dfu_instructions == y || $dfu_instructions == Y ]]; then
+        echo "Instructions will begin in:"
+        echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+        echo "Hold power + home buttons." 
+        echo "10" && sleep 1 && echo "9" && sleep 1 && echo "8" && sleep 1 && echo "7" && sleep 1 && echo "6" && sleep 1 && echo "5" && sleep 1 && echo "4" && sleep 1 && echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+        echo "Release the power button now, but keep holding home button."
+        echo "5" && sleep 1 && echo "4" && sleep 1 && echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+    else
+        echo "Put your device into DFU mode now"
+    fi
+fi
+
+echo "Checking for DFU devices"
+if [[ $dfu_instructions == Y || $dfu_instructions == y ]]; then
+    MODE=$(./bin/irecovery -q | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+    if [[ $MODE == DFU ]]; then
+        echo "The device has entered DFU successfully!"
+    else
+        echo "Device has not entered DFU mode successfully"
+        exit 1
+    fi
+else
+    while true; do
+      MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+      if [ "$MODE" = "DFU" ]; then
+        echo "Device is now in DFU mode!"
+        break
+      fi
+
+      sleep 1
+    done
+fi
+
+}
+
+switch_to_main(){
+
+echo "Fetching latest stable version info..."
+curl -L -o update/latest_main.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/update/latest.txt
+MAIN_VERSION=$(head -n 1 "update/latest_main.txt" | tr -d '\r\n')
+
+CURRENT_CLEAN=$(echo "$CURRENT_VERSION" | sed 's/ beta//g' | sed 's/ .*//g' | tr -d 'v')
+MAIN_CLEAN=$(echo "$MAIN_VERSION" | sed 's/ beta//g' | sed 's/ .*//g' | tr -d 'v')
+
+CURRENT_MAJOR=$(echo "$CURRENT_CLEAN" | cut -d'.' -f1)
+CURRENT_MINOR=$(echo "$CURRENT_CLEAN" | cut -d'.' -f2)
+CURRENT_PATCH=$(echo "$CURRENT_CLEAN" | cut -d'.' -f3)
+CURRENT_PATCH=${CURRENT_PATCH:-0}
+
+MAIN_MAJOR=$(echo "$MAIN_CLEAN" | cut -d'.' -f1)
+MAIN_MINOR=$(echo "$MAIN_CLEAN" | cut -d'.' -f2)
+MAIN_PATCH=$(echo "$MAIN_CLEAN" | cut -d'.' -f3)
+MAIN_PATCH=${MAIN_PATCH:-0}
+
+echo "Current version: $CURRENT_VERSION"
+echo "Latest stable version: $MAIN_VERSION"
+echo ""
+
+if [[ "$CURRENT_MAJOR" == "$MAIN_MAJOR" && "$CURRENT_MINOR" == "$MAIN_MINOR" && "$CURRENT_PATCH" == "$MAIN_PATCH" ]]; then
+    echo "You are already on the stable equivalent of your current version ($MAIN_VERSION)."
+    echo "No action needed."
+    read -p "Press enter to go back"
+    main_menu
+    return
+fi
+
+if [[ "$CURRENT_MAJOR" -gt "$MAIN_MAJOR" ]] || \
+   [[ "$CURRENT_MAJOR" -eq "$MAIN_MAJOR" && "$CURRENT_MINOR" -gt "$MAIN_MINOR" ]]; then
+    echo "WARNING: You are currently on $CURRENT_VERSION (development branch)."
+    echo "The latest stable version is $MAIN_VERSION (main branch)."
+    echo "Since your development version is newer than stable, switching will require a clean reinstall."
+    echo "This means ALL boot files, restore files, and binaries will be deleted."
+    echo ""
+    read -p "Are you sure you want to switch to stable? (y/N): " switch_confirm
+    if [[ $switch_confirm == Y || $switch_confirm == y ]]; then
+        sudo rm -rf ./*
+        git clone --branch main https://github.com/pwnerblu/surrealra1n repo --recursive
+        if [[ ! -d repo ]]; then
+            echo "Failed to clone repository."
             exit 1
         fi
-        if [[ ! -x "$SSHRD_SSHPASS" || ! -x "$SSHRD_IPROXY" ]]; then
-            echo "[!] SSHRD binaries are missing for $(uname): $SSHRD_SSHPASS / $SSHRD_IPROXY"
+        echo "Copying new files..."
+        cp -av repo/. ./
+        chmod +x surrealra1n.sh
+        rm -rf "repo"
+        echo "surrealra1n has been switched to stable $MAIN_VERSION! Please run the script again."
+        exit 0
+    else
+        echo "Switch to stable has been canceled."
+        main_menu
+    fi
+else
+    echo "You are on $CURRENT_VERSION (development branch)."
+    echo "Latest stable version is $MAIN_VERSION (main branch)."
+    echo "This will upgrade you to stable without wiping your boot/restore files."
+    echo ""
+    read -p "Would you like to switch to stable? (y/N): " switch_confirm
+    if [[ $switch_confirm == Y || $switch_confirm == y ]]; then
+        rm -rf "surrealra1n.old"
+        mkdir -p surrealra1n.old
+        echo "Backing up your current surrealra1n installation..."
+        echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
+        mv -v bin surrealra1n.old/
+        mv -v futurerestore surrealra1n.old/
+        mv -v keys surrealra1n.old/
+        mv -v surrealra1n.sh surrealra1n.old/
+        git clone --branch main https://github.com/pwnerblu/surrealra1n repo --recursive
+        if [[ ! -d repo ]]; then
+            echo "Failed to clone repository."
             exit 1
         fi
-        if [[ ! -f "$SSHRD_DIR/sshramdisk/iBSS.img4" || ! -f "$SSHRD_DIR/sshramdisk/iBEC.img4" || ! -f "$SSHRD_DIR/sshramdisk/ramdisk.img4" || ! -f "$SSHRD_DIR/sshramdisk/devicetree.img4" || ! -f "$SSHRD_DIR/sshramdisk/kernelcache.img4" ]]; then
-            echo "[*] SSHRD ramdisk payload not found, generating with 12.0..."
-            (
-                cd "$SSHRD_DIR" || exit 1
-                chmod +x ./sshrd.sh
-                sudo ./sshrd.sh 12.0
-            ) || exit 1
-        fi
-        echo "[*] Booting SSH ramdisk with SSHRD..."
-        (
-            cd "$SSHRD_DIR" || exit 1
-            chmod +x ./sshrd.sh
-            sudo ./sshrd.sh boot
-        ) || exit 1
-        killall iproxy >/dev/null 2>&1 || true
-        "$SSHRD_IPROXY" 2222 22 >/dev/null 2>&1 &
-        echo "[*] Waiting for SSH ramdisk on 127.0.0.1:2222..."
-        SSH_READY=0
-        for _ in {1..50}; do
-            if "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o ConnectTimeout=2 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "echo ready" >/dev/null 2>&1; then
-                SSH_READY=1
+        echo "Copying new files..."
+        cp -av repo/. ./
+        chmod +x surrealra1n.sh
+        rm -rf "repo"
+        echo "surrealra1n has been switched to stable $MAIN_VERSION! Please run the script again."
+        exit 0
+    else
+        echo "Switch to stable has been canceled."
+        main_menu
+    fi
+fi
+
+}
+
+dfu_helper_a11(){
+
+if [[ $MODE == Normal || $MODE == Recovery ]]; then
+    echo "You need to put your device into DFU mode."
+    read -p "Would you like instructions on how to do this? (y/n): " dfu_instructions
+    if [[ $dfu_instructions == y || $dfu_instructions == Y ]] && [[ $MODE == Recovery ]]; then
+        echo "Instructions will begin in:"
+        echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+        echo "Hold volume down + power buttons." 
+        echo "4" && sleep 1 && echo "3" && sleep 1 && ./bin/irecovery -n && echo "2" && sleep 1 && echo "1" && sleep 1
+        echo "Release the power button now, but keep holding volume down button."
+        echo "8" && sleep 1 && echo "7" && sleep 1 && echo "6" && sleep 1 && echo "5" && sleep 1 && echo "4" && sleep 1 && echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+    elif [[ $dfu_instructions == y || $dfu_instructions == Y ]] && [[ $MODE == Normal ]]; then
+        echo "Put your device into recovery mode, then continue"
+        read -p "Press enter to continue once Device is in Recovery"
+        echo "Instructions will begin in:"
+        echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+        echo "Hold volume down + power buttons." 
+        echo "4" && sleep 1 && echo "3" && sleep 1 && ./bin/irecovery -n && echo "2" && sleep 1 && echo "1" && sleep 1
+        echo "Release the power button now, but keep holding volume down button."
+        echo "8" && sleep 1 && echo "7" && sleep 1 && echo "6" && sleep 1 && echo "5" && sleep 1 && echo "4" && sleep 1 && echo "3" && sleep 1 && echo "2" && sleep 1 && echo "1" && sleep 1
+    else
+        echo "Put your device into DFU mode now"
+    fi
+fi
+
+echo "Checking for DFU devices"
+if [[ $dfu_instructions == Y || $dfu_instructions == y ]]; then
+    MODE=$(./bin/irecovery -q | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+    if [[ $MODE == DFU ]]; then
+        echo "The device has entered DFU successfully!"
+    else
+        echo "Device has not entered DFU mode successfully"
+        exit 1
+    fi
+else
+    while true; do
+      MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+      if [ "$MODE" = "DFU" ]; then
+        echo "Device is now in DFU mode!"
+        break
+      fi
+
+      sleep 1
+    done
+fi
+
+}
+
+reset_restore_vars() {
+    IPSW_PATH=""
+    IPSW_PATH_LATEST=""
+    SHSH_PATH=""
+    VERSION=""
+    BUILD=""
+    VERSION_LATEST=""
+}
+
+sep_checker(){
+
+if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.0* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
+    echo "SEP is incompatible. Restore cannot continue"
+    exit 1
+fi
+if [[ $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10.1* ]]; then
+    echo "SEP is compatible but Touch ID will break"
+    read -p "Press enter to continue"
+fi
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]] && [[ $VERSION == 10.1* || $VERSION == 10.2* || $VERSION == 10.3* ]]; then
+    echo "SEP is compatible but Touch ID will break, device may take 3-5 minutes to boot, and may hang during Setup"
+    read -p "Press enter to continue"
+fi
+if [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 13.* ]]; then
+    echo "SEP is compatible but Touch ID will break, device may take 3-5 minutes to boot, and may hang for 30 seconds when it reaches the Touch ID part of Setup. Deep sleep issues are also very likely"
+fi
+if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]] && [[ $VERSION == 11.3* || $VERSION == 11.4* || $VERSION == 12.* ]]; then
+    echo "SEP is compatible but Touch ID will break"
+    read -p "Press enter to continue"
+fi
+if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.* || $VERSION == 11.* || $VERSION == 12.* ]]; then
+    echo "SEP is incompatible. Restore cannot continue"
+    exit 1
+fi
+if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.3* || $VERSION == 14.4* || $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* || $VERSION == 15.* ]]; then
+    echo "SEP is partially incompatible"
+    echo "Device will be unable to activate after the restore."
+    echo "And potentially other broken features"
+    read -p "Press enter to continue"
+fi
+if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 11.* || $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.0* || $VERSION == 14.1* || $VERSION == 14.2* ]]; then
+    echo "SEP is incompatible. Restore cannot continue"
+    exit 1
+fi
+
+}
+
+download_tvos_sep(){
+
+mkdir -p tmp
+sep_path="tmp/sep-firmware.j42d.RELEASE.im4p"
+manifest_path="tmp/BuildManifest-SEP.plist"
+sep_ipsw="https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw"
+curl -L -o tmp/BuildManifest-SEP.plist https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-$IDENTIFIER.plist
+sudo ./bin/pzb -g Firmware/all_flash/sep-firmware.j42d.RELEASE.im4p $sep_ipsw
+sudo mv -v sep-firmware.j42d.RELEASE.im4p $sep_path
+
+}
+
+download_iphone6_sep(){
+
+mkdir -p tmp
+sep_path="tmp/sep-firmware.n61.RELEASE.im4p"
+manifest_path="tmp/BuildManifest-SEP.plist"
+sep_ipsw="https://updates.cdn-apple.com/2026WinterFCS/fullrestores/047-28352/B80B4A86-C206-4C4F-8D35-65579694AEE9/iPhone_4.7_12.5.8_16H88_Restore.ipsw"
+curl -L -o tmp/BuildManifest-SEP.plist https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-$IDENTIFIER-12.5.8.plist
+sudo ./bin/pzb -g Firmware/all_flash/sep-firmware.n61.RELEASE.im4p $sep_ipsw
+sudo mv -v sep-firmware.n61.RELEASE.im4p $sep_path
+
+}
+
+download_1033_ota_sep(){
+
+mkdir -p tmp
+sep_path="tmp/sep-firmware.$BOARDID2.RELEASE.im4p"
+sep_name="sep-firmware.$BOARDID2.RELEASE.im4p"
+manifest_path="tmp/BuildManifest-SEP.plist"
+if [[ $IDENTIFIER == iPhone6* ]]; then
+    sep_ipsw="http://appldnld.apple.com/ios10.3.3/091-23133-20170719-CA8E78E6-6977-11E7-968B-2B9100BA0AE3/iPhone_4.0_64bit_10.3.3_14G60_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad4* ]]; then
+    sep_ipsw="http://appldnld.apple.com/ios10.3.3/091-23378-20170719-CA983C78-6977-11E7-8922-3D9100BA0AE3/iPad_64bit_10.3.3_14G60_Restore.ipsw"
+fi
+curl -L -o tmp/BuildManifest-SEP.plist https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/manifest/BuildManifest_${IDENTIFIER}_10.3.3.plist
+sudo ./bin/pzb -g Firmware/all_flash/$sep_name $sep_ipsw
+sudo mv -v $sep_name $sep_path
+
+}
+
+prepatch_ibssibec_fr(){
+
+sudo mkdir -p /tmp/futurerestore
+mkdir -p work
+./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+im4m="$IDENTIFIER-im4m"
+IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/001-87486/23310DA1-A434-4192-87BC-31429FD2D625/iPhone_4.7_P3_14.3_18C66_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/001-87451/EE6AEB4B-1BF7-4FBF-9D29-A8C7B970B495/iPhone_5.5_P3_14.3_18C66_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/001-87865/458334F5-D8E1-498A-A9FD-08BBD20FE007/iPhone10,3,iPhone10,6_14.3_18C66_Restore.ipsw"
+fi
+if [[ $VERSION == 10.3* || $VERSION == 11.* || $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* || $VERSION == 16.* ]]; then
+    unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d work
+    unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d work
+    if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.0 ]]; then # just for 14.0 beta 4 restore
+        cd work
+        sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
+        sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
+        cd ..
+    fi
+    ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
+    ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched
+    if [[ $IDENTIFIER == iPhone10* ]]; then
+        ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched -n
+    fi
+    ./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1" -n
+    sudo ./bin/img4 -i work/iBSS.patched -o /tmp/futurerestore/ibss.$BOARDID.$BUILD.patched.img4 -A -T ibss -M $im4m
+    sudo ./bin/img4 -i work/iBEC.patched -o /tmp/futurerestore/ibec.$BOARDID.$BUILD.patched.img4 -A -T ibec -M $im4m
+else
+    # 10.3 iBSS/iBEC workaround
+    IBSS_KEY=$(grep "ibss-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+    IBEC_KEY=$(grep "ibec-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+    if [[ $IDENTIFIER == iPhone6* ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPhone7,2 ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02962-20170327-7584E8B4-0D86-11E7-B580-8CCE122AC769/iPhone_4.7_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02950-20170327-75843ACC-0D86-11E7-ACCC-80CE122AC769/iPhone_5.5_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad4* ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02965-20170327-758BACE4-0D86-11E7-9129-8ECE122AC769/iPad_64bit_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad5* ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+    fi
+    sudo ./bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
+    sudo ./bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
+    sudo mv -v $IBSS work/
+    sudo mv -v $IBEC work/
+    ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
+    ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched
+    ./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1" -n
+    sudo ./bin/img4 -i work/iBSS.patched -o /tmp/futurerestore/ibss.$BOARDID.$BUILD.patched.img4 -A -T ibss -M $im4m
+    sudo ./bin/img4 -i work/iBEC.patched -o /tmp/futurerestore/ibec.$BOARDID.$BUILD.patched.img4 -A -T ibec -M $im4m
+fi
+
+}
+
+det_rsep_flag(){
+
+if [[ $VERSION == 16.* || $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    rsep_flag=""
+else
+    rsep_flag="--no-rsep"
+fi
+
+}
+
+restore_with_blobs(){
+
+if [[ -z "$IPSW_PATH" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH"
+    exit 1
+fi
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH blob selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$SHSH_PATH" ]]; then
+    echo "SHSH blob does not exist: $SHSH_PATH"
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    echo "iPhone X is not supported yet."
+    echo "Legacy iOS Kit *does* support iPhone X restores with blobs though"
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPhone10* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
+
+pwn_device
+det_rsep_flag
+
+sleep 5
+
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]] && [[ $VERSION == 10.* ]]; then
+    download_tvos_sep
+    if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone7* ]] && [[ $VERSION == 10.3* ]]; then
+        unzip -j "$IPSW_PATH" "$KERNEL" -d work
+        ./bin/img4 -i work/$KERNEL -o work/kernel.raw
+        ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
+        ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+        ./bin/img4 -i work/$KERNEL -o work/kernel.im4p -T rkrn -P work/kernel.diff -J || true
+        prepatch_ibssibec_fr
+        while true; do
+            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+                ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+                --sep $sep_path --sep-manifest $manifest_path \
+                --custom-latest $LATEST_VERSION \
+                $updatebb_flag $rsep_flag --rkrn work/kernel.im4p $IPSW_PATH
+            EXIT_CODE=$?
+            if [[ $EXIT_CODE -eq 139 ]]; then
+                echo "futurerestore segfaulted (exit 139), retrying..."
+                sleep 2
+            else
                 break
             fi
-            sleep 2
         done
-        if [[ "$SSH_READY" -ne 1 ]]; then
-            echo "[!] SSH ramdisk did not become reachable on port 2222."
-            killall iproxy >/dev/null 2>&1 || true
+        if [[ $EXIT_CODE -eq 0 ]]; then
+            echo "Restore has completed! Read above if there are any errors"
+            exit 0
+        else
+            echo "futurerestore failed with exit code $EXIT_CODE"
             exit 1
         fi
-        echo "This may TAKE up to 15-30 MINUTES to complete! Please be patient during this time."
-        "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/mount_hfs /dev/disk0s1s1 /mnt1 || true"
-        "$SSHRD_SSHPASS" -p "alpine" scp -P2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
-        ./bin/dsc64patcher dyld.raw dyld.patched -8
-        "$SSHRD_SSHPASS" -p "alpine" scp -P2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dyld.patched root@localhost:/mnt1/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
-        rm -rf dyld.patched
-        rm -rf dyld.raw
-        "$SSHRD_SSHPASS" -p "alpine" ssh root@127.0.0.1 -p2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "/sbin/reboot || true"
-        killall iproxy >/dev/null 2>&1 || true
-        echo "dyld fix is complete. You can now boot iOS 8."
-        exit 0
-        ;;
-
-
-    --seprmvr64-boot)
-        if [[ $# -ne 2 ]]; then
-            echo "[!] Usage: --seprmvr64-boot [iOS_VERSION]"
-            exit 1
-        fi
-        IOS_VERSION="$2"
-        savedir="seprmvr64boot/$IDENTIFIER/$IOS_VERSION"
-        shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
-        if [[ -z "$shshpath" ]]; then
-            echo "[!] No .shsh2 blob found in shsh folder. Aborting."
-            exit 1
-        fi
-        if [[ ! -d "$savedir" ]] || [[ ! -f "$savedir"/iBSS.img4 || ! -f "$savedir"/iBEC.img4 || ! -f "$savedir"/DeviceTree.img4 || ! -f "$savedir"/Kernelcache.img4 ]]; then
-            echo "[!] New boot files must be created."
-            IPSW_PATH=$($zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file")
+    fi
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --sep $sep_path --sep-manifest $manifest_path \
+            --custom-latest $LATEST_VERSION \
+            $updatebb_flag --no-rsep $IPSW_PATH
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
         else
-            echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-            echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-            echo "You can ignore this message if you are restoring an A8(X) device or newer."
-            read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-            if [[ $response == y ]]; then
-                ./bin/gaster pwn
-            else
-                echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-                echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-                read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-            fi
-            ./bin/gaster reset
-            echo "[*] Verifying PWNDFU mode..."
-            irecovery_output=$(./bin/irecovery -q)
-            if echo "$irecovery_output" | grep -q "PWND"; then
-                echo "[*] Device is in PWNDFU mode"
-            else
-                echo "[!] Device is NOT in PWNDFU mode"
-                echo "[!] Aborting boot process. Please re-enter DFU and try again."
-                exit 1
-            fi
-            ./bin/irecovery -f $savedir/iBSS.img4
-            ./bin/irecovery -f $savedir/iBEC.img4
-            ./bin/irecovery -f $savedir/DeviceTree.img4
-            ./bin/irecovery -c devicetree
-            ./bin/irecovery -f $savedir/Kernelcache.img4
-            ./bin/irecovery -c bootx
-            echo "Your device should now boot."
-            exit 0
+            break
         fi
-        if [[ -z "$IPSW_PATH" ]]; then
-            echo "[!] No IPSW selected. Aborting."
-            exit 1
-        fi
-        if [[ ! -f "$IPSW_PATH" ]]; then
-            echo "[!] IPSW does not exist: $IPSW_PATH"
-            exit 1
-        fi
-        rm -rf "$savedir"
-        mkdir -p "$savedir"
-        echo ""
-        unzip "$IPSW_PATH" -d tmp1
-        # Read decryption keys
-        KEY_FILE="keys/$IDENTIFIER.txt"
-        if [[ ! -f "$KEY_FILE" ]]; then
-            echo "[!] Key file $KEY_FILE not found. Aborting."
-            exit 1
-        fi
-        ./bin/img4tool -s "$shshpath" -e -m "$IDENTIFIER-im4m"
-        im4m="$IDENTIFIER-im4m"
-
-        # Extract iBSS and iBEC keys
-        IBSS_KEY=$(grep "ibss-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        IBEC_KEY=$(grep "ibec-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        DTRE_KEY=$(grep "dtre-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        KRNL_KEY=$(grep "krnl-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-
-        if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
-            echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in $KEY_FILE. Aborting."
-            exit 1
-        fi
-
-        echo "[*] Found keys:"
-        echo "    iBSS Key: $IBSS_KEY"
-        echo "    iBEC Key: $IBEC_KEY"
-        mkdir work
-        ./bin/img4 -i "tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE" -o "work/dtre.raw" -k $DTRE_KEY
-        ./bin/img4 -i "work/dtre.raw" -o "$savedir/DeviceTree.img4" -A -T rdtr -M $im4m
-        if [[ $IOS_VERSION != 7.* ]]; then
-            mv "tmp1/Firmware/dfu/$IBSS10" "tmp1/Firmware/dfu/$IBSS7"
-            mv "tmp1/Firmware/dfu/$IBEC10" "tmp1/Firmware/dfu/$IBEC7"
-        fi
-        if [[ $IOS_VERSION == 8.* ]]; then
-            extra_args="amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e wdt=-1 PE_i_can_has_debugger=1 amfi_get_out_of_my_way=0x1 amfi_unrestrict_task_for_pid=0x0"
+    done
+elif [[ $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10.* ]]; then
+    download_1033_ota_sep
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --sep $sep_path --sep-manifest $manifest_path \
+            --custom-latest $LATEST_VERSION \
+            $updatebb_flag --no-rsep $IPSW_PATH
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            extra_args=""
+            break
         fi
-        ./bin/img4 -i "tmp1/Firmware/dfu/$IBSS7" -o "work/iBSS.dec" -k $IBSS_KEY
-        ./bin/img4 -i "tmp1/Firmware/dfu/$IBEC7" -o "work/iBEC.dec" -k $IBEC_KEY
-        if [[ $IOS_VERSION == 7.* || $IOS_VERSION == 8.* ]]; then
-            ./bin/ipatcher work/iBSS.dec work/iBSS.patched
-            ./bin/ipatcher work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1"
+    done
+elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
+    download_iphone6_sep
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --sep $sep_path --sep-manifest $manifest_path \
+            --custom-latest $LATEST_VERSION \
+            $updatebb_flag --no-rsep $IPSW_PATH
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            ./bin/kairos work/iBSS.dec work/iBSS.patched
-            ./bin/kairos work/iBEC.dec work/iBEC.patched -b "-v rd=disk0s1s1 amfi=0xff cs_enforcement_disable=1 keepsyms=1 debug=0x2014e wdt=-1 PE_i_can_has_debugger=1 amfi_get_out_of_my_way=0x1 amfi_unrestrict_task_for_pid=0x0"
+            break
         fi
-        ./bin/img4 -i "work/iBSS.patched" -o "$savedir/iBSS.img4" -A -T ibss -M $im4m 
-        ./bin/img4 -i "work/iBEC.patched" -o "$savedir/iBEC.img4" -A -T ibec -M $im4m
-        ./bin/img4 -i "tmp1/$KERNELCACHE10" -o "work/kcache.raw" -k $KRNL_KEY  
-        ./bin/img4 -i "tmp1/$KERNELCACHE10" -o "work/kcache.im4p" -k $KRNL_KEY -D
-        if [[ $IOS_VERSION == 7.* ]]; then
-            ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 7 -m 7 -e 7 -f 7 -k
-        elif [[ $IOS_VERSION == 8.* ]]; then
-            ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
+    done
+else
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --latest-sep \
+            --custom-latest $LATEST_VERSION \
+            $updatebb_flag --no-rsep $IPSW_PATH
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            ./bin/Kernel64Patcher2 "work/kcache.raw" "work/kcache.patched" -u 9 -f 9 -k
-        fi     
-        ./bin/kerneldiff "work/kcache.raw" "work/kcache.patched" "work/kcache.bpatch"
-        ./bin/img4 -i "work/kcache.im4p" -o "$savedir/Kernelcache.img4" -T rkrn -P "work/kcache.bpatch" -J -M $im4m || true
-        echo "Patching complete!"
-        echo "[*] Verifying generated boot files..."
+            break
+        fi
+    done
+fi
 
-        require_file "$savedir/iBSS.img4"
-        require_file "$savedir/iBEC.img4"
-        require_file "$savedir/DeviceTree.img4"
-        require_file "$savedir/Kernelcache.img4"
+echo "Restore has completed! Read above if there is any errors"
+exit 0
 
-        echo "[*] Boot files created successfully." 
-        rm -rf "work"
-        rm -rf "tmp1"
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        echo "You can ignore this message if you are restoring an A8(X) device or newer."
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
-        ./bin/irecovery -f $savedir/iBSS.img4
-        ./bin/irecovery -f $savedir/iBEC.img4
-        ./bin/irecovery -f $savedir/DeviceTree.img4
-        ./bin/irecovery -c devicetree
-        ./bin/irecovery -f $savedir/Kernelcache.img4
-        ./bin/irecovery -c bootx
-        echo "Your device should now boot."
-        exit 0
-        ;;
+}
 
-    --make-custom-ipsw)
-        if [[ $# -ne 4 ]]; then
-            echo "[!] Usage: --make-custom-ipsw [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]"
-            exit 1
-        fi
-        TARGET_IPSW="$2"
-        BASE_IPSW="$3"
-        IOS_VERSION="$4"
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
-        if [[ "$IDENTIFIER" == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
-        if [[ "$IDENTIFIER" == iPad4,6 ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* || "$IOS_VERSION" == 7.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
-        if [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]] && [[ $IOS_VERSION == 10.1* || $IOS_VERSION == 10.2* ]]; then
-            echo "[!] 10.1-10.2.1 tethered support is not added yet for this device"
-            echo "[!] We may add this support in a future update. For now, please do 10.3 or later"
-            exit 1
-        fi
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* ]]; then
-            echo "[!] SEP is partially compatible"
-            echo "[!] Restoring to iOS $IOS_VERSION will use iOS 10.3.3 SEP (because iOS 12 SEP is fully incompatible with 11.2.6 and below)"
-            echo "[!] The following issues will occur after the restore: Activation issues, Touch ID not working, unable to connect to password-protected Wi-Fi networks, etc. Device passcode may work though."
-            echo "[!] This is ONLY recommended for advanced users, saving activation tickets with an SSH ramdisk is required before restoring to this version"
-            echo "[!] PLEASE. PLEASE! DO NOT use this to bypass iCloud, only save activation tickets on a device you legally own"
-            read -p "Press enter to continue"
-        fi
-        if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 16.6* ]]; then
-            echo "[!] iOS $LATEST_VERSION Cryptex is partially compatible"
-            echo "[!] You will have the following issues:"
-            echo "[!] iMessage/SMS won't work (there is a fix for that in the FutureRestore support Discord Server)"
-            echo "[!] VPN may not work, and potentially other issues"
-            read -p "Press enter to continue"
-        fi
-        if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 16.0* || $IOS_VERSION == 16.1* || $IOS_VERSION == 16.2* || $IOS_VERSION == 16.3* || $IOS_VERSION == 16.4* || $IOS_VERSION == 16.5* ]]; then
-            echo "[!] Latest Cryptex is incompatible"
-            echo "You cannot restore or make a custom IPSW for this version."
-            exit 1
-        fi
-        if [[ "$IDENTIFIER" == iPad4,5 || $IDENTIFIER == iPad4,4 ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* ]]; then
-            echo "[!] SEP is partially compatible"
-            echo "[!] Restoring to iOS $IOS_VERSION will use iOS 10.3.3 SEP (because iOS 12 SEP is fully incompatible with 11.2.6 and below)"
-            echo "[!] The following issues will occur after the restore: Activation issues, unable to connect to password-protected Wi-Fi networks, etc. Device passcode may work though."
-            echo "[!] This is ONLY recommended for advanced users, saving activation tickets with an SSH ramdisk is required before restoring to this version"
-            echo "[!] PLEASE. PLEASE! DO NOT use this to bypass iCloud, only save activation tickets on a device you legally own"
-            read -p "Press enter to continue"
-        fi
-        if [[ "$IDENTIFIER" == iPhone7* ]] && [[ "$IOS_VERSION" == 11.2* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
-        if [[ $IDENTIFIER == iPod7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 10.3* ]]; then
-            echo "[!] SEP is compatible, but read the following:"
-            echo "[!] This will use tvOS 10.2.2 SEP from the Apple TV HD."
-            echo "[!] Some device features may or may not break, your mileage may vary."
-            read -p "Press enter to continue"
-        fi
-        if [[ "$IDENTIFIER" == iPod7* ]] && [[ "$IOS_VERSION" == 10.0* || "$IOS_VERSION" == 9.* || "$IOS_VERSION" == 8.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi
+restore_untethered_opts(){
 
-        if [[ "$IDENTIFIER" == iPhone6* ]] && [[ "$IOS_VERSION" == 10.3.3 ]]; then
-            echo "[!] iOS 10.3.3 can be restored untethered via OTA downgrade"
-            echo "[!] It is recommended to use Legacy iOS Kit to downgrade to 10.3.3 untethered (https://github.com/LukeZGD/Legacy-iOS-Kit)"
-            read -p "Press enter to continue with iOS 10.3.3 tethered downgrade"
-        fi
+clear 
+echo "$INFO_TEXT"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Select Target IPSW"
+echo "2. Select SHSH"
+echo "3. Start Restore"
+echo "4. Back"
+read -p "Please input an option (1-4): " untether_options
+if [[ $untether_options == 1 ]]; then
+    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    if [[ -z "$IPSW_PATH" ]]; then
+        echo "No IPSW selected. Aborting."
+        exit 1
+    fi
+    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+    BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    restore_untethered_opts
+elif [[ $untether_options == 2 ]]; then
+    SHSH_PATH=$($zenity --file-selection --title="Select an SHSH2 file")
+    if [[ -z "$SHSH_PATH" ]]; then
+        echo "No SHSH blob selected. Aborting."
+        exit 1
+    fi
+    echo "An SHSH blob is selected. Please ensure this blob is valid for iOS $VERSION, otherwise the restore will likely fail"
+    read -p "Press enter to continue"
+    restore_untethered_opts
+elif [[ $untether_options == 3 ]]; then
+    sep_checker
+    restore_with_blobs
+elif [[ $untether_options == 4 ]]; then
+    reset_restore_vars
+    restore_utils
+else
+    echo "Invalid option. Exiting."
+    exit 1
+fi
 
-        if [[ "$IDENTIFIER" == iPad7,5 ]] && [[ $IOS_VERSION == 13.4* || $IOS_VERSION == 13.5* || $IOS_VERSION == 13.6* || $IOS_VERSION == 13.7* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-            echo "[!] SEP is partially incompatible"
-            echo "[!] The iPadOS $LATEST_VERSION SEP is not fully compatible with this version."
-            echo "[!] The following issues may occur:"
-            echo "[!] On iPadOS 14.0 - 15.7, you will have activation issues. On 15.x, you will also have issues when taking a photo or a video."
-            echo "[!] Sideloading, iMessage, etc. may not work after downgrading with surrealra1n to iPadOS $IOS_VERSION"
-            echo "[!] Touch ID will cease to function fully on 13.x, but it is broken on iPadOS 14-15. And setting a passcode may cause the device to crash."
-            echo "[!] And if you are restoring to iPadOS 13.4 - 13.7, you will be stuck in a blank screen after the restore. Put the device into real DFU mode and boot it normally."
-            echo "[!] It is recommended to use turdus merula instead: https://sep.lol"
-            read -p "Press enter to continue"
-        fi 
-        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 13.* ]]; then
-            echo "[!] SEP is partially incompatible"
-            echo "[!] The iPadOS $LATEST_VERSION SEP is not fully compatible with this version."
-            echo "[!] The following issues may occur:"
-            echo "[!] Touch ID will cease to function fully."
-            read -p "Press enter to continue"
-        fi 
-        if [[ "$IDENTIFIER" == iPad5* ]] && [[ $IOS_VERSION == 12.* || $IOS_VERSION == 11.4* || $IOS_VERSION == 11.3* ]]; then
-            echo "[!] SEP is partially incompatible"
-            echo "[!] The iPadOS $LATEST_VERSION SEP is not fully compatible with this version."
-            echo "[!] The following issues may occur:"
-            echo "[!] Touch ID will cease to function fully."
-            if [[ $IOS_VERSION == 12.* ]]; then
-                echo "[!] USB accessories will not work, thus you cannot sideload with a PC"
-                echo "[!] To sideload a jailbreak (eg: Chimera, unc0ver), you will need to use https://jailbreaks.app when it is signed."
-            fi
-            read -p "Press enter to continue"
-        fi 
-        if [[ "$IDENTIFIER" == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $IOS_VERSION == 11.2* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.0* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi 
-        if [[ "$IDENTIFIER" == iPad7,5 ]] && [[ $IOS_VERSION == 13.3* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.0* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] The iPadOS $LATEST_VERSION SEP is not compatible with this version."
-            echo "[!] You MUST use turdus merula instead: https://sep.lol"
-            exit 1
-        fi 
-        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-            echo "[!] SEP is partially incompatible"
-            echo "[!] The following issues may occur:"
-            echo "[!] You will have activation issues, Touch ID resetting (If you have an iPhone X, Face ID will not work), etc."
-            echo "[!] Sideloading, iMessage, etc. may not work after downgrading with surrealra1n to iOS $IOS_VERSION"
-            if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]]; then
-                # Additional warnings when restoring 14.0-14.2 on A11 (with 14.3 iBoot method by Nathan)    
-                echo "[!] Additionally, since we are restoring 14.0-14.2, this will have all of the issues of 14.3-15.6.1, but it may have additional issues, especially on versions below 14.2."
-                echo "[!] 14.0-14.2 on A11 MUST use 14.3 iBSS/iBEC to successfully restore and boot."    
-            fi
-            if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 || $IDENTIFIER == iPhone10,6 || $IDENTIFIER == iPhone10,3 ]] && [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]]; then   
-                echo "[!] The 14.3 iBoot method is technically supported on this device, but the custom buildmanifests required for this method do not exist for your device yet!"   
-                echo "[!] A future update will add the required buildmanifests to do this method on iPhone 8 Plus, and X." 
-                exit 1
-            fi
-            read -p "Press enter to continue"
-        fi 
-        if [[ "$IDENTIFIER" == iPhone10* ]] && [[ $IOS_VERSION == 13.* || $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore to this version or make a custom IPSW for it"
-            exit 1
-        fi 
-        echo "[*] Making custom IPSW..."
-        savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
-        rm -rf "$savedir"
-        mkdir -p "$savedir"
-        echo ""
-        unzip "$TARGET_IPSW" -d tmp1
-        unzip "$BASE_IPSW" -d tmp2
-        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
-            echo "iOS 10.3 iBSS and iBEC will be used."
-            sudo ./bin/pzb -g Firmware/dfu/$IBSS http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw
-            sudo ./bin/pzb -g Firmware/dfu/$IBEC http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw
-            rm -rf tmp1/Firmware/dfu/$IBSS10
-            rm -rf tmp1/Firmware/dfu/$IBEC10
-            mv $IBSS tmp1/Firmware/dfu/$IBSS10
-            mv $IBEC tmp1/Firmware/dfu/$IBEC10
-            sudo rm -rf $IBSS
-            sudo rm -rf $IBEC
-        fi
-        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
-            rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
-            rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
-            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
-            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
-            rm -rf tmp1/BuildManifest.plist
-            cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist
-        elif [[ "$IOS_VERSION" == 10.3* ]]; then
-            rm -rf tmp1/Firmware/all_flash/$LLB
-            rm -rf tmp1/Firmware/all_flash/$IBOOT
-            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
-            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
-        else
-            if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
-                # A11 hax to tether restore 14.0-14.2 on 16 SEP, 14.3 iBoot method (thanks to verygenericname for pointing that out)
-                IPSW_PATH=$($zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)")
-                rm -rf tmp1/Firmware/dfu/$IBSS
-                rm -rf tmp1/Firmware/dfu/$IBEC 
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d tmp1/Firmware/dfu
-                # hardcode custom buildmanifest, so it redirects to getting 14.3 keys instead of 14.0-14.2's
-                sudo rm -rf tmp1/BuildManifest.plist
-                cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist            
-            fi
-            find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
-            find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
-            if [[ $IOS_VERSION == 11.* || $IOS_VERSION == 12.* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.3* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                sudo ./bin/pzb -g Firmware/all_flash/$DEVICETREE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                sudo ./bin/pzb -g $KERNELCACHE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                sudo rm -rf "tmp1/Firmware/all_flash/$DEVICETREE"
-                sudo rm -rf "tmp1/$KERNELCACHE"
-                cp $KERNELCACHE "tmp1/$KERNELCACHE"
-                cp $DEVICETREE "tmp1/Firmware/all_flash/$DEVICETREE"
-                sudo rm -rf $KERNELCACHE
-                sudo rm -rf $DEVICETREE
-                smallest_rdskdmg=$(find_dmg tmp1 smallest)
-                update_rdskdmg=$(find_dmg tmp1 largest 1073741824)
-                if [[ $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
-                    sudo rm -rf $smallest_rdskdmg
-                    cd tmp1
-                    sudo ../bin/pzb -g 048-64389-366.dmg https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                    cd ..
-                    sudo rm -rf $update_rdskdmg
-                    cd tmp1
-                    if [[ $IOS_VERSION == 11.* ]]; then
-                        sudo ../bin/pzb -g BuildManifest.plist https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo ../bin/pzb -g Firmware/048-64389-366.dmg.trustcache https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw    
-                        sudo ../bin/pzb -g Firmware/048-64500-319.dmg.trustcache https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo ../bin/pzb -g Firmware/048-65142-364.dmg.trustcache https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        mv 048-64389-366.dmg.trustcache Firmware/048-64389-366.dmg.trustcache
-                        mv 048-64500-319.dmg.trustcache Firmware/048-64500-319.dmg.trustcache
-                        mv 048-65142-364.dmg.trustcache Firmware/048-65142-364.dmg.trustcache
-                        sudo ../bin/pzb -g Firmware/dfu/$IBSS https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo ../bin/pzb -g Firmware/dfu/$IBEC https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo rm -rf Firmware/dfu/$IBSS
-                        sudo rm -rf Firmware/dfu/$IBEC
-                        sudo mv $IBSS Firmware/dfu/$IBSS
-                        sudo mv $IBEC Firmware/dfu/$IBEC
-                        cd ..
-                        root_dmg=$(find_dmg tmp1 largest)
-                        mv $root_dmg tmp1/048-64500-319.dmg
-                        cd tmp1
-                    fi
-                    sudo ../bin/pzb -g 048-65142-364.dmg https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                    cd ..
-                fi
-            fi
-        fi
-        mkdir -p work
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
-            cp tmp1/$KERNELCACHE10 work/kernel.orig 
-        else
-            cp tmp1/$KERNELCACHE work/kernel.orig 
-        fi  
-        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]] && [[ $IOS_VERSION == 16.* ]]; then
-            # Use latest signed AOP on iOS 16.x restores
-            echo "Replacing AOP firmware"
-            mv tmp2/Firmware/AOP/aopfw-iphone10baop.im4p tmp1/Firmware/AOP/aopfw-iphone10baop.im4p
-        fi
-        if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]] && [[ $IOS_VERSION == 16.* ]]; then
-            # Use latest signed AOP on iOS 16.x restores
-            echo "Replacing AOP firmware"
-            mv tmp2/Firmware/AOP/aopfw-iphone10aop.im4p tmp1/Firmware/AOP/aopfw-iphone10aop.im4p
-        fi
-        rm -rf "tmp2"
-        if [[ $IOS_VERSION == 16.* ]]; then
-            # prepare the localboot stuff, pre-patch kernel-cache
-            ./bin/img4 -i tmp1/$KERNELCACHE -o kernel.raw
-            ./bin/Kernel64Patcher kernel.raw kernel.patched -e -o -h
-            ./bin/img4 -i kernel.patched -o tmp1/$KERNELCACHE -A -T krnl
-        fi
-        if [[ $IOS_VERSION == 15.* ]] && [[ $IDENTIFIER != iPad5* ]]; then
-            # prepare the localboot stuff, pre-patch kernel-cache
-            ./bin/img4 -i tmp1/$KERNELCACHE -o kernel.raw
-            ./bin/Kernel64Patcher kernel.raw kernel.patched -e -o -r -b15
-            ./bin/img4 -i kernel.patched -o tmp1/$KERNELCACHE -A -T krnl
-        fi
-        if [[ $IOS_VERSION == 14.* ]] && [[ $IDENTIFIER != iPad5* ]]; then
-            # prepare the localboot stuff, pre-patch kernel-cache
-            ./bin/img4 -i tmp1/$KERNELCACHE -o kernel.raw
-            ./bin/Kernel64Patcher kernel.raw kernel.patched -b
-            ./bin/img4 -i kernel.patched -o tmp1/$KERNELCACHE -A -T krnl
-        fi
-        cd tmp1
-        zip -0 -r ../custom.ipsw *
-        cd ..
-        mv custom.ipsw "$savedir/custom.ipsw"
-        
-        # determine restore ramdisk
-        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-            # mainly just 16.x stuff
-            restore_ramdisk_dmg="098-08863-001.dmg"
-            update_ramdisk_dmg="098-09105-001.dmg"
-            ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
-        fi
-        if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
-            # mainly just 16.x stuff
-            restore_ramdisk_dmg="098-08863-001.dmg"
-            update_ramdisk_dmg="098-09105-001.dmg"
-            ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65931/BD2515B7-7802-4EB4-9377-98E3238EA5A8/iPhone_4.7_P3_16.0_20A362_Restore.ipsw"
-        fi
-        if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-            # mainly just 16.x stuff
-            restore_ramdisk_dmg="098-08863-001.dmg"
-            update_ramdisk_dmg="098-09105-001.dmg"
-            ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65568/0851247C-1B06-4CD4-B3C2-5A94026970B7/iPhone_5.5_P3_16.0_20A362_Restore.ipsw"
-        fi
-        if [[ $IOS_VERSION == 16.* ]]; then
-            # 16.0 ramdisk/kernel, stuff
-            smallest_dmg="$restore_ramdisk_dmg"
-            update_dmg="$update_ramdisk_dmg"
-            sudo ./bin/pzb -g $smallest_dmg $ipsw_url
-            sudo ./bin/pzb -g $update_dmg $ipsw_url
-            sudo ./bin/pzb -g $KERNELCACHE $ipsw_url
-            sudo mv $KERNELCACHE work/kernel.orig
-        else
-            smallest_dmg=$(find_dmg tmp1 smallest)
-            # determine update ramdisk (experimental tethered updates?)
-            update_dmg=$(find_dmg tmp1 largest 1073741824)   
-        fi
+}
+
+make_custom_ipsw(){
+
+mkdir -p restorefiles
+mkdir -p restorefiles/$IDENTIFIER
+mkdir -p restorefiles/$IDENTIFIER/$VERSION
+unzip "$IPSW_PATH" -d tmp1
+unzip "$IPSW_PATH_LATEST" -d tmp2
+if [[ $VERSION == 10.1* || $VERSION == 10.2* ]]; then
+    cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
+    cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
+elif [[ $VERSION == 10.3* ]]; then
+    cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
+    cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
+else
+    find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
+    find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
+fi
+if [[ $VERSION == 14.* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
+    ./bin/img4 -i tmp1/$KERNEL -o work/kernelboot.raw
+    ./bin/Kernel64Patcher work/kernelboot.raw work/kernelboot.patch -b
+    ./bin/img4 -i work/kernelboot.patch -o tmp1/$KERNEL -A -T krnl -J || true
+elif [[ $VERSION == 15.* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
+    ./bin/img4 -i tmp1/$KERNEL -o work/kernelboot.raw
+    ./bin/Kernel64Patcher work/kernelboot.raw work/kernelboot.patch -e -o -r -b15
+    ./bin/img4 -i work/kernelboot.patch -o tmp1/$KERNEL -A -T krnl -J || true
+fi
+cd tmp1
+zip -0 -r ../custom.ipsw *
+cd ..
+rm -rf "tmp2"
+mv -v custom.ipsw $restoredir/custom.ipsw
+mkdir -p work
+restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
+update_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
+if [[ $VERSION == 10.2* || $VERSION == 10.1* ]]; then
+    cp -v tmp1/$KERNEL10 work/kernel.im4p
+else
+    cp -v tmp1/$KERNEL work/kernel.im4p
+fi
+./bin/img4 -i work/kernel.im4p -o work/kernel.raw
+./bin/KPlooshFinder work/kernel.raw work/kernel.patched
+if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone7* ]] && [[ $VERSION == 10.* ]]; then
+    mv -v work/kernel.patched work/kernel.patch
+    ./bin/Kernel64Patcher2 work/kernel.patch work/kernel.patched -u 11 --skip-sks --skip-acm --skip-amfi
+fi
+./bin/kerneldiff work/kernel.raw work/kernel.patched work/kernel.diff
+./bin/img4 -i work/kernel.im4p -o $restoredir/kernel.im4p -T rkrn -P work/kernel.diff -J || true
+# rdsk prep
+./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
+if [[ $VERSION == 10.* ]]; then
+    ./bin/hfsplus work/ramdisk.raw grow 60000000
+fi
+./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+./bin/asr64_patcher work/asr work/asr_patched
+./bin/ldid -e work/asr > work/ents.plist
+./bin/ldid -Swork/ents.plist work/asr_patched
+./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
+./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
+    ./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
+    ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+    ./bin/ldid -Swork/ents.plist work/libimg4.patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib 
+    ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+fi
+if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then # do some ipx patching
+    ./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_external work/restored_external
+    ./bin/ipx_restored_patcher work/restored_external work/restored_patch # use restored patcher by Mineek
+    ./bin/ldid -e work/restored_external > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/restored_patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+fi
+# pack rdsk into im4p
+./bin/img4 -i work/ramdisk.raw -o $restoredir/ramdisk.im4p -A -T rdsk
+if [[ $IDENTIFIER == iPhone10* ]]; then
+    # do update ramdisk stuff so 14.0b4 to 14.3-15.6.1 update install is possible
+    ./bin/img4 -i $update_ramdisk_dmg -o work/ramdisk.raw
+    ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+    ./bin/asr64_patcher work/asr work/asr_patched
+    ./bin/ldid -e work/asr > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/asr_patched
+    ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
+    ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+    ./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
+    ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+    ./bin/ldid -Swork/ents.plist work/libimg4.patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib 
+    ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+    if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then # do some ipx patching
+        ./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_update work/restored_external
+        ./bin/ipx_restored_patcher work/restored_external work/restored_patch # use restored patcher by Mineek
+        ./bin/ldid -e work/restored_external > work/ents.plist
+        ./bin/ldid -Swork/ents.plist work/restored_patch
+        ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_update
+        ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_update
+        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_update
+    fi
+    # pack rdsk into im4p
+    ./bin/img4 -i work/ramdisk.raw -o $restoredir/updateramdisk.im4p -A -T rdsk
+fi
+# Wrap up
+rm -rf "tmp1"
+rm -rf "work"
+
+}
+
+just_boot(){
+
+read -p "Which version are you booting? " VERSION
+bootdir="boot/$IDENTIFIER/$VERSION"
+if [[ ! -d $bootdir ]]; then
+    echo "Please do a tethered restore to iOS $VERSION, then try tether boot again."
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPhone10* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
+pwn_device
+
+sleep 5
+
+echo "Sending iBSS"
+./bin/irecovery -f $bootdir/iBSS.img4
+if [[ $IDENTIFIER == iPhone10* ]]; then
+    echo "Device should now boot"
+    exit 0
+fi
+sleep 5
+echo "Sending iBEC"
+./bin/irecovery -f $bootdir/iBEC.img4
+sleep 5
+echo "Sending DeviceTree"
+./bin/irecovery -f $bootdir/DeviceTree.img4
+./bin/irecovery -c devicetree
+if [[ $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
+    echo "Sending trustcache"
+    ./bin/irecovery -f $bootdir/Trustcache.img4
+    ./bin/irecovery -c firmware
+fi
+echo "Sending Kernelcache"
+./bin/irecovery -f $bootdir/Kernelcache.img4
+./bin/irecovery -c bootx
+echo "Device should now boot"
+exit 0
+
+}
+
+prepare_boot_files(){
+
+rm -rf "work"
+if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/001-87486/23310DA1-A434-4192-87BC-31429FD2D625/iPhone_4.7_P3_14.3_18C66_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/001-87451/EE6AEB4B-1BF7-4FBF-9D29-A8C7B970B495/iPhone_5.5_P3_14.3_18C66_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/001-87865/458334F5-D8E1-498A-A9FD-08BBD20FE007/iPhone10,3,iPhone10,6_14.3_18C66_Restore.ipsw"
+fi
+IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+bootdir="boot/$IDENTIFIER/$VERSION"
+if [[ $VERSION == 10.2* || $VERSION == 10.1* ]]; then
+    krnl="$KERNEL10"
+    unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS10" -d work
+    unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC10" -d work
+    unzip -j "$IPSW_PATH" "Firmware/all_flash/$ALLFLASH/$DEVICETREE" -d work
+    ./bin/img4 -i work/$IBSS10 -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/img4 -i work/$IBEC10 -o work/iBEC.raw -k $IBEC_KEY
+else
+    krnl="$KERNEL"
+    unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d work
+    unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d work
+    unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d work
+    if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.0 ]]; then # just for 14.0 beta 4 restore
         cd work
-        echo "making patched restore chain"
-        ../bin/img4 -i kernel.orig -o kernel.raw
-        ../bin/KPlooshFinder kernel.raw kernel.patched
-        if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 10.* ]]; then
-            mv kernel.patched kernel.patch
-            ../bin/Kernel64Patcher2 kernel.patch kernel.patched -u 11 --skip-sks --skip-acm --skip-amfi
-        fi
-        ../bin/kerneldiff kernel.raw kernel.patched kernel.bpatch
-        ../bin/img4 -i kernel.orig -o kernel.im4p -T rkrn -P kernel.bpatch -J || true
-        mv kernel.im4p ../$savedir/kernel.im4p
-        # build ramdisk
+        sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
+        sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
         cd ..
-        ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
-        if [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
-            echo "growing ramdisk"
-            ./bin/hfsplus ramdisk.raw grow 60000000
+    fi
+    ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
+fi
+if [[ $VERSION == 10.* || $VERSION == 11.* || $VERSION == 12.* ]]; then
+    ibootpatcher="kairos"
+else
+    ibootpatcher="iBoot64Patcher"
+fi
+rm -rf "$bootdir"
+mkdir -p boot
+mkdir -p boot/$IDENTIFIER
+mkdir -p boot/$IDENTIFIER/$VERSION
+if [[ $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
+    unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d work
+    trustcache_use=$(ls -S work/*.trustcache 2>/dev/null | head -n 1)
+    ./bin/img4 -i $trustcache_use -o $bootdir/Trustcache.img4
+fi
+unzip -j "$IPSW_PATH" "$krnl" -d work
+./bin/$ibootpatcher work/iBSS.raw work/iBSS.patch
+./bin/$ibootpatcher work/iBEC.raw work/iBEC.patch -b "-v" 
+if [[ $IDENTIFIER == iPhone10* ]]; then
+    ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patch -l -b "-v"
+fi
+./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
+./bin/img4 -i work/$DEVICETREE -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
+./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m
+if [[ $VERSION == 14.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+    ./bin/img4 -i work/$krnl -o work/kernel.raw
+    ./bin/Kernel64Patcher work/kernel.raw work/kernel.patch -b
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+    ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
+elif [[ $VERSION == 15.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+    ./bin/img4 -i work/$krnl -o work/kernel.raw
+    ./bin/Kernel64Patcher work/kernel.raw work/kernel.patch -e -o -r -b15
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+    ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
+elif [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
+    ./bin/img4 -i work/$krnl -o work/kernel.raw
+    ./bin/Kernel64Patcher work/kernel.raw work/kernel.patch -b13 -n
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+    ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
+fi
+if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 11.* ]]; then
+    ./bin/img4 -i work/$krnl -o work/kernel.raw
+    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+    ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
+fi
+if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]] && [[ $VERSION == 10.* ]]; then
+    ./bin/img4 -i work/$krnl -o work/kernel.raw
+    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+    ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
+fi
+
+}
+
+do_tethered_restore(){
+
+if [[ -z "$IPSW_PATH" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH"
+    exit 1
+fi
+if [[ -z "$IPSW_PATH_LATEST" ]]; then
+    echo "Latest IPSW is not selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
+    echo "Latest IPSW does not exist: $IPSW_PATH_LATEST"
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.3* || $VERSION == 14.4* || $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* || $VERSION == 15.* ]]; then
+    echo "SEP is partially incompatible, read the following:"
+    echo "The device will be unable to activate after the restore."
+    echo "You will need to tether restore to 14.0 beta 4 first, activate the device, then tether restore to the desired version."
+    echo "Sideloading outside of TrollStore may or may not work, your mileage may vary."
+    echo "And potentially other broken features"
+    echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
+    read -p "Press enter to continue"
+elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
+    echo "Your device may have deep sleep issues after this restore"
+    read -p "Press enter to continue"
+elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 13.* ]]; then
+    echo "Your device may have deep sleep issues after this restore"
+    echo "Touch ID will not work"
+    read -p "Press enter to continue"
+elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 12.* || $VERSION == 11.4* || $VERSION == 11.3* ]]; then
+    echo "Touch ID will not work"
+    if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 12.* ]]; then
+        echo "USB accessories will not work"
+        echo "Your device may have deep sleep issues after this restore"
+    fi
+    read -p "Press enter to continue"
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]] && [[ $VERSION == 10.* ]]; then
+    echo "Touch ID will not work"
+    read -p "Press enter to continue"
+fi
+
+if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.0* || $VERSION == 14.1* || $VERSION == 14.2* ]] && [[ $BUILD != 18A5342e ]]; then
+    echo "14.2 and lower downgrades are unsupported, except for 14.0 beta 4"
+    if [[ $VERSION == 13.* || $VERSION == 12.* || $VERSION == 11.* ]]; then
+        echo "Also, 14.3 iBoot workaround does not work on 13.x and lower. SEP is totally incompatible"
+    fi
+    exit 1
+fi
+if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $VERSION == 10.3.3 ]] && [[ $BUILD == 14G60 ]]; then
+    echo "10.3.3 tether downgrades are not supported on this device."
+    if [[ $IDENTIFIER == iPad4,6 ]]; then
+        echo "10.3.3 is also not OTA signed for this device, so you cannot restore to 10.3.3 without saved blobs"
+    fi
+    exit 1
+fi
+if [[ $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
+    echo "SEP is incompatible"
+    exit 1
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.0* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
+    echo "SEP is incompatible"
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 13.1* || $VERSION == 13.2* || $VERSION == 13.3* ]]; then
+    echo "13.x restores below 13.4 are not supported"
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
+    echo "11.3-12.4.1 downgrades are supported but they have not been integrated yet into surrealra1n $CURRENT_VERSION"
+    exit 1
+fi
+
+if [[ $IDENTIFIER == iPhone10* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
+pwn_device
+det_rsep_flag
+echo "Fetching shsh blobs for iOS $LATEST_VERSION"
+rm -rf "shsh"
+mkdir -p shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+
+restoredir="restorefiles/$IDENTIFIER/$VERSION"
+
+if [[ ! -f "$restoredir/custom.ipsw" ]] && [[ ! -f "$restoredir/ramdisk.im4p" ]] && [[ ! -f "$restoredir/kernel.im4p" ]]; then
+    echo "Restore files does not exist, making new ones"
+    make_custom_ipsw
+else
+    echo "Restore files already exist"
+    read -p "Would you like to make new ones? (y/n): " restorefiles_remake
+    if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
+        rm -rf "$restoredir"
+        make_custom_ipsw
+    fi
+fi
+
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]] && [[ $VERSION == 10.* ]]; then
+    download_tvos_sep
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --sep $sep_path --sep-manifest $manifest_path --skip-blob --rdsk $restoredir/ramdisk.im4p \
+            --custom-latest $LATEST_VERSION \
+            --rkrn $restoredir/kernel.im4p $updatebb_flag $rsep_flag $restoredir/custom.ipsw
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            echo "skipping ramdisk grow"
+            break
         fi
-        echo "extracting asr to patch"
-        ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
-        echo "patching asr"
-        ./bin/asr64_patcher asr patched_asr
-        ./bin/ldid -e asr > ents.plist
-        ./bin/ldid -Sents.plist patched_asr
-        echo "replacing asr with patched asr"
-        ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
-        sleep 4
-        ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
-        sleep 4
-        if [[ "$IOS_VERSION" == 10.* ]]; then
-            ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
+    done
+elif [[ $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10.* ]]; then
+    download_1033_ota_sep
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --sep $sep_path --sep-manifest $manifest_path --skip-blob --rdsk $restoredir/ramdisk.im4p \
+            --custom-latest $LATEST_VERSION \
+            --rkrn $restoredir/kernel.im4p $updatebb_flag $rsep_flag $restoredir/custom.ipsw
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
+            break
         fi
-        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-            echo "Adding ipx patches"
-            sudo ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_external 
-            ./bin/ipx_restored_patcher restored_external patched_restored_external
-            ./bin/ldid -e restored_external > ents.plist
-            ./bin/ldid -Sents.plist patched_restored_external
-            echo "replacing restored_external with patched restored_external"
-            ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_external
-            sleep 4 
-            ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_external
-            sleep 4
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_external
-        fi
-        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* || $IOS_VERSION == 16.* ]]; then
-            # do libimg4 validation patch
-            echo "Doing validation patch so sealing system volume works"
-            sudo ./bin/hfsplus ramdisk.raw extract usr/lib/libimg4.dylib
-            ./bin/libimg4_patcher libimg4.dylib libimg4.patched
-            ./bin/ldid -Sents.plist libimg4.patched
-            sudo ./bin/hfsplus ramdisk.raw rm usr/lib/libimg4.dylib
-            sudo ./bin/hfsplus ramdisk.raw add libimg4.patched usr/lib/libimg4.dylib
-            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/lib/libimg4.dylib
-        fi
-        sleep 4
-        echo "Packing patched Ramdisk as im4p"
-        ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
-        mv ramdisk.im4p $savedir/ramdisk.im4p
-        rm -rf "work"
-        rm -rf asr
-        rm -rf restored_external
-        rm -rf patched_external
-        rm -rf patched_restored_external
-        rm -rf patched_asr
-        rm -rf ents.plist
-        rm -rf ramdisk.raw
-        # build update ramdisk
-        echo "building patched update ramdisk..."
-        ./bin/img4 -i "$update_dmg" -o ramdisk.raw
-        rm -rf "tmp1" 
-        if [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
-            echo "growing ramdisk"
-            ./bin/hfsplus ramdisk.raw grow 70000000
+    done
+elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
+    download_iphone6_sep
+    prepatch_ibssibec_fr
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+            --sep $sep_path --sep-manifest $manifest_path --skip-blob --rdsk $restoredir/ramdisk.im4p \
+            --custom-latest $LATEST_VERSION \
+            --rkrn $restoredir/kernel.im4p $updatebb_flag $rsep_flag $restoredir/custom.ipsw
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            echo "skipping ramdisk grow"
+            break
         fi
-        echo "extracting asr to patch"
-        ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
-        echo "patching asr"
-        ./bin/asr64_patcher asr patched_asr
-        ./bin/ldid -e asr > ents.plist
-        ./bin/ldid -Sents.plist patched_asr
-        echo "replacing asr with patched asr"
-        ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
-        sleep 4
-        ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
-        sleep 4
-        if [[ "$IOS_VERSION" == 10.* ]]; then
-            ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
+    done
+else
+    prepatch_ibssibec_fr
+    if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.* || $VERSION == 15.* ]] && [[ $BUILD != 18A5342e ]]; then
+        ramdisk_det="updateramdisk"
+    else
+        ramdisk_det="ramdisk"
+    fi
+    while true; do
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu --skip-blob --rdsk $restoredir/$ramdisk_det.im4p \
+            --custom-latest $LATEST_VERSION \
+            --rkrn $restoredir/kernel.im4p --latest-sep \
+            $updatebb_flag $rsep_flag $restoredir/custom.ipsw
+        EXIT_CODE=$?
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
         else
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
+            break
         fi
-        # restored_external in update ramdisk is restored_update
-        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-            echo "patching restored_update, do ipx patches"
-            ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_update 
-            ./bin/ipx_restored_patcher restored_update patched_restored_external
-            ./bin/ldid -e restored_update > ents.plist
-            ./bin/ldid -Sents.plist patched_restored_external
-            echo "replacing restored_update with patched restored_update"
-            ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_update
-            sleep 4 
-            ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_update
-            sleep 4
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_update
-        fi
-        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* || $IOS_VERSION == 16.* ]]; then
-            # do libimg4 validation patch
-            echo "Doing validation patch so sealing system volume works"
-            sudo ./bin/hfsplus ramdisk.raw extract usr/lib/libimg4.dylib
-            ./bin/libimg4_patcher libimg4.dylib libimg4.patched
-            ./bin/ldid -Sents.plist libimg4.patched
-            sudo ./bin/hfsplus ramdisk.raw rm usr/lib/libimg4.dylib
-            sudo ./bin/hfsplus ramdisk.raw add libimg4.patched usr/lib/libimg4.dylib
-            sudo ./bin/hfsplus ramdisk.raw chmod 755 usr/lib/libimg4.dylib
-        fi
-        sleep 4
-        echo "Packing patched Ramdisk as im4p"
-        ./bin/img4 -i ramdisk.raw -o ramdisk.im4p -T rdsk -A
-        mv ramdisk.im4p $savedir/updateramdisk.im4p
-        rm -rf asr
-        rm -rf restored_update
-        rm -rf patched_external
-        rm -rf patched_restored_external
-        rm -rf patched_asr
-        rm -rf ents.plist
-        rm -rf ramdisk.raw
-        echo "Custom IPSW + patched restore chain has been made! Use --restore $IOS_VERSION to downgrade to the designated firmware"
+    done
+fi
+
+echo "Restore has completed! Read above if there is any errors"
+prepare_boot_files
+exit 0
+
+}
+
+prepare_seprmvr64_ipsw_legacy(){
+
+if [[ $VERSION == 7.* ]]; then
+    IBSS_2="$IBSS7"
+    IBEC_2="$IBEC7"
+else
+    IBSS_2="$IBSS10"
+    IBEC_2="$IBEC10"
+fi
+if [[ $VERSION == 9.* ]]; then
+    ibootpatcher="kairos"
+else
+    ibootpatcher="ipatcher"
+fi
+if [[ $VERSION == 7.* ]]; then
+    grow_to="2500000000"
+elif [[ $VERSION == 8.* ]]; then
+    grow_to="3200000000"
+fi
+
+mkdir -p noseprestore
+mkdir -p noseprestore/$IDENTIFIER
+mkdir -p noseprestore/$IDENTIFIER/$VERSION
+IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+DTRE_KEY=$(grep "dtre-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+RDSK_KEY=$(grep "rdsk-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+KRNL_KEY=$(grep "krnl-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+ROOT_KEY=$(grep "fstm-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+unzip "$IPSW_PATH" -d tmp1
+unzip "$IPSW_PATH_LATEST" -d tmp2
+# ramdisk handling
+smallestlatest_dmg=$(find_dmg tmp2 smallest)
+rootfs_dmg=$(find_dmg tmp1 largest)
+rootfslatest_dmg=$(find_dmg tmp2 largest)
+if [[ $VERSION == 7.0* ]]; then
+    smallest_dmg=$(find_dmg tmp1 largest 10370000)
+else
+    smallest_dmg=$(find_dmg tmp1 smallest)
+fi
+./bin/img4 -i tmp1/Firmware/dfu/$IBSS_2 -o tmp1/iBSS.raw -k $IBSS_KEY
+./bin/img4 -i tmp1/Firmware/dfu/$IBEC_2 -o tmp1/iBEC.raw -k $IBEC_KEY
+./bin/$ibootpatcher tmp1/iBSS.raw tmp1/iBSS.patch
+./bin/$ibootpatcher tmp1/iBEC.raw tmp1/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
+./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
+./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
+./bin/img4 -i tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE -o tmp1/DeviceTree.raw -k $DTRE_KEY
+perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
+./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.raw -k $KRNL_KEY
+./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.im4p -k $KRNL_KEY -D
+if [[ $VERSION == 7.* ]]; then
+    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
+elif [[ $VERSION == 8.* ]]; then
+    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
+else
+    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 9 -f 9 -k -v
+fi
+./bin/kerneldiff tmp1/kernel.raw tmp1/kernel.patch tmp1/kernel.diff
+./bin/img4 -i tmp1/kernel.im4p -o tmp2/$KERNEL -T rkrn -P tmp1/kernel.diff -J || true
+./bin/img4 -i $smallest_dmg -o tmp1/ramdisk.raw -k $RDSK_KEY
+./bin/hfsplus tmp1/ramdisk.raw grow 40000000
+./bin/hfsplus tmp1/ramdisk.raw extract usr/sbin/asr tmp1/asr
+./bin/asr64_patcher tmp1/asr tmp1/asr_patched
+if [[ $VERSION == 8.* || $VERSION == 9.* ]]; then
+    ./bin/ldid -e tmp1/asr > tmp1/ents.plist
+    ./bin/ldid -Stmp1/ents.plist tmp1/asr_patched
+fi
+./bin/hfsplus tmp1/ramdisk.raw rm usr/sbin/asr
+./bin/hfsplus tmp1/ramdisk.raw add tmp1/asr_patched usr/sbin/asr
+./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/sbin/asr
+./bin/img4 -i tmp1/ramdisk.raw -o $smallestlatest_dmg -A -T rdsk
+rm -rf $rootfslatest_dmg
+./bin/dmg extract $rootfs_dmg tmp1/rootfs.raw -k $ROOT_KEY
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
+fi
+if [[ $VERSION == 9.* ]]; then
+    echo "Skipping removal of powerd"
+else
+    # Try and work around deep sleep issues without jailbreak
+    echo "Removing powerd"
+    ./bin/hfsplus tmp1/rootfs.raw rm System/Library/CoreServices/powerd.bundle/powerd
+    ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.powerd.plist
+fi
+./bin/dmg build tmp1/rootfs.raw $rootfslatest_dmg
+cd tmp2
+zip -0 -r ../$restoredir/$ipsw_custom *
+cd ..
+rm -rf "tmp1"
+rm -rf "tmp2"
+
+}
+
+prepare_boot_files_seprmvr64(){
+
+if [[ $VERSION == 7.* ]]; then
+    IBSS_2="$IBSS7"
+    IBEC_2="$IBEC7"
+else
+    IBSS_2="$IBSS10"
+    IBEC_2="$IBEC10"
+fi
+if [[ $VERSION == 9.* ]]; then
+    ibootpatcher="kairos"
+else
+    ibootpatcher="ipatcher"
+fi
+IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+DTRE_KEY=$(grep "dtre-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+KRNL_KEY=$(grep "krnl-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+bootdir="boot/$IDENTIFIER/$VERSION"
+mkdir -p boot
+mkdir -p boot/$IDENTIFIER
+mkdir -p boot/$IDENTIFIER/$VERSION
+unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS_2" -d work
+unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC_2" -d work
+unzip -j "$IPSW_PATH" "Firmware/all_flash/$ALLFLASH/$DEVICETREE" -d work
+unzip -j "$IPSW_PATH" "$KERNEL10" -d work
+./bin/img4 -i work/$IBSS_2 -o work/iBSS.raw -k $IBSS_KEY
+./bin/img4 -i work/$IBEC_2 -o work/iBEC.raw -k $IBEC_KEY
+./bin/img4 -i work/$DEVICETREE -o work/DeviceTree.im4p -k $DTRE_KEY -D
+./bin/img4 -i work/$KERNEL10 -o work/kernel.raw -k $KRNL_KEY
+./bin/img4 -i work/$KERNEL10 -o work/kernel.im4p -k $KRNL_KEY -D
+./bin/$ibootpatcher work/iBSS.raw work/iBSS.patch
+./bin/$ibootpatcher work/iBEC.raw work/iBEC.patch -b "-v"
+./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
+./bin/img4 -i work/DeviceTree.im4p -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
+if [[ $VERSION == 7.* ]]; then
+    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
+elif [[ $VERSION == 8.* ]]; then
+    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
+else
+    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 9 -f 9 -k -v
+fi
+./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
+rm -rf "work"
+
+}
+
+do_tethered_seprmvr64_restore(){
+
+if [[ -z "$IPSW_PATH" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH"
+    exit 1
+fi
+if [[ -z "$IPSW_PATH_LATEST" ]]; then
+    echo "Latest IPSW is not selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
+    echo "Latest IPSW does not exist: $IPSW_PATH_LATEST"
+    exit 1
+fi
+
+echo "Here is the following things that may happen on seprmvr64 restore:"
+echo "1. Touch ID will not work"
+echo "2. Passcode will not work"
+echo "3. Password protected Wi-Fi networks will not work"
+echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
+echo "5. Potentially other broken features"
+read -p "Press enter to continue"
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]]; then
+    echo "A8 is currently unsupported as we are rewriting surrealra1n, but it should be back eventually."
+    exit 1
+fi
+
+restoredir="noseprestore/$IDENTIFIER/$VERSION"
+stitch_activation=0
+if [[ $JAILBREAK == 1 ]] && [[ $stitch_activation != 1 ]]; then
+    ipsw_custom="customJB.ipsw"
+elif [[ $JAILBREAK == 1 ]] && [[ $stitch_activation == 1 ]]; then
+    ipsw_custom="customJB_$ECID.ipsw"
+elif [[ $JAILBREAK != 1 ]] && [[ $stitch_activation == 1 ]]; then
+    ipsw_custom="custom_$ECID.ipsw"
+else
+    ipsw_custom="custom.ipsw"
+fi
+
+if [[ ! -f "$restoredir/$ipsw_custom" ]]; then
+    echo "Restore files does not exist, making new ones"
+    prepare_seprmvr64_ipsw_legacy
+else
+    echo "Restore files already exist"
+    read -p "Would you like to make new ones? (y/n): " restorefiles_remake
+    if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
+        rm -rf "$restoredir"
+        prepare_seprmvr64_ipsw_legacy
+    fi
+fi
+
+rm -rf "shsh"
+mkdir -p shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+im4m="$IDENTIFIER-im4m"
+
+dfu_helper
+pwn_device
+sleep 5
+sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/$ipsw_custom
+echo "Restore has finished! Read above if there's any errors"
+prepare_boot_files_seprmvr64
+exit 0
+
+}
+
+seprmvr64_opts(){
+
+clear 
+echo "$INFO_TEXT"
+echo ""
+echo "This feature uses seprmvr64 by Mineek"
+echo "All SEP functionality will be disabled"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Select Target IPSW"
+echo "2. Select Base IPSW"
+echo "3. Start Restore"
+echo "4. Back"
+read -p "Please input an option (1-4): " tether_options
+if [[ $tether_options == 1 ]]; then
+    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    if [[ -z "$IPSW_PATH" ]]; then
+        echo "No IPSW selected. Aborting."
         exit 1
-        ;;
-
-    --make-custom-ipsw-2)
-        if [[ $# -ne 4 ]]; then
-            echo "[!] Usage: --make-custom-ipsw-2 [TARGET_IPSW_PATH] [BASE_IPSW_PATH] [iOS_VERSION]"
-            exit 1
-        fi
-        TARGET_IPSW="$2"
-        BASE_IPSW="$3"
-        IOS_VERSION="$4"
-        if [[ $IDENTIFIER != iPad5* ]]; then
-            echo "[!] --make-custom-ipsw-2 is not supported on any other devices than the iPad mini 4, Air 2."
-            echo "[!] Use --make-custom-ipsw instead"
-            exit 1
-        fi
-        if [[ $IDENTIFIER == iPad5* ]] && [[ $IOS_VERSION == 11.2* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.0* || $IOS_VERSION == 10.* || $IOS_VERSION == 9.* || $IOS_VERSION == 8.* ]]; then
-            echo "[!] SEP is incompatible"
-            echo "[!] You cannot restore or make a custom IPSW for this version."
-            exit 1
-        fi
-        if [[ $IOS_VERSION == 11.* ]]; then
-            KEYS_VERSION="13.4"
-        else
-            KEYS_VERSION="$IOS_VERSION"
-        fi
-        KEY_FILE="keys/$IDENTIFIER.txt"
-        # Extract iBSS and iBEC keys
-        IBSS_KEY=$(grep "ibss-$KEYS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        IBEC_KEY=$(grep "ibec-$KEYS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-        echo "[*] Making custom IPSW..."
-        savedir="restorefiles/$IDENTIFIER/$IOS_VERSION"
-        rm -rf "$savedir"
-        mkdir -p "$savedir"
-        echo ""
-        unzip "$TARGET_IPSW" -d tmp1
-        unzip "$BASE_IPSW" -d tmp2
-        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
-            echo "iOS 10.3 iBSS and iBEC will be used."
-            sudo ./bin/pzb -g Firmware/dfu/$IBSS http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw
-            sudo ./bin/pzb -g Firmware/dfu/$IBEC http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw
-            rm -rf tmp1/Firmware/dfu/$IBSS10
-            rm -rf tmp1/Firmware/dfu/$IBEC10
-            mv $IBSS tmp1/Firmware/dfu/$IBSS10
-            mv $IBEC tmp1/Firmware/dfu/$IBEC10
-            sudo rm -rf $IBSS
-            sudo rm -rf $IBEC
-        fi
-        if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
-            rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
-            rm -rf tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
-            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$ALLFLASH/$LLB10
-            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$ALLFLASH/$IBOOT10
-            rm -rf tmp1/BuildManifest.plist
-            cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist
-        elif [[ "$IOS_VERSION" == 10.3* ]]; then
-            rm -rf tmp1/Firmware/all_flash/$LLB
-            rm -rf tmp1/Firmware/all_flash/$IBOOT
-            cp tmp2/Firmware/all_flash/$LLB tmp1/Firmware/all_flash/$LLB
-            cp tmp2/Firmware/all_flash/$IBOOT tmp1/Firmware/all_flash/$IBOOT
-        else
-            if [[ $IOS_VERSION == 14.0* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.2* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
-                # A11 hax to tether restore 14.0-14.2 on 16 SEP, 14.3 iBoot method (thanks to verygenericname for pointing that out)
-                IPSW_PATH=$($zenity --file-selection --title="Select the iOS 14.3 IPSW file (for iBSS and iBEC)")
-                rm -rf tmp1/Firmware/dfu/$IBSS
-                rm -rf tmp1/Firmware/dfu/$IBEC 
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d tmp1/Firmware/dfu
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d tmp1/Firmware/dfu
-                # hardcode custom buildmanifest, so it redirects to getting 14.3 keys instead of 14.0-14.2's
-                sudo rm -rf tmp1/BuildManifest.plist
-                cp manifest/$IDENTIFIER/$IOS_VERSION-Manifest.plist tmp1/BuildManifest.plist            
-            fi
-            if [[ $IOS_VERSION == 11.* || $IOS_VERSION == 12.* || $IOS_VERSION == 13.1* || $IOS_VERSION == 13.2* || $IOS_VERSION == 13.3* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                sudo ./bin/pzb -g Firmware/all_flash/$DEVICETREE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                sudo ./bin/pzb -g $KERNELCACHE https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                sudo rm -rf "tmp1/Firmware/all_flash/$DEVICETREE"
-                sudo rm -rf "tmp1/$KERNELCACHE"
-                cp $KERNELCACHE "tmp1/$KERNELCACHE"
-                cp $DEVICETREE "tmp1/Firmware/all_flash/$DEVICETREE"
-                sudo rm -rf $KERNELCACHE
-                sudo rm -rf $DEVICETREE
-                smallest_rdskdmg=$(find_dmg tmp1 smallest)
-                update_rdskdmg=$(find_dmg tmp1 largest 1073741824)
-                if [[ $IOS_VERSION == 12.* || $IOS_VERSION == 11.* ]]; then
-                    sudo rm -rf $smallest_rdskdmg
-                    cd tmp1
-                    sudo ../bin/pzb -g 048-64389-366.dmg https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                    cd ..
-                    sudo rm -rf $update_rdskdmg
-                    cd tmp1
-                    if [[ $IOS_VERSION == 11.* ]]; then
-                        sudo ../bin/pzb -g BuildManifest.plist https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo ../bin/pzb -g Firmware/048-64389-366.dmg.trustcache https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw    
-                        sudo ../bin/pzb -g Firmware/048-64500-319.dmg.trustcache https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo ../bin/pzb -g Firmware/048-65142-364.dmg.trustcache https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        mv 048-64389-366.dmg.trustcache Firmware/048-64389-366.dmg.trustcache
-                        mv 048-64500-319.dmg.trustcache Firmware/048-64500-319.dmg.trustcache
-                        mv 048-65142-364.dmg.trustcache Firmware/048-65142-364.dmg.trustcache
-                        sudo ../bin/pzb -g Firmware/dfu/$IBSS https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo ../bin/pzb -g Firmware/dfu/$IBEC https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                        sudo rm -rf Firmware/dfu/$IBSS
-                        sudo rm -rf Firmware/dfu/$IBEC
-                        sudo mv $IBSS Firmware/dfu/$IBSS
-                        sudo mv $IBEC Firmware/dfu/$IBEC
-                        cd ..
-                        root_dmg=$(find_dmg tmp1 largest)
-                        mv $root_dmg tmp1/048-64500-319.dmg
-                        cd tmp1
-                    fi
-                    sudo ../bin/pzb -g 048-65142-364.dmg https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw
-                    cd ..
-                fi
-            fi
-        fi
-        
-        # determine restore ramdisk
-        smallest_dmg=$(find_dmg tmp1 smallest)
-        # determine update ramdisk (experimental tethered updates?)
-        update_dmg=$(find_dmg tmp1 largest 1073741824)
-        # determine restore ramdisk final destination
-        smallest_dmg_2=$(find_dmg tmp2 smallest)
-        # determine update ramdisk final destination
-        update_dmg_2=$(find_dmg tmp2 largest 1073741824)
-        # determine root filesystem 
-        root_dmg_path=$(find_dmg tmp1 largest)
-        # determine root filesystem final destination
-        root_dmg_path_2=$(find_dmg tmp2 largest)
-        rm -rf $root_dmg_path_2
-        mv $root_dmg_path $root_dmg_path_2
-        rm -rf tmp2/Firmware/all_flash/$DEVICETREE
-        mv tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
-        echo "Patching iBSS"
-        mkdir -p work
-        ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
-        ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched
-        ./bin/img4 -i work/iBSS.patched -o tmp2/Firmware/dfu/$IBSS -A -T ibss
-        echo "Patching iBEC"
-        ./bin/img4 -i tmp1/Firmware/dfu/$IBEC -o work/iBEC.raw -k $IBEC_KEY
-        ./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched
-        ./bin/img4 -i work/iBEC.patched -o tmp2/Firmware/dfu/$IBEC -A -T ibec
-        if [[ "$IDENTIFIER" == iPhone6,* ]] && [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
-            cp tmp1/$KERNELCACHE10 work/kernel.orig 
-        else
-            cp tmp1/$KERNELCACHE work/kernel.orig 
-        fi     
-        cd work
-        echo "making patched restore chain"
-        ../bin/img4 -i kernel.orig -o kernel.raw
-        ../bin/KPlooshFinder kernel.raw kernel.patched
-        ../bin/kerneldiff kernel.raw kernel.patched kernel.bpatch
-        ../bin/img4 -i kernel.orig -o kernel.im4p -T rkrn -P kernel.bpatch -J || true
-        mv kernel.im4p ../tmp2/$KERNELCACHE
-        # build ramdisk
-        cd ..
-        ./bin/img4 -i "$smallest_dmg" -o ramdisk.raw
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
-            echo "growing ramdisk"
-            ./bin/hfsplus ramdisk.raw grow 60000000
-        else
-            echo "skipping ramdisk grow"
-        fi
-        echo "extracting asr to patch"
-        ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
-        echo "patching asr"
-        ./bin/asr64_patcher asr patched_asr
-        ./bin/ldid -e asr > ents.plist
-        ./bin/ldid -Sents.plist patched_asr
-        echo "replacing asr with patched asr"
-        ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
-        sleep 4
-        ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
-        sleep 4
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
-            ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
-        else
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
-        fi
-        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-            echo "patching restored_external"
-            sudo ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_external 
-            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                echo "[!] You are trying to restore an iPhone X to iOS $IOS_VERSION"
-                echo "An additional patch is required!"
-                ./bin/ipx_restored_patcher restored_external patched_external
-                ./bin/restored_external64_patcher patched_external patched_restored_external
-            else
-                ./bin/restored_external64_patcher restored_external patched_restored_external
-            fi
-            ./bin/ldid -e restored_external > ents.plist
-            ./bin/ldid -Sents.plist patched_restored_external
-            echo "replacing restored_external with patched restored_external"
-            ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_external
-            sleep 4 
-            ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_external
-            sleep 4
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_external
-        fi
-        sleep 4
-        echo "Packing patched Ramdisk as im4p"
-        ./bin/img4 -i ramdisk.raw -o $smallest_dmg_2 -T rdsk -A
-        rm -rf "work"
-        rm -rf asr
-        rm -rf restored_external
-        rm -rf patched_external
-        rm -rf patched_restored_external
-        rm -rf patched_asr
-        rm -rf ents.plist
-        rm -rf ramdisk.raw
-        # build update ramdisk
-        echo "building patched update ramdisk..."
-        ./bin/img4 -i "$update_dmg" -o ramdisk.raw
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
-            echo "growing ramdisk"
-            ./bin/hfsplus ramdisk.raw grow 70000000
-        else
-            echo "skipping ramdisk grow"
-        fi
-        echo "extracting asr to patch"
-        ./bin/hfsplus ramdisk.raw extract usr/sbin/asr 
-        echo "patching asr"
-        ./bin/asr64_patcher asr patched_asr
-        ./bin/ldid -e asr > ents.plist
-        ./bin/ldid -Sents.plist patched_asr
-        echo "replacing asr with patched asr"
-        ./bin/hfsplus ramdisk.raw rm usr/sbin/asr
-        sleep 4
-        ./bin/hfsplus ramdisk.raw add patched_asr usr/sbin/asr
-        sleep 4
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPad4* ]] && [[ "$IOS_VERSION" == 10.* ]]; then
-            ./bin/hfsplus ramdisk.raw chmod 100755 usr/sbin/asr
-        else
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/sbin/asr 
-        fi
-        # restored_external in update ramdisk is restored_update
-        if [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-            echo "patching restored_update"
-            ./bin/hfsplus ramdisk.raw extract usr/local/bin/restored_update 
-            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                echo "[!] You are trying to restore an iPhone X to iOS $IOS_VERSION"
-                echo "An additional patch is required!"
-                ./bin/ipx_restored_patcher restored_update patched_external
-                ./bin/restored_external64_patcher patched_external patched_restored_external
-            else
-                ./bin/restored_external64_patcher restored_update patched_restored_external
-            fi
-            ./bin/ldid -e restored_update > ents.plist
-            ./bin/ldid -Sents.plist patched_restored_external
-            echo "replacing restored_update with patched restored_update"
-            ./bin/hfsplus ramdisk.raw rm usr/local/bin/restored_update
-            sleep 4 
-            ./bin/hfsplus ramdisk.raw add patched_restored_external usr/local/bin/restored_update
-            sleep 4
-            ./bin/hfsplus ramdisk.raw chmod 755 usr/local/bin/restored_update
-        fi
-        sleep 4
-        echo "Packing patched Ramdisk as im4p"
-        ./bin/img4 -i ramdisk.raw -o $update_dmg_2 -T rdsk -A
-        rm -rf asr
-        rm -rf restored_update
-        rm -rf patched_external
-        rm -rf patched_restored_external
-        rm -rf patched_asr
-        rm -rf ents.plist
-        rm -rf ramdisk.raw
-        rm -rf "tmp1"
-        cd tmp2
-        zip -0 -r ../custom.ipsw *
-        cd ..
-        mv custom.ipsw "$savedir/custom.ipsw"
-        rm -rf "tmp2"
-        rm -rf "$savedir/ramdisk.im4p"
-        rm -rf "$savedir/updateramdisk.im4p"
-        rm -rf "$savedir/kernel.im4p"
-        echo "Custom IPSW + patched restore chain has been made! Use --restore $IOS_VERSION to downgrade to the designated firmware"
+    fi
+    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    if [[ $VERSION == 8.* || $VERSION == 10.* || $VERSION == 11.* || $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
+        echo "iOS 10 and later are unsupported, and iOS 8 is unsupported."
         exit 1
-        ;;
-
-
-    --restore)
-        if [[ $# -ne 2 ]]; then
-            echo "[!] Usage: --restore [iOS_VERSION]"
-            exit 1
-        fi
-        sudo rm -rf "shsh"
-        IOS_VERSION="$2"
-        echo "[*] Restoring to iOS $IOS_VERSION..."
-        restoredir="restorefiles/$IDENTIFIER/$IOS_VERSION"
-        echo "Fetching shsh blobs for iOS $LATEST_VERSION, this is just so it will restore. skip-blob flag is used"
-        mkdir -p shsh
-        sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
-
-        # Find the .shsh2 file in the shsh directory
-        shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
-        if [[ -z "$shshpath" ]]; then
-            echo "[!] No .shsh2 blob found in shsh folder. Aborting."
-            exit 1
-        fi
-
-        echo "[*] Using SHSH blob: $shshpath"
-        read -p "Do you want to do an update install? (y/n): " update_prompt
-        if [[ $IDENTIFIER == iPhone10* || $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
-            echo "We must save activation tickets in order to activate on this version. Please read what is below."
-            echo "Please read this guide to backup/restore activation tickets: https://gist.github.com/pixdoet/2b58cce317a3bc7158dfe10c53e3dd32"
-        fi
-        if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]] && [[ $update_prompt == N || $update_prompt == n ]]; then
-            echo "We must save activation tickets in order to activate on this version. Please read what is below."
-            echo "Please read this guide to backup/restore activation tickets: https://gist.github.com/pixdoet/2b58cce317a3bc7158dfe10c53e3dd32"
-        fi
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        echo "You can ignore this message if you are restoring an A8(X) device or newer."
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                ./bin/irecovery -f surrealra1n.sh
-                ./bin/gaster reset
-            fi
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
-        if [[ $update_prompt == y || $update_prompt == Y ]]; then
-            INSTALL_TYPE="--update"
-        else
-            INSTALL_TYPE=""
-        fi
-        # Check if IPSW is a make-custom-ipsw-2 ipsw or not.
-        if [[ -f "$restoredir/kernel.im4p" && \
-              -f "$restoredir/updateramdisk.im4p" && \
-              -f "$restoredir/ramdisk.im4p" ]]; then
-            echo "This is not a make-custom-ipsw-2 ipsw. Will use futurerestore."
-        else
-            echo "This is a make-custom-ipsw-2 IPSW. Will do custom restore method"
-            sudo rm -rf "shsh"
-            echo "Fetching shsh blobs for iOS $LATEST_VERSION, this is just so it will restore. skip-blob flag is used"
-            mkdir -p shsh
-            APNONCE=$(./bin/irecovery -q | grep "^NONC:" | cut -d ':' -f2 | xargs)
-            sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE
-
-            # Find the .shsh2 file in the shsh directory
-            shshpath2=$(find shsh -type f -name "*.shsh2" | head -n 1)
-            if [[ -z "$shshpath2" ]]; then
-                echo "[!] No .shsh2 blob found in shsh folder. Aborting."
-                exit 1
-            fi
-            unzip -j "$restoredir/custom.ipsw" "Firmware/dfu/$IBSS" -d tmp
-            unzip -j "$restoredir/custom.ipsw" "Firmware/dfu/$IBEC" -d tmp
-            ./bin/img4tool -e -s $shshpath2 -m im4m
-            ./bin/img4 -i tmp/$IBSS -o tmp/iBSS.img4 -M im4m -T ibss
-            ./bin/img4 -i tmp/$IBEC -o tmp/iBEC.img4 -M im4m -T ibec
-            ./bin/irecovery -f tmp/iBSS.img4
-            ./bin/irecovery -f tmp/iBEC.img4
-            echo "Checking if device is in Recovery mode"
-            MODE=$(./bin/irecovery -q | grep "^MODE:" | cut -d ':' -f2 | xargs)
-            if [[ $MODE == Recovery ]]; then
-                echo "Device is in recovery mode"
-                sleep 1
-            else
-                echo "Device not detected in Recovery, aborting"
-                rm -rf "tmp"
-                exit 1
-            fi
-            sudo ./futurerestore/futurerestore -t $shshpath2 $USE_BASEBAND --latest-sep --no-rsep $INSTALL_TYPE $restoredir/custom.ipsw
-            rm -rf "tmp"
-            echo "Restore has finished! Read above if there's any errors"
-            exit 1
-        fi
-
-        # Potential future iOS 16.x tethered support, send rsep always if restoring iPhone X to fix FDR SEP panic
-        if [[ $IOS_VERSION == 16.* || $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-            use_rsep=""
-        else
-            use_rsep="--no-rsep"
-        fi
-        echo "running futurerestore"
-        if [[ "$IDENTIFIER" == iPhone6,* || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]] && [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.0* || "$IOS_VERSION" == 11.1* || "$IOS_VERSION" == 11.2* ]]; then
-            echo "iOS 10 sep will be used"
-            if [[ $IDENTIFIER == iPhone6* ]]; then
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP http://appldnld.apple.com/ios10.3.3/091-23133-20170719-CA8E78E6-6977-11E7-968B-2B9100BA0AE3/iPhone_4.0_64bit_10.3.3_14G60_Restore.ipsw
-            fi
-            if [[ $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]]; then
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP http://appldnld.apple.com/ios10.3.3/091-23378-20170719-CA983C78-6977-11E7-8922-3D9100BA0AE3/iPad_64bit_10.3.3_14G60_Restore.ipsw
-            fi
-            if [[ $IDENTIFIER == iPod7* ]]; then
-                # download tvOS SEP
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPod7,1.plist" # slightly modified BuildManifest from tvOS 10.2.2 to hack signed SEP for 10.3.x restores A8
-            fi
-            if [[ $IDENTIFIER == iPhone7,2 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPhone7,2.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPhone7,2.plist
-            fi
-            if [[ $IDENTIFIER == iPhone7,1 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPhone7,1.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPhone7,1.plist
-            fi
-            if [[ $IDENTIFIER == iPad5,1 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPad5,1.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,1.plist
-            fi
-            if [[ $IDENTIFIER == iPad5,2 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPad5,2.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,2.plist
-            fi
-            sudo rm -rf "tmp"
-            mkdir tmp
-            mkdir tmp/Firmware
-            mkdir tmp/Firmware/all_flash
-            mv $SEP tmp/Firmware/all_flash/
-            SEP_PATH="tmp/Firmware/all_flash/$SEP"
-            if [[ $IOS_VERSION == 11.0* || $IOS_VERSION == 11.1* || $IOS_VERSION == 11.2* ]]; then
-                if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
-                    echo "Restore has finished! Read above if there's any errors"
-                    echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
-                    exit 1
-                fi
-                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
-                rm -rf "tmp"
-                echo "Restore has finished! Read above if there's any errors"
-                echo "YOU WILL FACE A LOT OF ISSUES REGARDING STUFF THAT REQUIRES SEP TO FULLY WORK"
-                exit 1
-            fi
-            if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
-                echo "Restore has finished! Read above if there's any errors"
-                exit 1
-            fi
-            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $restoredir/custom.ipsw
-            rm -rf "tmp"
-            echo "Restore has finished! Read above if there's any errors"
-            exit 1
-        else
-            if [[ $update_prompt == y || $update_prompt == Y ]]; then
-                sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/updateramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw
-                echo "Restore has finished! Read above if there's any errors"
-                if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]]; then
-                    sudo rm -rf "boot/$IDENTIFIER/$IOS_VERSION"
-                fi
-                exit 1
-            fi
-            sudo ./futurerestore/futurerestore -t $shshpath --skip-blob --use-pwndfu --no-cache --rdsk $restoredir/ramdisk.im4p --rkrn $restoredir/kernel.im4p $USE_BASEBAND --latest-sep $use_rsep $restoredir/custom.ipsw 
-        fi
-        echo "Restore has finished! Read above if there's any errors"
-        if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPad7* || $IDENTIFIER == iPhone10* ]]; then
-            sudo rm -rf "boot/$IDENTIFIER/$IOS_VERSION"
-        fi
+    fi
+    if [[ $IDENTIFIER == iPhone6,2 ]] && [[ $VERSION == 9.3 ]] && [[ $BUILD != 13E237 ]]; then
+        echo "9.3 ($BUILD) is unsupported"
         exit 1
-        ;;
-# deprecate ota downgrade option
-    --downgrade)
-        if [[ $# -ne 3 ]]; then
-            echo "[!] Usage: --downgrade [IPSW FILE] [SHSH BLOB]"
-            exit 1
-        fi
-        IPSW="$2"
-        SHSHBLOB="$3"
-        read -p "What is the iOS version you are downgrading to: " vers
-        if [[ $vers == 10.2* || $vers == 10.1* ]]; then
-            echo "[!] Unsupported currently"
-            exit 1
-        fi
-        echo "[*] Restoring to iOS $vers..."
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] Aborting restore. Please re-enter DFU and try again."
-            exit 1
-        fi
-
-        echo "[*] Using SHSH blob: $SHSHBLOB"
-        echo "running futurerestore"
-        sudo rm -rf "tmp" 
-        if [[ $vers == 11.3* || $vers == 11.4* || $vers == 12.* || $vers == 13.* || $vers == 14.* || $vers == 15.* || $vers == 16.* ]]; then
-            echo "Using latest SEP and baseband!"
-            sudo ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu $USE_BASEBAND --latest-sep --no-rsep $IPSW
-        elif [[ $IDENTIFIER == iPhone6* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
-            echo "iOS 10 SEP needs to be used"
-            IPSW_PATH=$($zenity --file-selection --title="Select the iOS 10.3.3 IPSW file (for SEP firmware)")
-            mkdir tmp
-            mkdir tmp/Firmware
-            mkdir tmp/Firmware/all_flash
-            unzip -j "$IPSW_PATH" "Firmware/all_flash/$SEP" -d tmp/Firmware/all_flash
-            unzip -j "$IPSW_PATH" "Firmware/$BASEBAND10" -d tmp/Firmware
-            SEP_PATH="tmp/Firmware/all_flash/$SEP"
-            BASEBAND_PATH="tmp/Firmware/$BASEBAND10"
-            sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache --baseband "$BASEBAND_PATH" --baseband-manifest "$mnifst" --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
-        elif [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* ]] && [[ $vers == 10.1* || $vers == 10.2* || $vers == 10.3* ]]; then
-            # untether downgrade iPhone 6/6 Plus/mini 4/iPod touch 6 with blobs to 10.x, tvOS SEP hax
-            echo "tvOS 10.2.2 SEP needs to be used"
-            if [[ $IDENTIFIER == iPod7* ]]; then
-                # download tvOS SEP
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPod7,1.plist" # slightly modified BuildManifest from tvOS 10.2.2 to hack signed SEP for 10.3.x restores A8
-            fi
-            if [[ $IDENTIFIER == iPhone7,2 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPhone7,2.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPhone7,2.plist
-            fi
-            if [[ $IDENTIFIER == iPhone7,1 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPhone7,1.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPhone7,1.plist
-            fi
-            if [[ $IDENTIFIER == iPad5,1 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPad5,1.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,1.plist
-            fi
-            if [[ $IDENTIFIER == iPad5,2 ]]; then
-                SEP="sep-firmware.j42d.RELEASE.im4p"
-                sudo ./bin/pzb -g Firmware/all_flash/$SEP https://secure-appldnld.apple.com/tvos10.2.2/091-23452-20170720-5D53229C-6A56-11E7-8577-8B2C4A4DD6D5/AppleTV5,3_10.2.2_14W756_Restore.ipsw
-                mnifst="manifest/BuildManifest-iPad5,2.plist"
-                curl -L -o $mnifst https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-iPad5,2.plist
-            fi
-            mkdir tmp
-            mkdir tmp/Firmware
-            mkdir tmp/Firmware/all_flash
-            mv $SEP tmp/Firmware/all_flash/
-            SEP_PATH="tmp/Firmware/all_flash/$SEP"
-            # patch restore kernel if not on iPod touch 6, otherwise proceed without rkrn patching
-            if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* ]]; then
-                unzip -j "$IPSW" "$KERNELCACHE" -d tmp
-                ./bin/img4 -i tmp/$KERNELCACHE -o tmp/kernel.raw 
-                ./bin/Kernel64Patcher2 tmp/kernel.raw tmp/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
-                ./bin/kerneldiff tmp/kernel.raw tmp/kernel.patch tmp/kernel.diff 
-                ./bin/img4 -i tmp/$KERNELCACHE -o tmp/kernel.im4p -T rkrn -P tmp/kernel.diff -J || true 
-                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW --rkrn tmp/kernel.im4p
-            else
-                sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 ./futurerestore/futurerestore -t $SHSHBLOB --use-pwndfu --no-cache $USE_BASEBAND --sep "$SEP_PATH" --sep-manifest "$mnifst" --no-rsep $IPSW
-            fi
-        else
-            echo "SEP is incompatible!"
-            exit 1
-        fi
-        echo "Restore has finished! Read above if there's any errors"
-        if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]]; then
-            echo "You will have the following issues:"
-            echo "1. Touch ID will not work"
-            echo "2. Device may hang for a certain amount of time at certain parts of setup screen."
-            echo "3. Device may take 3-5 minutes to boot untethered"
-            echo "All of the issues, except Touch ID, can be mitigated if you boot tethered with surrealra1n."
-            echo "It is recommended to briefly boot tethered, so you can set up the device normally, then you can reboot untethered"
-            echo "surrealra1n tethered boot command: ./surrealra1n.sh --boot $vers"
-            sudo rm -rf "shsh"
-            mkdir shsh
-            cp $SHSHBLOB shsh/something.shsh2 # so tether boot can work
-        fi
-        echo "Removing tmp folder if it exists"
-        sudo rm -rf "tmp"
+    elif [[ $IDENTIFIER == iPhone6,1 ]] && [[ $VERSION == 9.3 ]] && [[ $BUILD != 13E233 ]]; then
+        echo "9.3 ($BUILD) is unsupported"
         exit 1
-        ;;
-
-    --boot)
-        if [[ $# -ne 2 ]]; then
-            echo "[!] Usage: --boot [iOS_VERSION]"
-            exit 1
-        fi
-        IOS_VERSION="$2"
-        echo "[*] Tethered boot of iOS $IOS_VERSION..."
-        echo "[!] Note: Kernel patches are applied for restoring only usually"
-        # Find the .shsh2 file in the shsh directory
-        shshpath=$(find shsh -type f -name "*.shsh2" | head -n 1)
-        if [[ -z "$shshpath" ]]; then
-            echo "[!] No .shsh2 blob found in shsh folder. Aborting."
-            exit 1
-        fi
-           
-
-        # Check for boot files
-        BOOT_DIR="boot/$IDENTIFIER/$IOS_VERSION"
-        if [[ ! -d "$BOOT_DIR" ]] || [[ ! -f "$BOOT_DIR"/iBSS.img4 || ! -f "$BOOT_DIR"/iBEC.img4 || ! -f "$BOOT_DIR"/DeviceTree.img4 || ! -f "$BOOT_DIR"/Kernelcache.img4 ]]; then
-            echo "[*] Boot files not found. Creating new boot files at $BOOT_DIR..."
-            if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.2* || $IOS_VERSION == 14.1* || $IOS_VERSION == 14.0* ]]; then
-                IPSW_PATH="restorefiles/$IDENTIFIER/$IOS_VERSION/custom.ipsw"
-            else
-                echo "Drag and drop the iOS $IOS_VERSION IPSW file."
-                IPSW_PATH=$($zenity --file-selection --title="Select the iOS $IOS_VERSION IPSW file")
-            fi
-            if [[ -z "$IPSW_PATH" ]]; then
-                echo "[!] No IPSW selected. Aborting."
-                sudo rm -rf "$BOOT_DIR"
-                exit 1
-            fi
-            if [[ ! -f "$IPSW_PATH" ]]; then
-                echo "[!] IPSW does not exist: $IPSW_PATH"
-                sudo rm -rf "$BOOT_DIR"
-                exit 1
-            fi
-            mkdir -p to_patch
-            mkdir -p "$BOOT_DIR"
-            # move ibss and ibec
-            if [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS10" -d to_patch
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC10" -d to_patch
-                unzip -j "$IPSW_PATH" "$KERNELCACHE10" -d to_patch
-                mv to_patch/$KERNELCACHE10 to_patch/$KERNELCACHE
-                mv to_patch/$IBSS10 to_patch/$IBSS
-                mv to_patch/$IBEC10 to_patch/$IBEC
-            else
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d to_patch
-                unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d to_patch
-                unzip -j "$IPSW_PATH" "$KERNELCACHE" -d to_patch
-            fi
-            if [[ "$IOS_VERSION" == 10.1* || "$IOS_VERSION" == 10.2* ]]; then
-                unzip -j "$IPSW_PATH" "Firmware/all_flash/$ALLFLASH/$DEVICETREE" -d to_patch
-            else
-                unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d to_patch
-            fi
-            if [[ "$IOS_VERSION" == 12.* || "$IOS_VERSION" == 13.* || "$IOS_VERSION" == 14.* || "$IOS_VERSION" == 15.* ]]; then
-                echo "Trustcache will be extracted too!"
-                unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d to_patch
-                # Select the biggest trustcache file
-                BIGGEST_TRUSTCACHE=$(ls -S to_patch/*.trustcache 2>/dev/null | head -n 1)
-                if [[ -n "$BIGGEST_TRUSTCACHE" ]]; then
-                    echo "[*] Using biggest trustcache: $(basename "$BIGGEST_TRUSTCACHE")"
-                    cp "$BIGGEST_TRUSTCACHE" to_patch/trustcache
-                else
-                    echo "[!] No trustcache file found in IPSW."
-                fi
-            fi
-            mv to_patch/$IBSS to_patch/iBSS.im4p
-            mv to_patch/$IBEC to_patch/iBEC.im4p
-            mv to_patch/$DEVICETREE to_patch/DeviceTree.im4p
-            mv to_patch/$KERNELCACHE to_patch/kernelcache
-
-            # Read decryption keys
-            KEY_FILE="keys/$IDENTIFIER.txt"
-            if [[ ! -f "$KEY_FILE" ]]; then
-                echo "[!] Key file $KEY_FILE not found. Aborting."
-                exit 1
-            fi
-
-            # Extract iBSS and iBEC keys
-            IBSS_KEY=$(grep "ibss-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-            IBEC_KEY=$(grep "ibec-$IOS_VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-
-            if [[ -z "$IBSS_KEY" || -z "$IBEC_KEY" ]]; then
-                echo "[!] Missing iBSS or iBEC key for iOS $IOS_VERSION in $KEY_FILE. Aborting."
-                exit 1
-            fi
-
-            echo "[*] Found keys:"
-            echo "    iBSS Key: $IBSS_KEY"
-            echo "    iBEC Key: $IBEC_KEY"
-
-            # Placeholder for actual boot file creation
-            echo "[*] Creating boot files..."
-            ./bin/img4tool -s "$shshpath" -e -m "$IDENTIFIER-im4m"
-            im4m="$IDENTIFIER-im4m"
-            ./bin/img4 -i to_patch/iBSS.im4p -o to_patch/iBSS.dec -k $IBSS_KEY
-            ./bin/img4 -i to_patch/iBEC.im4p -o to_patch/iBEC.dec -k $IBEC_KEY
-            if [[ "$IOS_VERSION" == 10.2* || "$IOS_VERSION" == 10.1* ]]; then
-                ./bin/kairos to_patch/iBSS.dec to_patch/iBSS.patched
-            elif [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 14.* || $IOS_VERSION == 15.* || $IOS_VERSION == 16.* ]]; then
-                ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched -b "-v wdt=-1" -l -n
-            else
-                ./bin/iBoot64Patcher to_patch/iBSS.dec to_patch/iBSS.patched
-            fi
-            if [[ "$IOS_VERSION" == 10.* || "$IOS_VERSION" == 11.* || "$IOS_VERSION" == 12.* ]]; then
-                echo "Using kairos to patch iBEC instead of iBoot64Patcher"
-                ./bin/kairos to_patch/iBEC.dec to_patch/iBEC.patched -n -b "-v debug=0x09" -c "go" 0x830000300
-            elif [[ "$IOS_VERSION" == 13.* || "$IOS_VERSION" == 14.* || "$IOS_VERSION" == 15.* ]]; then
-                ./bin/iBoot64Patcher to_patch/iBEC.dec to_patch/iBEC.patched -b "-v wdt=-1" -n              
-            else
-                ./bin/iBoot64Patcher to_patch/iBEC.dec to_patch/iBEC.patched -b "rd=disk0s1s1 -v"
-            fi
-            ./bin/img4 -i to_patch/DeviceTree.im4p -o $BOOT_DIR/DeviceTree.img4 -M "$im4m" -T rdtr
-            ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -T rkrn
-            if [[ $IOS_VERSION == 14.* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b
-                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J || true       
-            fi
-            if [[ $IOS_VERSION == 13.* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b13 -n
-                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J || true       
-            fi
-            if [[ $IOS_VERSION == 13.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b13 -n
-                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J || true       
-            fi
-            if [[ $IOS_VERSION == 12.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher2 to_patch/kernel.raw to_patch/kernel.patched -u 12 --skip-sks --skip-acm --skip-amfi
-                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J || true    
-            fi
-            if [[ $IOS_VERSION == 11.* || $IOS_VERSION == 10.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher2 to_patch/kernel.raw to_patch/kernel.patched -u 11 --skip-sks --skip-acm --skip-amfi
-                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J || true   
-            fi
-            if [[ $IDENTIFIER == iPhone7* ]] && [[ $IOS_VERSION == 10.* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher2 to_patch/kernel.raw to_patch/kernel.patched -u 11 --skip-sks --skip-acm --skip-amfi
-                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J || true   
-            fi
-            if [[ $IOS_VERSION == 15.* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -e -o -r -b15 
-                ./bin/img4 -i to_patch/kernel.patched -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -A -T rkrn -J || true    
-            fi
-            if [[ $IOS_VERSION == 15.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -e -o -r -b15
-                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J || true        
-            fi
-            if [[ $IOS_VERSION == 14.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
-                ./bin/img4 -i to_patch/kernelcache -o to_patch/kernel.raw
-                ./bin/Kernel64Patcher to_patch/kernel.raw to_patch/kernel.patched -b
-                ./bin/kerneldiff to_patch/kernel.raw to_patch/kernel.patched to_patch/kernel.bpatch
-                ./bin/img4 -i to_patch/kernelcache -o $BOOT_DIR/Kernelcache.img4 -M "$im4m" -P to_patch/kernel.bpatch -T rkrn -J || true      
-            fi
-            ./bin/img4 -i to_patch/iBSS.patched -o $BOOT_DIR/iBSS.img4 -M "$im4m" -A -T ibss
-            ./bin/img4 -i to_patch/iBEC.patched -o $BOOT_DIR/iBEC.img4 -M "$im4m" -A -T ibec
-            if [[ "$IOS_VERSION" == 12.* || $IOS_VERSION == 13.* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-                ./bin/img4 -i to_patch/trustcache -o $BOOT_DIR/Trustcache.img4 -M "$im4m" -T rtsc
-            fi
-            if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-                # camera fix
-                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d22.im4p" -d to_patch
-                ./bin/img4 -i "to_patch/adc-nike-d22.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
-            fi
-            if [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 ]]; then
-                # camera fix
-                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d20.im4p" -d to_patch
-                ./bin/img4 -i "to_patch/adc-nike-d20.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
-            fi
-            if [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
-                # camera fix
-                unzip -j "$IPSW_PATH" "Firmware/isp_bni/adc-nike-d21.im4p" -d to_patch
-                ./bin/img4 -i "to_patch/adc-nike-d21.im4p" -o "$BOOT_DIR/isp-firmware.img4" -T ispf -M $im4m
-            fi
-            # AVE firmware if on iOS 15.0+
-            if [[ $IDENTIFIER == iPhone10* ]] && [[ $IOS_VERSION == 15.* ]]; then
-                # camera fix
-                unzip -j "$IPSW_PATH" "Firmware/ave/AppleAVE2FW_H10.im4p" -d to_patch
-                ./bin/img4 -i "to_patch/AppleAVE2FW_H10.im4p" -o "$BOOT_DIR/ave-firmware.img4" -T avef -M $im4m
-            fi         
-            if [[ $IDENTIFIER == iPad7* ]] && [[ $IOS_VERSION == 15.* ]]; then
-                # camera fix
-                unzip -j "$IPSW_PATH" "Firmware/ave/AppleAVE2FW_H9.im4p" -d to_patch
-                ./bin/img4 -i "to_patch/AppleAVE2FW_H9.im4p" -o "$BOOT_DIR/ave-firmware.img4" -T avef -M $im4m
-            fi  
-            echo "[*] Verifying generated boot files..."
-
-            require_file "$BOOT_DIR/iBSS.img4"
-            require_file "$BOOT_DIR/iBEC.img4"
-            require_file "$BOOT_DIR/DeviceTree.img4"
-            require_file "$BOOT_DIR/Kernelcache.img4"
-
-            if [[ "$IOS_VERSION" == 12.* || \
-                  "$IOS_VERSION" == 13.* || \
-                  "$IOS_VERSION" == 14.* || \
-                  "$IOS_VERSION" == 15.* ]]; then
-                require_file "$BOOT_DIR/Trustcache.img4"
-            fi
-
-            echo "[*] Boot files created successfully."      
-            rm -rf "to_patch"
-        else
-            echo "[*] Existing boot files found in $BOOT_DIR"
-        fi
-
-        # Placeholder for tethered boot command
-        normal_boot(){
-            
-        echo "[*] Proceeding to tethered boot..."
-        echo "first, your device needs to be in pwndfu mode. pwning with gaster"
-        echo "[!] Linux has low success rate for the checkm8 exploit on A6-A7. If possible, you should connect your device to a Mac or iOS device and pwn with ipwnder"
-        read -p "[!] Do you want to continue pwning with gaster? (LOW SUCCESS RATE) y/n " response
-        if [[ $response == y ]]; then
-            ./bin/gaster pwn
-        else
-            echo "Now, disconnect your device and connect it to a Mac or iOS device to pwn with ipwnder."
-            echo "For more information about pwning with an iOS device, go to <https://github.com/LukeZGD/Legacy-iOS-Kit/wiki/Pwning-Using-Another-iOS-Device>"
-            read -p "Press any key after the device is pwned with ipwnder and reconnected to this computer"
-        fi
-        ./bin/gaster reset
-        echo "[*] Verifying PWNDFU mode..."
-        irecovery_output=$(./bin/irecovery -q)
-        if echo "$irecovery_output" | grep -q "PWND"; then
-            echo "[*] Device is in PWNDFU mode"
-        else
-            echo "[!] Device is NOT in PWNDFU mode"
-            echo "[!] You cannot send the bootchain in regular DFU"
-            exit 1
-        fi
-
-        }
-        palera1n_option=0
-        if [[ $IOS_VERSION == 15.* || $IOS_VERSION == 16.* ]] && [[ $dist == 3 || $dist == 4 ]]; then
-            read -p "Would you like to boot jailbroken with palera1n? (y/n): " palera1n_option
-        fi
-        if [[ $palera1n_option == y ]] && [[ $IOS_VERSION == 15.* || $IOS_VERSION == 16.* ]] && [[ $dist == 3 || $dist == 4 ]]; then
-            ./bin/openra1n surrealra1n.sh # placeholder stuff
-        else
-            normal_boot
-        fi
-        ./bin/irecovery -f "$BOOT_DIR/iBSS.img4"
-        if [[ $IDENTIFIER == iPhone10* ]] && [[ $palera1n_option != y ]]; then
-            echo "Your device should now boot."
-            exit 1
-        elif [[ $IDENTIFIER == iPhone10* ]] && [[ $palera1n_option == y ]]; then
-            sleep 3
-            ./bin/palera1n -l -V
-            echo "Your device should now boot."
-            exit 1
-        fi
-        ./bin/irecovery -f "$BOOT_DIR/iBEC.img4"
-        if [[ $IDENTIFIER == iPhone9* || $IDENTIFIER == iPhone10* || $IDENTIFIER == iPad7* ]]; then
-            ./bin/irecovery -c go
-            sleep 6
-        fi
-        ./bin/irecovery -f "$BOOT_DIR/DeviceTree.img4"
-        ./bin/irecovery -c devicetree
-        if [[ "$IOS_VERSION" == 12.* || $IOS_VERSION == 13.* || $IOS_VERSION == 14.* || $IOS_VERSION == 15.* ]]; then
-          ./bin/irecovery -f "$BOOT_DIR/Trustcache.img4"
-          ./bin/irecovery -c firmware
-        fi
-        if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
-            ./bin/irecovery -f "$BOOT_DIR/sep-firmware.img4"
-            ./bin/irecovery -c rsepfirmware
-        fi
-        if [[ $IDENTIFIER == iPhone10* ]]; then
-            # Fix camera, flashlight
-            ./bin/irecovery -f "$BOOT_DIR/isp-firmware.img4"
-            ./bin/irecovery -c firmware 
-        fi
-        if [[ $IOS_VERSION == 15.* ]]; then
-            ./bin/irecovery -f "$BOOT_DIR/ave-firmware.img4"
-            ./bin/irecovery -c firmware
-        fi
-        ./bin/irecovery -f "$BOOT_DIR/Kernelcache.img4"
-        ./bin/irecovery -c bootx
-        echo "Your device should now boot."
+    elif [[ $IDENTIFIER == iPad4* ]] && [[ $VERSION == 9.3 ]] && [[ $BUILD != 13E233 ]]; then
+        echo "9.3 ($BUILD) is unsupported"
         exit 1
-        ;;
-
-    -h|--help)
-        usage
-        exit 0
-        ;;
-
-
-    *)
-        echo "[!] Unknown option: $1"
-        usage
+    fi
+    seprmvr64_opts
+elif [[ $tether_options == 2 ]]; then
+    IPSW_PATH_LATEST=$($zenity --file-selection --title="Select iOS $LATEST_VERSION IPSW file")
+    if [[ -z "$IPSW_PATH_LATEST" ]]; then
+        echo "No IPSW selected. Aborting."
         exit 1
-        ;;
-esac
+    fi
+    rm -rf work/BuildManifest.plist
+    unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
+    VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    if [[ $VERSION_LATEST != $LATEST_VERSION ]]; then
+        echo "Invalid IPSW. You must select IPSW for iOS $LATEST_VERSION, not iOS $VERSION_LATEST"
+        exit 1
+    fi
+    seprmvr64_opts
+elif [[ $tether_options == 3 ]]; then
+    if [[ $VERSION == 7.* ]]; then
+        read -p "Would you like to jailbreak? (Y/n): " jelbrek_opt
+        if [[ $jelbrek_opt == Y || $jelbrek_opt == y ]]; then
+            echo "Jailbreak option is enabled."
+            if [[ $VERSION == 9.* ]]; then
+                echo "This will only bootstrap the device."
+                echo "To get into a jailbroken state, you need to use http://jbme.ddw.nu afterwards. This is semi-untethered"
+            fi
+            JAILBREAK=1
+            sleep 5
+        else
+            echo "Jailbreak option is disabled."
+            sleep 5
+        fi
+    fi
+    do_tethered_seprmvr64_restore
+elif [[ $tether_options == 4 ]]; then
+    reset_restore_vars
+    restore_tethered_opts
+else
+    echo "Invalid option. Exiting."
+    exit 0
+fi
+
+}
+
+restore_tethered_opts(){
+
+clear 
+echo "$INFO_TEXT"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Select Target IPSW"
+echo "2. Select Base IPSW"
+echo "3. Start Restore"
+echo "4. seprmvr64 options"
+echo "5. Back"
+read -p "Please input an option (1-5): " tether_options
+if [[ $tether_options == 1 ]]; then
+    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    if [[ -z "$IPSW_PATH" ]]; then
+        echo "No IPSW selected. Aborting."
+        exit 1
+    fi
+    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+    BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    restore_tethered_opts
+elif [[ $tether_options == 2 ]]; then
+    IPSW_PATH_LATEST=$($zenity --file-selection --title="Select iOS $LATEST_VERSION IPSW file")
+    if [[ -z "$IPSW_PATH_LATEST" ]]; then
+        echo "No IPSW selected. Aborting."
+        exit 1
+    fi
+    rm -rf work/BuildManifest.plist
+    unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
+    VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    if [[ $VERSION_LATEST != $LATEST_VERSION ]]; then
+        echo "Invalid IPSW. You must select IPSW for iOS $LATEST_VERSION, not iOS $VERSION_LATEST"
+        exit 1
+    fi
+    restore_tethered_opts
+elif [[ $tether_options == 3 ]]; then
+    do_tethered_restore
+elif [[ $tether_options == 4 ]]; then
+    seprmvr64_opts
+elif [[ $tether_options == 5 ]]; then
+    reset_restore_vars
+    restore_utils
+else
+    echo "Invalid option. Exiting."
+    exit 0
+fi
+
+}
+
+restore_a7_to_1033(){
+
+if [[ -z "$IPSW_PATH" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH"
+    exit 1
+fi
+dfu_helper
+pwn_device
+download_1033_ota_sep
+rm -rf "shsh"
+mkdir -p shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -i 10.3.3 -e $ECID -o -m tmp/BuildManifest-SEP.plist -s --save-path shsh
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+prepatch_ibssibec_fr
+while true; do
+    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+        ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
+        --sep $sep_path --sep-manifest $manifest_path \
+        --custom-latest $LATEST_VERSION \
+        $updatebb_flag $rsep_flag $IPSW_PATH
+    EXIT_CODE=$?
+    if [[ $EXIT_CODE -eq 139 ]]; then
+        echo "futurerestore segfaulted (exit 139), retrying..."
+        sleep 2
+    else
+        break
+    fi
+done
+if [[ $EXIT_CODE -eq 0 ]]; then
+    echo "Restore has completed! Read above if there are any errors"
+    exit 0
+else
+    echo "futurerestore failed with exit code $EXIT_CODE"
+    exit 1
+fi
+
+
+}
+
+restore_a7_options(){
+
+if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]]; then
+    clear
+else
+    restore_utils
+    return
+fi
+ 
+echo "$INFO_TEXT"
+echo "This OTA restore will use $LATEST_VERSION baseband"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Select 10.3.3 IPSW"
+echo "2. Start Restore"
+echo "3. Back"
+read -p "Please input an option (1-3): " restore_a7_options_choice
+if [[ $restore_a7_options_choice == 1 ]]; then
+    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    if [[ -z "$IPSW_PATH" ]]; then
+        echo "No IPSW selected. Aborting."
+        exit 1
+    fi
+    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+    BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    if [[ $VERSION == 10.3.3 ]] && [[ $BUILD == 14G60 ]]; then
+        restore_a7_options
+    else
+        echo "IPSW is invalid"
+        sleep 2
+        reset_restore_vars
+        restore_a7_options
+    fi
+elif [[ $restore_a7_options_choice == 2 ]]; then
+    restore_a7_to_1033
+elif [[ $restore_a7_options_choice == 3 ]]; then
+    reset_restore_vars
+    restore_utils
+fi
+
+}
+
+restore_utils(){
+
+if [[ $outdated == 1 ]]; then
+    echo "This surrealra1n beta has expired"
+    echo "A newer beta is available. Please update to continue."
+    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
+    sleep 10
+    main_menu
+    return
+fi
+
+if [[ $IDENTIFIER == NONE ]]; then
+    main_menu
+    return
+fi
+
+clear 
+echo "$INFO_TEXT"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Restore (with SHSH blobs)"
+echo "2. Restore (Tethered)"
+echo "3. Restore to 10.3.3 untethered (some A7 devices only)"
+echo "4. Just Boot"
+echo "5. Back"
+read -p "Please input an option (1-5): " restore_options
+if [[ $restore_options == 1 ]]; then
+    restore_untethered_opts
+elif [[ $restore_options == 2 ]]; then
+    restore_tethered_opts
+elif [[ $restore_options == 3 ]]; then
+    echo "Ok"
+elif [[ $restore_options == 4 ]]; then
+    just_boot
+elif [[ $restore_options == 5 ]]; then
+    main_menu
+else
+    echo "Invalid option. Exiting."
+    exit 1
+fi
+
+}
+
+main_menu(){
+
+clear
+echo "$INFO_TEXT"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Downgrade Options"
+echo "2. Misc Utilities"
+echo "3. Switch to main branch"
+echo "4. Exit"
+read -p "Please input an option (1-4): " option
+if [[ $option == 1 ]]; then
+    restore_utils
+elif [[ $option == 2 ]]; then
+    misc_utils
+elif [[ $option == 3 ]]; then
+    switch_to_main
+elif [[ $option == 4 ]]; then
+    echo "surrealra1n is exiting"
+    exit 0
+else
+    echo "Invalid option. Exiting."
+    exit 1
+fi
+
+}
+
+main_menu
