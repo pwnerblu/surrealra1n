@@ -12,33 +12,13 @@ View the [Supported Devices](https://github.com/pwnerblu/surrealra1n/wiki/Suppor
 
 # Usage:
 
-Make a custom IPSW for tethered restore:
+Download surrealra1n [here](https://github.com/pwnerblu/surrealra1n/releases/latest) or clone it using git:
+```
+git clone -b development https://github.com/pwnerblu/surrealra1n
+```
+Extract the zip file and open a terminal window to the folder that contains surrealra1n, then launch it using the command: ```./surrealra1n.sh```.
 
-Example: `./surrealra1n.sh --make-custom-ipsw [target ipsw] [latest ipsw] 11.4`
 
-Make a custom IPSW for tethered restore with seprmvr64 (7.0-9.3.5):
-
-Example: `./surrealra1n.sh --seprmvr64-ipsw [target ipsw] [latest ipsw] 8.4.1`
-
-Make a custom IPSW for tethered restore with seprmvr64, and attempt activation record stitching (7.0-9.2.1), note that this IPSW type is device-specific:
-
-Example: `./surrealra1n.sh --seprmvr64-ipsw [target ipsw] [latest ipsw] 9.2.1 --stitch-activation`
-
-Restore the device with an existing custom IPSW:
-
-Example: `./surrealra1n.sh --restore 11.4`
-
-Restore the device with an existing custom iPSW (seprmvr64):
-
-Example: `./surrealra1n.sh --seprmvr64-restore 8.4.1`
-
-Boot the device after tethered downgrade:
-
-Example: `./surrealra1n.sh --boot 11.4`
-
-Boot the device after seprmvr64 tethered downgrade:
-
-Example: `./surrealra1n.sh --seprmvr64-boot 8.4.1`
 
 # Thanks to:
 
