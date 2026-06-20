@@ -1,5 +1,5 @@
-v2.0 beta 2 re-release
+v2.0 beta 3
 
 RELEASE NOTES:
 
-Hopefully fix a bug
+Fix a bug on GSM iPhone10,* models
