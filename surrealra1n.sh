@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 2 re-release"
+CURRENT_VERSION="v2.0 beta 3"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -786,7 +786,7 @@ elif [[ $IDENTIFIER == iPhone10,1 ]]; then
     NAME="iPhone 8 (Global, $BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPhone10,4 ]]; then
     BOARDID="d201ap"
-    BOARDID2="d201"
+    BOARDID2="d20"
     REFER2="$BOARDID2"
     NAME="iPhone 8 (GSM, $BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPhone10,2 ]]; then
@@ -796,7 +796,7 @@ elif [[ $IDENTIFIER == iPhone10,2 ]]; then
     NAME="iPhone 8 Plus (Global, $BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPhone10,5 ]]; then
     BOARDID="d211ap"
-    BOARDID2="d211"
+    BOARDID2="d21"
     REFER2="$BOARDID2"
     NAME="iPhone 8 Plus (GSM, $BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPhone10,3 ]]; then
@@ -806,7 +806,7 @@ elif [[ $IDENTIFIER == iPhone10,3 ]]; then
     NAME="iPhone X (Global, $BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPhone10,6 ]]; then
     BOARDID="d221ap"
-    BOARDID2="d221"
+    BOARDID2="d22"
     REFER2="$BOARDID2"
     NAME="iPhone X (GSM, $BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPad4,1 ]]; then
