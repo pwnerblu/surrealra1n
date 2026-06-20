@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 2"
+CURRENT_VERSION="v2.0 beta 2 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -663,13 +663,13 @@ fi
 
 IDEVICE_INFO=$(ideviceinfo 2>&1) || true
 IDEVICE_STATUS=$?
-if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
+if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* && "$IDEVICE_INFO" != *"ERROR:"* ]]; then
     IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
     ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
     SERIAL=$(echo "$IDEVICE_INFO" | grep "^SerialNumber:" | cut -d ':' -f2 | xargs)
     DEVICE_VERSION=$(echo "$IDEVICE_INFO" | grep "^ProductVersion:" | cut -d ':' -f2 | xargs)
     MODE="Normal"
-elif [[ $IDEVICE_STATUS -ne 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
+elif [[ $IDEVICE_STATUS -ne 0 && "$IDEVICE_INFO" != *"No device found!"* ]] || [[ "$IDEVICE_INFO" == *"ERROR:"* && "$IDEVICE_INFO" != *"No device found!"* ]]; then; then
     # ideviceinfo ran but failed for another reason, try -s
     IDEVICE_INFO=$(ideviceinfo -s 2>&1) || true
     IDEVICE_STATUS=$?
