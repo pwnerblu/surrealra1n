@@ -1,5 +1,5 @@
-v1.3.27
+v1.3.28
 
 RELEASE NOTES:
 
-Workarounds
+An in-between update for migrating to 2.0 beta
