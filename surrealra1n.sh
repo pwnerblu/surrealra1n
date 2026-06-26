@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 3"
+CURRENT_VERSION="v2.0 beta 4"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -739,6 +739,7 @@ elif [[ $IDENTIFIER == iPod7* ]]; then
     REFER="n102"
     REFER2="n102"
     BOARDID="n102ap"
+    BOARDID2="n102"
     NAME="iPod touch 6 ($BOARDID) - $IDENTIFIER"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
     REFER="iphone10"
@@ -1339,6 +1340,8 @@ else
         ipsw_url="http://appldnld.apple.com/ios10.3/091-02965-20170327-758BACE4-0D86-11E7-9129-8ECE122AC769/iPad_64bit_10.3_14E277_Restore.ipsw"
     elif [[ $IDENTIFIER == iPad5* ]]; then
         ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPod7* ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02958-20170327-75869E66-0D86-11E7-BF4D-88CE122AC769/iPodtouch_10.3_14E277_Restore.ipsw"
     fi
     sudo ./bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
     sudo ./bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
