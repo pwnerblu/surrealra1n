@@ -1,5 +1,5 @@
-v2.0 beta 3
+v2.0 beta 4
 
 RELEASE NOTES:
 
-Fix a bug on GSM iPhone10,* models
+Fix iPod touch 6
