@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 4"
+CURRENT_VERSION="v2.0 beta 5"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1550,6 +1550,69 @@ fi
 
 }
 
+make_custom_ipsw_ios16(){
+
+mkdir -p restorefiles
+mkdir -p restorefiles/$IDENTIFIER
+mkdir -p restorefiles/$IDENTIFIER/$VERSION
+unzip "$IPSW_PATH" -d tmp1
+unzip "$IPSW_PATH_LATEST" -d tmp2
+find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
+find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
+# because no AOP validation patch for iOS 16, fallback to latest AOP
+if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    mv tmp2/Firmware/AOP/aopfw-iphone10baop.im4p tmp1/Firmware/AOP/aopfw-iphone10baop.im4p
+else
+    mv tmp2/Firmware/AOP/aopfw-iphone10aop.im4p tmp1/Firmware/AOP/aopfw-iphone10aop.im4p
+fi
+./bin/img4 -i tmp1/$KERNEL -o work/kernelboot.raw
+./bin/Kernel64Patcher work/kernelboot.raw work/kernelboot.patch -e -o -h
+./bin/img4 -i work/kernelboot.patch -o tmp1/$KERNEL -A -T krnl -J || true
+cd tmp1
+zip -0 -r ../custom.ipsw *
+cd ..
+rm -rf "tmp2"
+mv -v custom.ipsw $restoredir/custom.ipsw
+mkdir -p work
+cd work 
+if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+    url_ios16="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
+    url_ios16="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65568/0851247C-1B06-4CD4-B3C2-5A94026970B7/iPhone_5.5_P3_16.0_20A362_Restore.ipsw"
+else
+    url_ios16="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65931/BD2515B7-7802-4EB4-9377-98E3238EA5A8/iPhone_4.7_P3_16.0_20A362_Restore.ipsw"
+fi
+sudo ../bin/pzb -g 098-08863-001.dmg $url_ios16
+sudo ../bin/pzb -g $KERNEL $url_ios16
+cd ..
+restore_ramdisk_dmg=$(find_dmg work smallest)
+./bin/img4 -i work/$KERNEL -o work/kernel.raw
+./bin/KPlooshFinder work/kernel.raw work/kernel.patched
+./bin/kerneldiff work/kernel.raw work/kernel.patched work/kernel.diff
+./bin/img4 -i work/$KERNEL -o $restoredir/kernel.im4p -T rkrn -P work/kernel.diff -J || true
+# rdsk prep
+./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
+./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+./bin/asr64_patcher work/asr work/asr_patched
+./bin/ldid -e work/asr > work/ents.plist
+./bin/ldid -Swork/ents.plist work/asr_patched
+./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
+./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
+./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+./bin/ldid -Swork/ents.plist work/libimg4.patch
+./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib 
+./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+# pack rdsk into im4p
+./bin/img4 -i work/ramdisk.raw -o $restoredir/ramdisk.im4p -A -T rdsk
+# Wrap up
+rm -rf "tmp1"
+rm -rf "work"
+
+}
+
 make_custom_ipsw(){
 
 mkdir -p restorefiles
@@ -1868,6 +1931,17 @@ if [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 13.1* || $VERSION == 13.2* || $
     exit 1
 fi
 
+if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION != 16.6* ]] && [[ $BUILD == 20* ]]; then
+    echo "iOS 16.0-16.5.1 restores are unsupported"
+    echo "And iOS 16.7.x restores are unsupported"
+    exit 1
+elif [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 16.6* ]]; then
+    echo "You will have some issues with the restore:"
+    echo "iMessage/SMS may not work"
+    echo "VPNs may not work, and potentially other issues."
+    read -p "Press enter to continue"
+fi
+
 if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
     echo "11.3-12.4.1 downgrades are supported but they have not been integrated yet into surrealra1n $CURRENT_VERSION"
     exit 1
@@ -1896,13 +1970,21 @@ restoredir="restorefiles/$IDENTIFIER/$VERSION"
 
 if [[ ! -f "$restoredir/custom.ipsw" ]] && [[ ! -f "$restoredir/ramdisk.im4p" ]] && [[ ! -f "$restoredir/kernel.im4p" ]]; then
     echo "Restore files does not exist, making new ones"
-    make_custom_ipsw
+    if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 16.* ]]; then
+        make_custom_ipsw_ios16
+    else
+        make_custom_ipsw
+    fi
 else
     echo "Restore files already exist"
     read -p "Would you like to make new ones? (y/n): " restorefiles_remake
     if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
         rm -rf "$restoredir"
-        make_custom_ipsw
+        if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 16.* ]]; then
+            make_custom_ipsw_ios16
+        else
+            make_custom_ipsw
+        fi
     fi
 fi
 
@@ -2227,6 +2309,7 @@ if [[ $tether_options == 1 ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
     fi
+    rm -rf work/BuildManifest.plist
     unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
     VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
     if [[ $VERSION == 8.* || $VERSION == 10.* || $VERSION == 11.* || $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
@@ -2304,6 +2387,7 @@ if [[ $tether_options == 1 ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
     fi
+    rm -rf work/BuildManifest.plist
     unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
     BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
     VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
@@ -2358,6 +2442,7 @@ if [[ -z "$SHSH_PATH" ]]; then
     echo "No SHSH file found in the shsh folder. Aborting"
     exit 1
 fi
+det_rsep_flag
 prepatch_ibssibec_fr
 while true; do
     sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
@@ -2408,6 +2493,7 @@ if [[ $restore_a7_options_choice == 1 ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
     fi
+    rm -rf work/BuildManifest.plist
     unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
     BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
     VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
@@ -2460,7 +2546,7 @@ if [[ $restore_options == 1 ]]; then
 elif [[ $restore_options == 2 ]]; then
     restore_tethered_opts
 elif [[ $restore_options == 3 ]]; then
-    echo "Ok"
+    restore_a7_options
 elif [[ $restore_options == 4 ]]; then
     just_boot
 elif [[ $restore_options == 5 ]]; then
