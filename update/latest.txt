@@ -1,5 +1,9 @@
-v2.0 beta 5
+v2.0 beta 6
 
 RELEASE NOTES:
 
-Reintroduce A11 tether downgrade to 16.6.x, and enable option to untether restore certain A7 device to iOS 10.3.3 again
+Add very experimental tether downgrade support for one A12 device (iPhone XR) to iOS 14.
+Other A12 devices may be added in the future and maybe a few A13 devices. No ETA.
+This requires usbliter8 by Paradigm Shift, so you need a Pi Pico as part of the procedure.
+
+Might be useless for now (because of activation issues), but maybe useful in the future. 
