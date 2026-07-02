@@ -1915,6 +1915,10 @@ if [[ ! -d $bootdir ]]; then
     echo "Please do a tethered restore to iOS $VERSION, then try tether boot again."
     exit 1
 fi
+if [[ $IDENTIFIER == iPhone11* ]] && [[ $MODE == DFU ]]; then
+    ./bin/idevicerestore -ey restorefiles/$IDENTIFIER/$VERSION/custom.ipsw || true
+    MODE="Recovery"
+fi
 
 if [[ $IDENTIFIER == iPhone10* || $IDENTIFIER == iPhone11* ]]; then
     dfu_helper_a11
