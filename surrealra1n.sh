@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 8"
+CURRENT_VERSION="v2.0 beta 9"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2169,6 +2169,7 @@ det_rsep_flag
 echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
 mkdir -p shsh
+mkdir -p boot
 ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
 echo "$VERSION" > boot/$ECID.txt
 sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
@@ -2345,6 +2346,7 @@ python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch
 sleep 6
 APNONCE=$(./bin/irecovery -q | grep "^NONC:" | cut -d ':' -f2 | xargs)
 ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+mkdir -p boot
 echo "$VERSION" > boot/$ECID.txt
 echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
@@ -2593,6 +2595,7 @@ dfu_helper
 pwn_device
 sleep 5
 ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+mkdir -p boot
 echo "$VERSION" > boot/$ECID.txt
 sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/$ipsw_custom
 echo "Restore has finished! Read above if there's any errors"
