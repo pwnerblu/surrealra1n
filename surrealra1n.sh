@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 7"
+CURRENT_VERSION="v2.0 beta 8"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1924,8 +1924,6 @@ rm -rf "tmp1"
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 rm -rf "work"
-ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
-echo "$VERSION" > boot/$ECID.txt
 
 }
 
@@ -2171,6 +2169,8 @@ det_rsep_flag
 echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
 mkdir -p shsh
+ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+echo "$VERSION" > boot/$ECID.txt
 sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
 
 # Find the .shsh2 file in the shsh directory
@@ -2344,6 +2344,8 @@ curl -L -o bin/liter8ctl https://github.com/prdgmshift/usbliter8/raw/refs/heads/
 python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch
 sleep 6
 APNONCE=$(./bin/irecovery -q | grep "^NONC:" | cut -d ':' -f2 | xargs)
+ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+echo "$VERSION" > boot/$ECID.txt
 echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
 mkdir -p shsh
@@ -2590,6 +2592,8 @@ im4m="$IDENTIFIER-im4m"
 dfu_helper
 pwn_device
 sleep 5
+ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+echo "$VERSION" > boot/$ECID.txt
 sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/$ipsw_custom
 echo "Restore has finished! Read above if there's any errors"
 prepare_boot_files_seprmvr64
