@@ -1,5 +1,5 @@
-v2.0 beta 9
+v2.0 beta 10
 
 RELEASE NOTES:
 
-Bug fixes
+Critical bug fixes for iPhone XR 14.x tethered restore, and fix 14.5-14.8 support
