@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 6"
+CURRENT_VERSION="v2.0 beta 7"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -275,6 +275,28 @@ stat_size() {
 }
 
 find_dmg() {
+    dir="$1"          # directory to search
+    mode="$2"         # smallest | largest
+    max_size="${3:-}"     # optional (bytes)
+
+    find "$dir" -type f -name '*.dmg' ! -name '._*' -print |
+    while IFS= read -r f; do
+        size=$(stat_size "$f") || continue
+        if [[ -n "$max_size" && "$size" -ge "$max_size" ]]; then
+            continue
+        fi
+        printf '%s %s\n' "$size" "$f"
+    done |
+    if [[ "$mode" == "smallest" ]]; then
+        sort -n
+    else
+        sort -nr
+    fi |
+    head -n 1 |
+    cut -d' ' -f2-
+}
+
+find_dmg_arm64e() {
     dir="$1"          # directory to search
     mode="$2"         # smallest | largest
     max_size="${3:-}"     # optional (bytes)
@@ -1834,10 +1856,10 @@ else
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 fi
 #
-restore_ramdisk_dmg=$(find_dmg tmp1 largest 106760000)
-restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
-fs_dmg_18=$(find_dmg tmp2 largest)
-fs_dmg=$(find_dmg tmp1 largest)
+restore_ramdisk_dmg=$(find_dmg_arm64e tmp1 largest 106760000)
+restore_ramdisk_dmg_18=$(find_dmg_arm64e tmp2 largest 179000000)
+fs_dmg_18=$(find_dmg_arm64e tmp2 largest)
+fs_dmg=$(find_dmg_arm64e tmp1 largest)
 fs_dmg_name=${fs_dmg##*/}
 fs_dmg_18_name=${fs_dmg_18##*/}
 ramdisk_dmg_name_18=${restore_ramdisk_dmg_18##*/}
@@ -2295,6 +2317,9 @@ if [[ $VERSION == 14.* ]]; then
     read -p "Press enter to continue"
 elif [[ $VERSION == 15.* ]]; then
     echo "15.x A12 downgrades are not supported at the moment"
+    exit 1
+elif [[ $VERSION == 13.* ]]; then
+    echo "SEP is incompatible"
     exit 1
 fi
 
