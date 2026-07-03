@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 9"
+CURRENT_VERSION="v2.0 beta 10"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1848,6 +1848,16 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
     ./bin/kairos work/iBSS.raw work/iBSS.patchboot -b "-v"
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
+elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
+    cd work 
+    sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
+    cd ..
+    ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/kairos work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
+    ./bin/kairos work/iBSS.raw work/iBSS.patchboot -b "-v"
+    ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
+    ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 else
     ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/kairos work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
@@ -1856,10 +1866,10 @@ else
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 fi
 #
-restore_ramdisk_dmg=$(find_dmg_arm64e tmp1 largest 106760000)
-restore_ramdisk_dmg_18=$(find_dmg_arm64e tmp2 largest 179000000)
+restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
+restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
 fs_dmg_18=$(find_dmg_arm64e tmp2 largest)
-fs_dmg=$(find_dmg_arm64e tmp1 largest)
+fs_dmg=$(find_dmg tmp1 largest)
 fs_dmg_name=${fs_dmg##*/}
 fs_dmg_18_name=${fs_dmg_18##*/}
 ramdisk_dmg_name_18=${restore_ramdisk_dmg_18##*/}
