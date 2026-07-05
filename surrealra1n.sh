@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 10"
+CURRENT_VERSION="v2.0 beta 10 release 2"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1939,7 +1939,11 @@ rm -rf "work"
 
 just_boot(){
 
-VERSION=$(cat boot/$ECID.txt)
+if [[ ! -f boot/$ECID.txt ]]; then
+    read -p "Input the version you'd like to boot: " VERSION
+else
+    VERSION=$(cat boot/$ECID.txt) 
+fi
 bootdir="boot/$IDENTIFIER/$VERSION"
 if [[ ! -d $bootdir ]]; then
     echo "Please do a tethered restore to iOS $VERSION, then try tether boot again."
