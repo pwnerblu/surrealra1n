@@ -1,5 +1,6 @@
-v2.0 beta 10 release 2
+v2.0 beta 11
 
 RELEASE NOTES:
 
-Add fallback to manual version input on just boot if ECID.txt isnt found
+Add iOS 15 support for experimental iPhone XR downgrade alongside iOS 14.
+Tested only on 15.0, other versions of 15.x may or may not work.
