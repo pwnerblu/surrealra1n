@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 10 release 2"
+CURRENT_VERSION="v2.0 beta 11"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -440,6 +440,12 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
+    # iboot patcher oops
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fd2e870d832ea59c31a54377370ad469f70e6499/patch.c
+    gcc ibootpatch.c -o bin/iBootPatch
+    rm -rf ibootpatch.c
+    # from spironolactone oops
+    curl -L -o bin/trustcache https://github.com/Orangera1n/spironolactone/raw/refs/heads/main/Darwin/trustcache
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
     curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iproxy
@@ -542,6 +548,12 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
+    # iboot patcher oops
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fd2e870d832ea59c31a54377370ad469f70e6499/patch.c
+    gcc ibootpatch.c -o bin/iBootPatch
+    rm -rf ibootpatch.c
+    # from spironolactone oops
+    curl -L -o bin/trustcache https://github.com/Orangera1n/spironolactone/raw/refs/heads/main/Darwin/trustcache
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
     curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iproxy
@@ -1858,6 +1870,12 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
     ./bin/kairos work/iBSS.raw work/iBSS.patchboot -b "-v"
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
+elif [[ $VERSION == 15.* ]]; then
+    ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/iBootPatch work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
+    ./bin/iBootPatch work/iBSS.raw work/iBSS.patchboot 
+    ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
+    ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 else
     ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/kairos work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
@@ -1892,7 +1910,11 @@ cp -v tmp1/Firmware/$fs_dmg_name.root_hash tmp2/Firmware/$fs_dmg_18_name.root_ha
 cp -v tmp1/Firmware/$fs_dmg_name.mtree tmp2/Firmware/$fs_dmg_18_name.mtree 
 cp -v tmp1/Firmware/$ramdisk_dmg_name.trustcache tmp2/Firmware/$ramdisk_dmg_name_18.trustcache
 ./bin/img4 -i tmp1/$KERNEL -o work/kernel.raw
-./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b # use kernel64patcher3, properly patch trust evaluation check on ios 14 arm64e
+if [[ $VERSION == 14.* ]]; then
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b # use kernel64patcher3, properly patch trust evaluation check on ios 14 arm64e
+else
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -e -o -r -b15
+fi
 ./bin/kerneldiff work/kernel.raw work/kernelboot.patch work/kernelboot.diff
 rm -rf tmp2/$KERNEL
 ./bin/img4 -i tmp1/$KERNEL -o tmp2/$KERNEL2 -T krnl -J -P work/kernelboot.diff || true
@@ -1913,10 +1935,17 @@ rm -rf tmp2/$KERNEL
 ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib 
 ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
 ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+if [[ $VERSION == 15.* ]]; then
+    ramdisk_download_name="018-79907-001.dmg"
+    ramdisk_url="https://updates.cdn-apple.com/2021FallFCS/fullrestores/002-02910/AF984499-D03A-43E7-9472-6D16BA756E5E/iPhone10,3,iPhone10,6_15.0_19A346_Restore.ipsw"
+else
+    ramdisk_download_name="048-58904-639.dmg"
+    ramdisk_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46617/B62CA88B-EB85-4A5A-9440-7E0B90B02006/iPhone10,3,iPhone10,6_14.0_18A373_Restore.ipsw"
+fi
 if [[ $IDENTIFIER == iPhone11* ]]; then
-    sudo ./bin/pzb -g 048-58904-639.dmg https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46617/B62CA88B-EB85-4A5A-9440-7E0B90B02006/iPhone10,3,iPhone10,6_14.0_18A373_Restore.ipsw
-    ./bin/img4 -i 048-58904-639.dmg -o work/ramdisk2.raw
-    sudo rm -rf 048-58904-639.dmg
+    sudo ./bin/pzb -g $ramdisk_download_name $ramdisk_url
+    ./bin/img4 -i $ramdisk_download_name -o work/ramdisk2.raw
+    sudo rm -rf $ramdisk_download_name
     ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
     ./bin/ipx_restored_patcher work/restored_external work/restored_patch
     ./bin/ldid -e work/restored_external > work/ents.plist
@@ -1924,6 +1953,13 @@ if [[ $IDENTIFIER == iPhone11* ]]; then
     ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
     ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
     ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+fi
+if [[ $VERSION == 15.* ]]; then
+    ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
+    ./bin/trustcache append work/trustcache.raw work/restored_patch
+    ./bin/trustcache append work/trustcache.raw work/asr_patched
+    ./bin/trustcache append work/trustcache.raw work/libimg4.patch
+    ./bin/img4 -i work/trustcache.raw -o tmp2/Firmware/$ramdisk_dmg_name_18.trustcache -A -T rtsc
 fi
 # pack rdsk into im4p
 ./bin/img4 -i work/ramdisk.raw -o $restore_ramdisk_dmg_18 -A -T rdsk
@@ -1949,7 +1985,7 @@ if [[ ! -d $bootdir ]]; then
     echo "Please do a tethered restore to iOS $VERSION, then try tether boot again."
     exit 1
 fi
-if [[ $IDENTIFIER == iPhone11* ]] && [[ $MODE == DFU ]]; then
+if [[ $IDENTIFIER == iPhone11* ]] && [[ $VERSION == 14.* ]] && [[ $MODE == DFU ]]; then
     ./bin/idevicerestore -ey restorefiles/$IDENTIFIER/$VERSION/custom.ipsw || true
     MODE="Recovery"
 fi
@@ -2323,15 +2359,15 @@ if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
     exit 1
 fi
 
-if [[ $VERSION == 14.* ]]; then
+if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     echo "SEP is partially incompatible, read the following:"
     echo "The device will be unable to activate after the restore."
     echo "Sideloading outside of TrollStore may or may not work, your mileage may vary."
     echo "And potentially other broken features"
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     read -p "Press enter to continue"
-elif [[ $VERSION == 15.* ]]; then
-    echo "15.x A12 downgrades are not supported at the moment"
+elif [[ $VERSION == 16.* || $VERSION == 17.* || $VERSION == 18.* ]]; then
+    echo "iOS 16-18 A12 downgrades are not supported at the moment"
     exit 1
 elif [[ $VERSION == 13.* ]]; then
     echo "SEP is incompatible"
@@ -2384,13 +2420,15 @@ while true; do
 done
 if [[ $EXIT_CODE -eq 0 ]]; then
     echo "Restore has completed! Read above if there are any errors"
+    if [[ $VERSION == 14.* ]]; then
+        echo "Device will be stuck in DFU"
+    fi
     exit 0
 else
     echo "futurerestore failed with exit code $EXIT_CODE"
     exit 1
 fi
 echo "Restore has completed! Read above if there is any errors"
-echo "Device will be stuck in DFU"
 exit 0
 
 }
