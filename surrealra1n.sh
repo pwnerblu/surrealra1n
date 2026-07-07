@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 11"
+CURRENT_VERSION="v2.0 beta 12"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -838,6 +838,25 @@ elif [[ $IDENTIFIER == iPhone11,8 ]]; then
     MTFW="N841_Multitouch.im4p"
     WIRELESS="WirelessPower.iphone11b.im4p"
     KERNEL2="kernelcache.release.iphone11x"
+elif [[ $IDENTIFIER == iPhone12,3 ]]; then
+    REFER="iphone12"
+    REFER2="d421"
+    BOARDID="d421ap"
+    BOARDID2="d421"
+    NAME="iPhone 11 Pro ($BOARDID)"
+    AOP14="aopfw-iphone12aop.im4p"
+    AOP="aopfw-iphone12aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g12p.im4p"
+    ISP="adc-zelus-d4x.im4p"
+    ANE="h12_ane_fw_metis.im4p"
+    AVE="AppleAVE2FW_H12.im4p"
+    CALLAN="D421_AudioCodecFirmware.im4p"
+    HAPTICASSET="D421_HapticAssets.im4p"
+    MTFW="D421_Multitouch.im4p"
+    LEAPHAPTIC="D421_LeapHapticsFirmware.im4p"
+    WIRELESS="WirelessPower.iphone12.im4p"
+    KERNEL2="kernelcache.release.iphone12x"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
     REFER="iphone10"
 elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
@@ -970,6 +989,8 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.9"
+elif [[ $IDENTIFIER == iPhone12* ]]; then
+    LATEST_VERSION="26.5.2"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -1002,6 +1023,12 @@ Device: $NAME
 ECID: $ECID
 
 Device is in $MODE mode."
+
+if [[ $IDENTIFIER == iPhone12* ]]; then
+    echo "A13 support is extremely experimental and not fully tested on actual A13 devices."
+    echo "Expect bugs and issues."
+    read -p "Press enter to continue"
+fi
 
 misc_utils(){
 
@@ -1105,15 +1132,15 @@ echo "Checking if this device is in pwned DFU already"
 irecovery_output=$(./bin/irecovery -q)
 if echo "$irecovery_output" | grep -q "PWND"; then
     echo "Device is pwned!"
-    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
+    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
         echo "Skipping gaster reset"
     else
         ./bin/gaster reset
     fi
     return
-elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
+elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
     echo "Proceed to do the following:"
-    echo "A12 tether downgrades are for advanced users only. If you don't know what you're doing, DO not proceed"
+    echo "A12/A13 tether downgrades are for advanced users only. If you don't know what you're doing, DO not proceed"
     echo "Disconnect your device from the computer, then connect it to your Pi Pico"
     echo "Make sure your Pi Pico has the custom firmware required to pwn the device with usbliter8."
     read -p "Press enter to continue once device is pwned successfully AND reconnected to the computer"
@@ -1525,12 +1552,14 @@ if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* 
         ./bin/img4 -i work/$KERNEL -o work/kernel.im4p -T rkrn -P work/kernel.diff -J || true
         prepatch_ibssibec_fr
         while true; do
+            set +e
             sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
                 ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
                 --sep $sep_path --sep-manifest $manifest_path \
                 --custom-latest $LATEST_VERSION \
                 $updatebb_flag $rsep_flag --rkrn work/kernel.im4p $IPSW_PATH
             EXIT_CODE=$?
+            set -e
             if [[ $EXIT_CODE -eq 139 ]]; then
                 echo "futurerestore segfaulted (exit 139), retrying..."
                 sleep 2
@@ -1548,12 +1577,14 @@ if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* 
     fi
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --sep $sep_path --sep-manifest $manifest_path \
             --custom-latest $LATEST_VERSION \
             $updatebb_flag --no-rsep $IPSW_PATH
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -1565,12 +1596,14 @@ elif [[ $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10
     download_1033_ota_sep
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --sep $sep_path --sep-manifest $manifest_path \
             --custom-latest $LATEST_VERSION \
             $updatebb_flag --no-rsep $IPSW_PATH
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -1582,12 +1615,14 @@ elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; 
     download_iphone6_sep
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --sep $sep_path --sep-manifest $manifest_path \
             --custom-latest $LATEST_VERSION \
             $updatebb_flag --no-rsep $IPSW_PATH
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -1598,12 +1633,14 @@ elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; 
 else
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --latest-sep \
             --custom-latest $LATEST_VERSION \
             $updatebb_flag --no-rsep $IPSW_PATH
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -1904,6 +1941,9 @@ cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
 cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
 cp -v tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
 cp -v tmp1/Firmware/$IOFW tmp2/Firmware/$IOFW
+if [[ $IDENTIFIER == iPhone12* ]]; then
+    cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
+fi
 cp -v $fs_dmg $fs_dmg_18 # replace rootfs in the IPSW
 cp -v tmp1/Firmware/$fs_dmg_name.trustcache tmp2/Firmware/$fs_dmg_18_name.trustcache 
 cp -v tmp1/Firmware/$fs_dmg_name.root_hash tmp2/Firmware/$fs_dmg_18_name.root_hash 
@@ -1942,7 +1982,7 @@ else
     ramdisk_download_name="048-58904-639.dmg"
     ramdisk_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46617/B62CA88B-EB85-4A5A-9440-7E0B90B02006/iPhone10,3,iPhone10,6_14.0_18A373_Restore.ipsw"
 fi
-if [[ $IDENTIFIER == iPhone11* ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
     sudo ./bin/pzb -g $ramdisk_download_name $ramdisk_url
     ./bin/img4 -i $ramdisk_download_name -o work/ramdisk2.raw
     sudo rm -rf $ramdisk_download_name
@@ -2257,12 +2297,14 @@ if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* 
     download_tvos_sep
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --sep $sep_path --sep-manifest $manifest_path --skip-blob --rdsk $restoredir/ramdisk.im4p \
             --custom-latest $LATEST_VERSION \
             --rkrn $restoredir/kernel.im4p $updatebb_flag $rsep_flag $restoredir/custom.ipsw
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -2274,12 +2316,14 @@ elif [[ $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10
     download_1033_ota_sep
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --sep $sep_path --sep-manifest $manifest_path --skip-blob --rdsk $restoredir/ramdisk.im4p \
             --custom-latest $LATEST_VERSION \
             --rkrn $restoredir/kernel.im4p $updatebb_flag $rsep_flag $restoredir/custom.ipsw
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -2291,12 +2335,14 @@ elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; 
     download_iphone6_sep
     prepatch_ibssibec_fr
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
             --sep $sep_path --sep-manifest $manifest_path --skip-blob --rdsk $restoredir/ramdisk.im4p \
             --custom-latest $LATEST_VERSION \
             --rkrn $restoredir/kernel.im4p $updatebb_flag $rsep_flag $restoredir/custom.ipsw
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -2312,12 +2358,14 @@ else
         ramdisk_det="ramdisk"
     fi
     while true; do
+        set +e
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu --skip-blob --rdsk $restoredir/$ramdisk_det.im4p \
             --custom-latest $LATEST_VERSION \
             --rkrn $restoredir/kernel.im4p --latest-sep \
             $updatebb_flag $rsep_flag $restoredir/custom.ipsw
         EXIT_CODE=$?
+        set -e
         if [[ $EXIT_CODE -eq 139 ]]; then
             echo "futurerestore segfaulted (exit 139), retrying..."
             sleep 2
@@ -2333,7 +2381,7 @@ exit 0
 
 }
 
-do_tethered_restore_a12(){
+do_tethered_restore_a12_a13(){
 
 if [[ $dist == 3 || $dist == 4 ]]; then
     echo ""
@@ -2367,11 +2415,21 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     read -p "Press enter to continue"
 elif [[ $VERSION == 16.* || $VERSION == 17.* || $VERSION == 18.* ]]; then
-    echo "iOS 16-18 A12 downgrades are not supported at the moment"
+    echo "iOS 16-18 A12/A13 downgrades are not supported at the moment"
     exit 1
 elif [[ $VERSION == 13.* ]]; then
     echo "SEP is incompatible"
     exit 1
+fi
+
+if [[ $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+    echo "Rose is very likely incompatible"
+    echo "Not continuing."
+    exit 1
+elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+    echo "iOS $LATEST_VERSION Rose may or may not be compatible"
+    echo "Proceed with very extreme caution."
+    read -p "Press enter to continue"
 fi
 
 dfu_helper_a11
@@ -2409,8 +2467,10 @@ if [[ -z "$SHSH_PATH" ]]; then
     exit 1
 fi
 while true; do
+    set +e
     sudo ./futurerestore/futurerestore -t $SHSH_PATH $rsep_flag --latest-sep $updatebb_flag $restoredir/custom.ipsw
     EXIT_CODE=$?
+    set -e
     if [[ $EXIT_CODE -eq 139 ]]; then
         echo "futurerestore segfaulted (exit 139), retrying..."
         sleep 2
@@ -2428,8 +2488,6 @@ else
     echo "futurerestore failed with exit code $EXIT_CODE"
     exit 1
 fi
-echo "Restore has completed! Read above if there is any errors"
-exit 0
 
 }
 
@@ -2775,8 +2833,8 @@ elif [[ $tether_options == 2 ]]; then
     fi
     restore_tethered_opts
 elif [[ $tether_options == 3 ]]; then
-    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
-        do_tethered_restore_a12
+    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+        do_tethered_restore_a12_a13
     else
         do_tethered_restore
     fi
@@ -2817,12 +2875,14 @@ fi
 det_rsep_flag
 prepatch_ibssibec_fr
 while true; do
+    set +e
     sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
         ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu \
         --sep $sep_path --sep-manifest $manifest_path \
         --custom-latest $LATEST_VERSION \
         $updatebb_flag $rsep_flag $IPSW_PATH
     EXIT_CODE=$?
+    set -e
     if [[ $EXIT_CODE -eq 139 ]]; then
         echo "futurerestore segfaulted (exit 139), retrying..."
         sleep 2
@@ -2902,8 +2962,8 @@ if [[ $IDENTIFIER == NONE ]]; then
     return
 fi
 
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
-    echo "A12 device support is entirely experimental."
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+    echo "A12/A13 device support is entirely experimental."
     echo "Expect to have issues or bugs."
     read -p "Press enter to continue"
 fi
