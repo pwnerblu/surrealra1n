@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 11"
+CURRENT_VERSION="v2.0 beta 12"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -989,6 +989,8 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.9"
+elif [[ $IDENTIFIER == iPhone12* ]]; then
+    LATEST_VERSION="26.5.2"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -1138,7 +1140,7 @@ if echo "$irecovery_output" | grep -q "PWND"; then
     return
 elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
     echo "Proceed to do the following:"
-    echo "A12 tether downgrades are for advanced users only. If you don't know what you're doing, DO not proceed"
+    echo "A12/A13 tether downgrades are for advanced users only. If you don't know what you're doing, DO not proceed"
     echo "Disconnect your device from the computer, then connect it to your Pi Pico"
     echo "Make sure your Pi Pico has the custom firmware required to pwn the device with usbliter8."
     read -p "Press enter to continue once device is pwned successfully AND reconnected to the computer"
