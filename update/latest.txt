@@ -1,6 +1,6 @@
-v2.0 beta 11
+v2.0 beta 12
 
 RELEASE NOTES:
 
-Add iOS 15 support for experimental iPhone XR downgrade alongside iOS 14.
-Tested only on 15.0, other versions of 15.x may or may not work.
+Adds experimental support for iPhone 11 Pro (iOS 15.4-15.6.1).
+This is untested so use with extreme caution. Please report any issues you find
