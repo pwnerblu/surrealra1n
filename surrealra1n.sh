@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 13"
+CURRENT_VERSION="v2.0 beta 14"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2576,6 +2576,20 @@ else
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/CoreServices/powerd.bundle/powerd
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.powerd.plist
 fi
+if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
+    if [[ $VERSION == 7.1* ]]; then
+        untether="https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/panguaxe.tar"
+    elif [[ $VERSION == 7.0.* ]]; then
+        untether="https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether.tar"
+    elif [[ $VERSION == 7.0 ]]; then
+        untether="https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/evasi0n7-untether-70.tar"
+    fi
+    curl -L -o tmp1/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
+    curl -L -o tmp1/untether.tar $untether
+    gzip -d tmp1/freeze.tar.gz
+    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/freeze.tar
+    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/untether.tar
+fi
 ./bin/dmg build tmp1/rootfs.raw $rootfslatest_dmg
 cd tmp2
 zip -0 -r ../$restoredir/$ipsw_custom *
@@ -2714,13 +2728,12 @@ exit 0
 
 }
 
-seprmvr64_opts(){
+restore_tethered_opts(){
 
 clear 
 echo "$INFO_TEXT"
-echo ""
-echo "This feature uses seprmvr64 by Mineek"
-echo "All SEP functionality will be disabled"
+echo "seprmvr64 restores to iOS 7 and 9 are not removed."
+echo "The separate seprmvr64 restore options was removed because the functionality was migrated to this menu"
 echo ""
 echo "Options:"
 echo ""
@@ -2729,84 +2742,6 @@ echo "2. Select Base IPSW"
 echo "3. Start Restore"
 echo "4. Back"
 read -p "Please input an option (1-4): " tether_options
-if [[ $tether_options == 1 ]]; then
-    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
-    if [[ -z "$IPSW_PATH" ]]; then
-        echo "No IPSW selected. Aborting."
-        exit 1
-    fi
-    rm -rf work/BuildManifest.plist
-    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
-    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
-    if [[ $VERSION == 8.* || $VERSION == 10.* || $VERSION == 11.* || $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
-        echo "iOS 10 and later are unsupported, and iOS 8 is unsupported."
-        exit 1
-    fi
-    if [[ $IDENTIFIER == iPhone6,2 ]] && [[ $VERSION == 9.3 ]] && [[ $BUILD != 13E237 ]]; then
-        echo "9.3 ($BUILD) is unsupported"
-        exit 1
-    elif [[ $IDENTIFIER == iPhone6,1 ]] && [[ $VERSION == 9.3 ]] && [[ $BUILD != 13E233 ]]; then
-        echo "9.3 ($BUILD) is unsupported"
-        exit 1
-    elif [[ $IDENTIFIER == iPad4* ]] && [[ $VERSION == 9.3 ]] && [[ $BUILD != 13E233 ]]; then
-        echo "9.3 ($BUILD) is unsupported"
-        exit 1
-    fi
-    seprmvr64_opts
-elif [[ $tether_options == 2 ]]; then
-    IPSW_PATH_LATEST=$($zenity --file-selection --title="Select iOS $LATEST_VERSION IPSW file")
-    if [[ -z "$IPSW_PATH_LATEST" ]]; then
-        echo "No IPSW selected. Aborting."
-        exit 1
-    fi
-    rm -rf work/BuildManifest.plist
-    unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
-    VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
-    if [[ $VERSION_LATEST != $LATEST_VERSION ]]; then
-        echo "Invalid IPSW. You must select IPSW for iOS $LATEST_VERSION, not iOS $VERSION_LATEST"
-        exit 1
-    fi
-    seprmvr64_opts
-elif [[ $tether_options == 3 ]]; then
-    if [[ $VERSION == 7.* ]]; then
-        read -p "Would you like to jailbreak? (Y/n): " jelbrek_opt
-        if [[ $jelbrek_opt == Y || $jelbrek_opt == y ]]; then
-            echo "Jailbreak option is enabled."
-            if [[ $VERSION == 9.* ]]; then
-                echo "This will only bootstrap the device."
-                echo "To get into a jailbroken state, you need to use http://jbme.ddw.nu afterwards. This is semi-untethered"
-            fi
-            JAILBREAK=1
-            sleep 5
-        else
-            echo "Jailbreak option is disabled."
-            sleep 5
-        fi
-    fi
-    do_tethered_seprmvr64_restore
-elif [[ $tether_options == 4 ]]; then
-    reset_restore_vars
-    restore_tethered_opts
-else
-    echo "Invalid option. Exiting."
-    exit 0
-fi
-
-}
-
-restore_tethered_opts(){
-
-clear 
-echo "$INFO_TEXT"
-echo ""
-echo "Options:"
-echo ""
-echo "1. Select Target IPSW"
-echo "2. Select Base IPSW"
-echo "3. Start Restore"
-echo "4. seprmvr64 options"
-echo "5. Back"
-read -p "Please input an option (1-5): " tether_options
 if [[ $tether_options == 1 ]]; then
     IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
     if [[ -z "$IPSW_PATH" ]]; then
@@ -2835,12 +2770,24 @@ elif [[ $tether_options == 2 ]]; then
 elif [[ $tether_options == 3 ]]; then
     if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
         do_tethered_restore_a12_a13
+    elif [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* ]]; then
+        if [[ $VERSION == 8.* ]]; then
+            echo "seprmvr64 restores to 8.x are not supported in surrealra1n"
+            exit 1
+        elif [[ $VERSION == 7.* ]]; then
+            read -p "Would you like to jailbreak as part of this restore? (Y/n): " jailbreak_choice
+            if [[ $jailbreak_choice == Y || $jailbreak_choice == y ]]; then
+                echo "Jailbreak option enabled"
+                JAILBREAK=1
+            else
+                echo "Jailbreak option disabled"
+            fi
+        fi
+        do_tethered_seprmvr64_restore
     else
         do_tethered_restore
     fi
 elif [[ $tether_options == 4 ]]; then
-    seprmvr64_opts
-elif [[ $tether_options == 5 ]]; then
     reset_restore_vars
     restore_utils
 else
