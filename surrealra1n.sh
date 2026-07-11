@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 12"
+CURRENT_VERSION="v2.0 beta 13"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2030,7 +2030,7 @@ if [[ $IDENTIFIER == iPhone11* ]] && [[ $VERSION == 14.* ]] && [[ $MODE == DFU ]
     MODE="Recovery"
 fi
 
-if [[ $IDENTIFIER == iPhone10* || $IDENTIFIER == iPhone11* ]]; then
+if [[ $IDENTIFIER == iPhone10* || $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
     dfu_helper_a11
 else
     dfu_helper
@@ -2040,7 +2040,7 @@ pwn_device
 sleep 5
 
 echo "Sending iBSS"
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
     curl -L -o bin/liter8ctl https://github.com/prdgmshift/usbliter8/raw/refs/heads/main/usbliter8ctl
     python3 bin/liter8ctl boot $bootdir/iBSS.boot
     echo "Device should now boot"
