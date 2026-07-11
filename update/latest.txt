@@ -1,5 +1,6 @@
-v2.0 beta 13
+v2.0 beta 14
 
 RELEASE NOTES:
 
-Experimental changes
+Fix jailbreak option not installing Cydia on iOS 7 seprmrvr64 restores
+Consolidate some stuff
