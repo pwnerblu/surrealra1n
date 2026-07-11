@@ -857,6 +857,23 @@ elif [[ $IDENTIFIER == iPhone12,3 ]]; then
     LEAPHAPTIC="D421_LeapHapticsFirmware.im4p"
     WIRELESS="WirelessPower.iphone12.im4p"
     KERNEL2="kernelcache.release.iphone12x"
+elif [[ $IDENTIFIER == iPhone12,8 ]]; then
+    REFER="iphone12c"
+    REFER2="d79"
+    BOARDID="d79ap"
+    BOARDID2="d79"
+    NAME="iPhone SE 2nd generation ($BOARDID)"
+    AOP14="aopfw-iphone12caop.im4p"
+    AOP="aopfw-iphone12caop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g12p.im4p"
+    ISP="adc-zelus-d79.im4p"
+    ANE="h12_ane_fw_metis.im4p"
+    AVE="AppleAVE2FW_H12.im4p"
+    CALLAN="D79_AudioCodecFirmware.im4p"
+    MTFW="D79_Multitouch.im4p"
+    WIRELESS="WirelessPower.iphone12c.im4p"
+    KERNEL2="kernelcache.release.iphone12x"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
     REFER="iphone10"
 elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
@@ -1938,10 +1955,12 @@ cp -v tmp1/Firmware/isp_bni/$ISP tmp2/Firmware/isp_bni/$ISP
 cp -v tmp1/Firmware/WirelessPower/$WIRELESS tmp2/Firmware/WirelessPower/$WIRELESS
 cp -v tmp1/Firmware/$MTFW tmp2/Firmware/$MTFW
 cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
-cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+    cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
+fi
 cp -v tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
 cp -v tmp1/Firmware/$IOFW tmp2/Firmware/$IOFW
-if [[ $IDENTIFIER == iPhone12* ]]; then
+if [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
 fi
 cp -v $fs_dmg $fs_dmg_18 # replace rootfs in the IPSW
@@ -1982,7 +2001,7 @@ else
     ramdisk_download_name="048-58904-639.dmg"
     ramdisk_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46617/B62CA88B-EB85-4A5A-9440-7E0B90B02006/iPhone10,3,iPhone10,6_14.0_18A373_Restore.ipsw"
 fi
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     sudo ./bin/pzb -g $ramdisk_download_name $ramdisk_url
     ./bin/img4 -i $ramdisk_download_name -o work/ramdisk2.raw
     sudo rm -rf $ramdisk_download_name
@@ -2422,11 +2441,16 @@ elif [[ $VERSION == 13.* ]]; then
     exit 1
 fi
 
-if [[ $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+if [[ $IDENTIFIER == iPhone12* ]] && [[ $VERSION == 14.* ]]; then
+    echo "iOS 14 downgrades on A13 are not supported at the moment"
+    exit 1
+fi
+
+if [[ $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     echo "Rose is very likely incompatible"
     echo "Not continuing."
     exit 1
-elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     echo "iOS $LATEST_VERSION Rose may or may not be compatible"
     echo "Proceed with very extreme caution."
     read -p "Press enter to continue"
