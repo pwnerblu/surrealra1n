@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 14"
+CURRENT_VERSION="v2.0 beta 14 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -857,6 +857,7 @@ elif [[ $IDENTIFIER == iPhone12,3 ]]; then
     LEAPHAPTIC="D421_LeapHapticsFirmware.im4p"
     WIRELESS="WirelessPower.iphone12.im4p"
     KERNEL2="kernelcache.release.iphone12x"
+    PMP="t8030pmp.im4p"
 elif [[ $IDENTIFIER == iPhone10,1 || $IDENTIFIER == iPhone10,4 || $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
     REFER="iphone10"
 elif [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
@@ -1943,6 +1944,7 @@ cp -v tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
 cp -v tmp1/Firmware/$IOFW tmp2/Firmware/$IOFW
 if [[ $IDENTIFIER == iPhone12* ]]; then
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
+    cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
 cp -v $fs_dmg $fs_dmg_18 # replace rootfs in the IPSW
 cp -v tmp1/Firmware/$fs_dmg_name.trustcache tmp2/Firmware/$fs_dmg_18_name.trustcache 
