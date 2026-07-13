@@ -446,6 +446,7 @@ elif [[ $dist == 3 ]]; then
     rm -rf ibootpatch.c
     # from spironolactone oops
     curl -L -o bin/trustcache https://github.com/Orangera1n/spironolactone/raw/refs/heads/main/Darwin/trustcache
+    curl -L -o bin/iBoot64Patcher2 https://github.com/Orangera1n/spironolactone/raw/refs/heads/main/Darwin/iBoot64Patcher_cryptic
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
     curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iproxy
@@ -554,6 +555,7 @@ elif [[ $dist == 4 ]]; then
     rm -rf ibootpatch.c
     # from spironolactone oops
     curl -L -o bin/trustcache https://github.com/Orangera1n/spironolactone/raw/refs/heads/main/Darwin/trustcache
+    curl -L -o bin/iBoot64Patcher2 https://github.com/Orangera1n/spironolactone/raw/refs/heads/main/Darwin/iBoot64Patcher_cryptic
     # sshpass
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/sshpass
     curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/iproxy
@@ -1910,8 +1912,8 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
     sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
     cd ..
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
-    ./bin/kairos work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
-    ./bin/kairos work/iBSS.raw work/iBSS.patchboot -b "-v"
+    ./bin/iBoot64Patcher2 work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
+    ./bin/iBoot64Patcher2 work/iBSS.raw work/iBSS.patchboot -b "-v"
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* ]]; then
@@ -1920,8 +1922,8 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
     sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
     cd ..
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
-    ./bin/kairos work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
-    ./bin/kairos work/iBSS.raw work/iBSS.patchboot -b "-v"
+    ./bin/iBoot64Patcher2 work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
+    ./bin/iBoot64Patcher2 work/iBSS.raw work/iBSS.patchboot -b "-v"
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 elif [[ $VERSION == 15.* ]]; then
@@ -2504,9 +2506,6 @@ while true; do
 done
 if [[ $EXIT_CODE -eq 0 ]]; then
     echo "Restore has completed! Read above if there are any errors"
-    if [[ $VERSION == 14.* ]]; then
-        echo "Device will be stuck in DFU"
-    fi
     exit 0
 else
     echo "futurerestore failed with exit code $EXIT_CODE"
