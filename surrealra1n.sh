@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 14"
+CURRENT_VERSION="v2.0 beta 15"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -811,6 +811,10 @@ fi
 
 # changes to device detection stuff
 
+if [[ $IDENTIFIER == iPhone12* ]]; then
+    PMP="t8030pmp.im4p"
+fi
+
 if [[ $IDENTIFIER == iPhone6* ]]; then
     REFER="iphone6"
     REFER2="iphone6"
@@ -1517,7 +1521,7 @@ fi
 
 det_rsep_flag(){
 
-if [[ $VERSION == 16.* || $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
+if [[ $VERSION == 16.* || $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 || $IDENTIFIER == iPhone12* ]]; then
     rsep_flag=""
 else
     rsep_flag="--no-rsep"
@@ -1940,8 +1944,19 @@ else
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 fi
 #
-restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
-restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
+if [[ $IDENTIFIER == iPhone11* ]] && [[ $BUILD != 18A5342e ]]; then
+    # update rd stuff
+    restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
+    restored="restored_update"
+else
+    restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
+    restored="restored_external"
+fi
+if [[ $LATEST_VERSION == 18.* ]]; then
+    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
+elif [[ $LATEST_VERSION == 26.* ]]; then
+    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 232784000)
+fi
 fs_dmg_18=$(find_dmg_arm64e tmp2 largest)
 fs_dmg=$(find_dmg tmp1 largest)
 fs_dmg_name=${fs_dmg##*/}
@@ -1964,6 +1979,9 @@ cp -v tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
 cp -v tmp1/Firmware/$IOFW tmp2/Firmware/$IOFW
 if [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
+fi
+if [[ $IDENTIFIER == iPhone12* ]]; then
+    cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
 cp -v $fs_dmg $fs_dmg_18 # replace rootfs in the IPSW
 cp -v tmp1/Firmware/$fs_dmg_name.trustcache tmp2/Firmware/$fs_dmg_18_name.trustcache 
@@ -1997,23 +2015,31 @@ rm -rf tmp2/$KERNEL
 ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
 ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
 if [[ $VERSION == 15.* ]]; then
-    ramdisk_download_name="018-79907-001.dmg"
+    if [[ $restored == "restored_update" ]]; then
+        ramdisk_download_name="018-80166-001.dmg"
+    else
+        ramdisk_download_name="018-79907-001.dmg"
+    fi
     ramdisk_url="https://updates.cdn-apple.com/2021FallFCS/fullrestores/002-02910/AF984499-D03A-43E7-9472-6D16BA756E5E/iPhone10,3,iPhone10,6_15.0_19A346_Restore.ipsw"
 else
-    ramdisk_download_name="048-58904-639.dmg"
+    if [[ $restored == "restored_update" ]]; then
+        ramdisk_download_name="048-58813-634.dmg"
+    else
+        ramdisk_download_name="048-58904-639.dmg"
+    fi
     ramdisk_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46617/B62CA88B-EB85-4A5A-9440-7E0B90B02006/iPhone10,3,iPhone10,6_14.0_18A373_Restore.ipsw"
 fi
 if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     sudo ./bin/pzb -g $ramdisk_download_name $ramdisk_url
     ./bin/img4 -i $ramdisk_download_name -o work/ramdisk2.raw
     sudo rm -rf $ramdisk_download_name
-    ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
+    ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/$restored work/restored_external
     ./bin/ipx_restored_patcher work/restored_external work/restored_patch
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
-    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
-    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
-    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/$restored
+    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/$restored
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/$restored
 fi
 if [[ $VERSION == 15.* ]]; then
     ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
@@ -2045,10 +2071,6 @@ bootdir="boot/$IDENTIFIER/$VERSION"
 if [[ ! -d $bootdir ]]; then
     echo "Please do a tethered restore to iOS $VERSION, then try tether boot again."
     exit 1
-fi
-if [[ $IDENTIFIER == iPhone11* ]] && [[ $VERSION == 14.* ]] && [[ $MODE == DFU ]]; then
-    ./bin/idevicerestore -ey restorefiles/$IDENTIFIER/$VERSION/custom.ipsw || true
-    MODE="Recovery"
 fi
 
 if [[ $IDENTIFIER == iPhone10* || $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
@@ -2434,6 +2456,9 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     echo "Sideloading outside of TrollStore may or may not work, your mileage may vary."
     echo "And potentially other broken features"
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
+    if [[ $IDENTIFIER == iPhone11* ]]; then
+        echo "You will need to tether restore to 14.0 beta 4 first, activate the device, then tether restore to the desired version."
+    fi
     read -p "Press enter to continue"
 elif [[ $VERSION == 16.* || $VERSION == 17.* || $VERSION == 18.* ]]; then
     echo "iOS 16-18 A12/A13 downgrades are not supported at the moment"
