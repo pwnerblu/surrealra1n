@@ -658,6 +658,25 @@ else
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
     # sshpass
+    # iboot patcher oops
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fd2e870d832ea59c31a54377370ad469f70e6499/patch.c
+    gcc ibootpatch.c -o bin/iBootPatch
+    rm -rf ibootpatch.c
+    curl -L -o bin/trustcache https://github.com/CRKatri/trustcache/releases/download/v2.0/trustcache_linux_x86_64
+    # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
+    git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+    cd Kernel64Patcher
+    make
+    cp Kernel64Patcher ../bin/Kernel64Patcher3
+    cd ..
+    rm -rf "Kernel64Patcher"
+    git clone https://github.com/pwnerblu/iBootpatch2 -b ipad6
+    cd iBootpatch2
+    make
+    cp iBootpatch2 ../bin/iBootpatch2
+    cd ..
+    rm -rf "iBootpatch2"
+    curl -L -o bin/iBoot64Patcher2 https://github.com/appleiPodTouch4/spironolactone/raw/refs/heads/main/Linux/x86_64/iBoot64patcher_cryptic
     curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass
     curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iproxy
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/zenity
@@ -1963,7 +1982,19 @@ fs_dmg_name=${fs_dmg##*/}
 fs_dmg_18_name=${fs_dmg_18##*/}
 ramdisk_dmg_name_18=${restore_ramdisk_dmg_18##*/}
 ramdisk_dmg_name=${restore_ramdisk_dmg##*/}
-sudo plutil -replace BuildIdentities.0.Manifest.KernelCache.Info.Path -string "$KERNEL2" tmp2/BuildManifest.plist
+# attempts to make it Linux compatible
+sudo KERNEL2="$KERNEL2" python3 <<'PY'
+import os
+import plistlib
+
+with open("tmp2/BuildManifest.plist", "rb") as f:
+    plist = plistlib.load(f)
+
+plist["BuildIdentities"][0]["Manifest"]["KernelCache"]["Info"]["Path"] = os.environ["KERNEL2"]
+
+with open("tmp2/BuildManifest.plist", "wb") as f:
+    plistlib.dump(plist, f)
+PY
 cp -v tmp1/Firmware/AOP/$AOP14 tmp2/Firmware/AOP/$AOP
 cp -v tmp1/Firmware/agx/$GFX tmp2/Firmware/agx/$GFX
 cp -v tmp1/Firmware/ane/$ANE tmp2/Firmware/ane/$ANE
@@ -2427,13 +2458,6 @@ exit 0
 }
 
 do_tethered_restore_a12_a13(){
-
-if [[ $dist == 3 || $dist == 4 ]]; then
-    echo ""
-else
-    echo "A12 tether downgrades are unsupported on Linux"
-    exit 1
-fi
 
 if [[ -z "$IPSW_PATH" ]]; then
     echo "No IPSW selected. Aborting."
