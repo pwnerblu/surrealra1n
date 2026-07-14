@@ -207,7 +207,7 @@ fi
 echo "Checking for required dependencies..."
 
 if [[ $dist == 1 ]]; then
-    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd zenity git curl make gcc)
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd zenity git curl make gcc python3-pip)
     MISSING_PACKAGES=()
 
     for pkg in "${DEPENDENCIES[@]}"; do
@@ -225,7 +225,7 @@ if [[ $dist == 1 ]]; then
         echo "All dependencies are installed." 
     fi
 elif [[ $dist == 2 ]]; then
-    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel)
+    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel python-pip)
     MISSING_PACKAGES=()
 
 
@@ -243,7 +243,7 @@ elif [[ $dist == 2 ]]; then
         echo "All dependencies are already installed."
     fi
 elif [[ $dist == 5 ]]; then
-    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc)
+    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc python3-pip)
     MISSING_PACKAGES=()
 
     for pkg in "${DEPENDENCIES[@]}"; do
@@ -2527,7 +2527,11 @@ else
     fi
 fi
 curl -L -o bin/liter8ctl https://github.com/prdgmshift/usbliter8/raw/refs/heads/main/usbliter8ctl
-python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch
+if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+    python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
+else
+    python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch 
+fi
 sleep 6
 APNONCE=$(./bin/irecovery -q | grep "^NONC:" | cut -d ':' -f2 | xargs)
 ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
