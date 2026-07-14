@@ -342,7 +342,7 @@ curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/he
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+if [[ $LATEST_VERSION == $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
     echo "RELEASE NOTES:"
     echo "$RELEASE_NOTES"
@@ -1972,12 +1972,14 @@ cp -v tmp1/Firmware/isp_bni/$ISP tmp2/Firmware/isp_bni/$ISP
 cp -v tmp1/Firmware/WirelessPower/$WIRELESS tmp2/Firmware/WirelessPower/$WIRELESS
 cp -v tmp1/Firmware/$MTFW tmp2/Firmware/$MTFW
 cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+if [[ ($IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12*) &&
+      $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
 fi
 cp -v tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
 cp -v tmp1/Firmware/$IOFW tmp2/Firmware/$IOFW
-if [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+if [[ ($IDENTIFIER == iPhone12*) &&
+      $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
 fi
 if [[ $IDENTIFIER == iPhone12* ]]; then
