@@ -2068,6 +2068,11 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER 
     sudo rm -rf $ramdisk_download_name
     ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/$restored work/restored_external
     ./bin/ipx_restored_patcher work/restored_external work/restored_patch
+    if [[ $IDENTIFIER == iPhone12,3 ]]; then
+        # skip baseband update on 11 Pro as apparantely that causes issue with a restore
+        mv -v work/restored_patch work/restored_pat
+        ./bin/restored_external64_patcher work/restored_pat work/restored_patch -b
+    fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
     ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/$restored
