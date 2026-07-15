@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 14 re-release 3"
+CURRENT_VERSION="v2.0 beta 14 re-release 4"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1994,6 +1994,11 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
     sudo rm -rf $ramdisk_download_name
     ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
     ./bin/ipx_restored_patcher work/restored_external work/restored_patch
+    if [[ $IDENTIFIER == iPhone12,3 ]]; then
+        # skip baseband update on 11 Pro as apparantely that causes issue with a restore
+        mv -v work/restored_patch work/restored_pat
+        ./bin/restored_external64_patcher work/restored_pat work/restored_patch -b
+    fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
     ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
