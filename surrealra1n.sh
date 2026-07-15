@@ -2071,7 +2071,7 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER 
     if [[ $IDENTIFIER == iPhone12,3 ]]; then
         # skip baseband update on 11 Pro as apparantely that causes issue with a restore
         mv -v work/restored_patch work/restored_pat
-        ./bin/restored_external64_patcher work/restored_pat work/restored_patch -b
+        ./bin/restoredpatcher work/restored_pat work/restored_patch -b
     fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
@@ -2495,6 +2495,8 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     if [[ $IDENTIFIER == iPhone11* ]]; then
         echo "You will need to tether restore to 14.0 beta 4 first, activate the device, then tether restore to the desired version."
+    elif [[ $IDENTIFIER == iPhone12,3 ]]; then
+        echo "Baseband update will be skipped. Expect baseband to be non-functional"
     fi
     read -p "Press enter to continue"
 elif [[ $VERSION == 16.* || $VERSION == 17.* || $VERSION == 18.* ]]; then
