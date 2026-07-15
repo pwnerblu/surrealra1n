@@ -1997,7 +1997,7 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
     if [[ $IDENTIFIER == iPhone12,3 ]]; then
         # skip baseband update on 11 Pro as apparantely that causes issue with a restore
         mv -v work/restored_patch work/restored_pat
-        ./bin/restored_external64_patcher work/restored_pat work/restored_patch -b
+        ./bin/restoredpatcher work/restored_pat work/restored_patch -b
     fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
