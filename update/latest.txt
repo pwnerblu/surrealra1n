@@ -1,5 +1,6 @@
-v2.0 beta 14 re-release 3
+v2.0 beta 14 re-release 4
 
 RELEASE NOTES:
 
-A13 stuff
+Workaround for 11 Pro baseband update issues?
+Will break baseband functionality though
