@@ -2118,7 +2118,13 @@ sleep 5
 echo "Sending iBSS"
 if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
     curl -L -o bin/liter8ctl https://github.com/prdgmshift/usbliter8/raw/refs/heads/main/usbliter8ctl
-    python3 bin/liter8ctl boot $bootdir/iBSS.boot
+    if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+        python3 bin/liter8ctl boot $bootdir/iBSS.boot || true
+        echo "If you see the error: No such device (it may have been disconnected)"
+        echo "This error is normal on Linux as long as the Device actually starts booting after iBSS is sent."
+    else
+        python3 bin/liter8ctl boot $bootdir/iBSS.boot
+    fi
     echo "Device should now boot"
     exit 0
 fi
@@ -2529,10 +2535,20 @@ fi
 curl -L -o bin/liter8ctl https://github.com/prdgmshift/usbliter8/raw/refs/heads/main/usbliter8ctl
 if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
     python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
+    echo "If you see the error: No such device (it may have been disconnected)"
+    echo "This error is normal on Linux as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
 else
     python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch 
 fi
 sleep 6
+echo "Checking if device is in Recovery mode"
+MODE=$(./bin/irecovery -q | grep "^MODE:" | cut -d ':' -f2 | xargs)
+if [[ $MODE == Recovery ]]; then
+    echo "Device has been detected in Recovery mode."
+else
+    echo "Device not detected in Recovery. Exiting"
+    exit 1
+fi
 APNONCE=$(./bin/irecovery -q | grep "^NONC:" | cut -d ':' -f2 | xargs)
 ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
 mkdir -p boot
