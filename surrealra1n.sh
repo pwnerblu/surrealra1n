@@ -2629,7 +2629,7 @@ if [[ $IDENTIFIER == iPhone12* ]] && [[ $VERSION == 14.* ]]; then
     exit 1
 fi
 
-if [[ $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+if [[ $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     echo "Rose is very likely incompatible"
     echo "Not continuing."
     exit 1
