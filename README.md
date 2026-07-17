@@ -1,6 +1,6 @@
 # surrealra1n 
 
-A tethered downgrade tool for some A7/A8(X) devices, all A11 devices and one A12 device (experimental)
+A tethered downgrade tool for some A7/A8(X) devices, all A11 devices and A12/A13 iPhones.
 
 Supports macOS and Linux
 
