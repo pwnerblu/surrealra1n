@@ -2118,6 +2118,7 @@ fi
 if [[ ($IDENTIFIER == iPhone12*) &&
       $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
+    cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
 if [[ $IDENTIFIER == iPhone12* ]]; then
     cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
