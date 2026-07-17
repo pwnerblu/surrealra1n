@@ -1,4 +1,4 @@
-v2.0 beta 15
+v2.0 beta 15 re-release
 
 RELEASE NOTES:
 
