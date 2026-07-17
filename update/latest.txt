@@ -1,7 +1,5 @@
-v2.0 beta 15 re-release
+v2.0 beta 15 re-release 2
 
 RELEASE NOTES:
 
-Adds experimental support for rest of A12/A13 iPhones
-Also adds iOS 13 tether downgrade support (for iPhone SE 2 only)
-Also adds Linux support for A12/A13 downgrades
+yes
