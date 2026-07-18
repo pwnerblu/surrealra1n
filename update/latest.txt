@@ -2,4 +2,4 @@ v2.0 beta 16
 
 RELEASE NOTES:
 
-Fix haptics not working on iPhone SE 2 iOS 13 downgrade.
+Fix haptics not working on iPhone SE 2 iOS 13 downgrades.
