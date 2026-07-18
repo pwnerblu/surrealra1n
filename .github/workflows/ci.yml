@@ -1,12 +1,10 @@
 name: Create Release from Latest
-
 on:
   push:
     paths:
       - 'update/latest.txt'
     branches:
       - development
-
 jobs:
   create-release:
     runs-on: ubuntu-latest
@@ -52,18 +50,13 @@ jobs:
           echo "notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
       
       - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.parse.outputs.tag }}
-          release_name: ${{ steps.parse.outputs.version_raw }}
+          name: ${{ steps.parse.outputs.version_raw }}
           body: ${{ steps.parse.outputs.notes }}
           draft: false
           prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') }}
-      
-      - name: Mark as Latest Release
-        run: |
-          gh release edit ${{ steps.parse.outputs.tag }} --latest
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
