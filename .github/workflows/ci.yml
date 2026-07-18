@@ -41,22 +41,26 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           
           # Extract release notes (everything after "RELEASE NOTES:")
-          RELEASE_NOTES=$(sed -n '/RELEASE NOTES:/,$p' update/latest.txt | sed '1d')
-          
-          # Handle multi-line release notes for GitHub Actions output
-          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
-          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
-          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
-          echo "notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          RELEASE_NOTES=$(tail -n +2 update/latest.txt | sed -n '/RELEASE NOTES:/,$p' | sed '1d')
+          {
+            echo 'notes<<EOF'
+            echo "$RELEASE_NOTES"
+            echo EOF
+          } >> $GITHUB_OUTPUT
       
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.parse.outputs.tag }}
-          name: ${{ steps.parse.outputs.version_raw }}
+          release_name: ${{ steps.parse.outputs.version_raw }}
           body: ${{ steps.parse.outputs.notes }}
           draft: false
-          prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') }}
-          make_latest: true
+          # prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') }}
+      
+      - name: Mark as Latest Release
+        run: |
+          gh release edit ${{ steps.parse.outputs.tag }} --latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
