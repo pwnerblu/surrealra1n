@@ -202,6 +202,15 @@ else
     zenity="zenity"
 fi
 
+pick_file() {
+    local p
+    p=$($zenity --file-selection --title="$1" 2>/dev/null)
+    if [[ -z "$p" ]]; then
+        read -e -r -p "$1 - enter absolute path (blank to cancel): " p </dev/tty
+    fi
+    echo "$p"
+}
+
 
 # Dependency check
 echo "Checking for required dependencies..."
@@ -1783,7 +1792,7 @@ echo "3. Start Restore"
 echo "4. Back"
 read -p "Please input an option (1-4): " untether_options
 if [[ $untether_options == 1 ]]; then
-    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    IPSW_PATH=$(pick_file "Select an IPSW file")
     if [[ -z "$IPSW_PATH" ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
@@ -1793,7 +1802,7 @@ if [[ $untether_options == 1 ]]; then
     VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
     restore_untethered_opts
 elif [[ $untether_options == 2 ]]; then
-    SHSH_PATH=$($zenity --file-selection --title="Select an SHSH2 file")
+    SHSH_PATH=$(pick_file "Select an SHSH2 file")
     if [[ -z "$SHSH_PATH" ]]; then
         echo "No SHSH blob selected. Aborting."
         exit 1
@@ -2971,7 +2980,7 @@ echo "3. Start Restore"
 echo "4. Back"
 read -p "Please input an option (1-4): " tether_options
 if [[ $tether_options == 1 ]]; then
-    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    IPSW_PATH=$(pick_file "Select an IPSW file")
     if [[ -z "$IPSW_PATH" ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
@@ -2982,7 +2991,7 @@ if [[ $tether_options == 1 ]]; then
     VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
     restore_tethered_opts
 elif [[ $tether_options == 2 ]]; then
-    IPSW_PATH_LATEST=$($zenity --file-selection --title="Select iOS $LATEST_VERSION IPSW file")
+    IPSW_PATH_LATEST=$(pick_file "Select iOS $LATEST_VERSION IPSW file")
     if [[ -z "$IPSW_PATH_LATEST" ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
@@ -3095,7 +3104,7 @@ echo "2. Start Restore"
 echo "3. Back"
 read -p "Please input an option (1-3): " restore_a7_options_choice
 if [[ $restore_a7_options_choice == 1 ]]; then
-    IPSW_PATH=$($zenity --file-selection --title="Select an IPSW file")
+    IPSW_PATH=$(pick_file "Select an IPSW file")
     if [[ -z "$IPSW_PATH" ]]; then
         echo "No IPSW selected. Aborting."
         exit 1
