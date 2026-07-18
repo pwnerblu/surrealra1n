@@ -1,0 +1,73 @@
+name: Create Release from Latest
+
+on:
+  push:
+    paths:
+      - 'update/latest.txt'
+    branches:
+      - development  # adjust branch as needed
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Parse version and notes
+        id: parse
+        run: |
+          # Read the file
+          VERSION=$(head -n 1 update/latest.txt)
+          VERSION_NO_V="${VERSION#v}"
+          
+          echo "version_raw=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Generate tag name based on version format
+          if [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)\ re-release\ ([0-9]+)$ ]]; then
+            # v2.0 beta 16 re-release 2 -> 2.0-beta16-rr2
+            TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}-rr${BASH_REMATCH[3]}"
+          elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)\ re-release$ ]]; then
+            # v2.0 beta 16 re-release -> 2.0-beta16-rr
+            TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}-rr"
+          elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)$ ]]; then
+            # v2.0 beta 16 -> 2.0-beta16
+            TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}"
+          elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)$ ]]; then
+            # v2.0 -> 2.0
+            TAG="$VERSION_NO_V"
+          else
+            echo "Error: Could not parse version format: $VERSION_NO_V"
+            exit 1
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          
+          # Extract release notes (everything after "RELEASE NOTES:")
+          RELEASE_NOTES=$(sed -n '/RELEASE NOTES:/,$p' update/latest.txt | sed '1d')
+          
+          # Handle multi-line release notes for GitHub Actions output
+          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
+          echo "notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.parse.outputs.tag }}
+          release_name: ${{ steps.parse.outputs.version_raw }}
+          body: ${{ steps.parse.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') }}
+
+      - name: Mark as Latest Release
+        run: |
+          gh release edit ${{ steps.parse.outputs.tag }} --latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }
