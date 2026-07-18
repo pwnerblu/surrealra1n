@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 15 re-release 2"
+CURRENT_VERSION="v2.0 beta 16"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2139,7 +2139,7 @@ cp -v tmp1/Firmware/$ramdisk_dmg_name.trustcache tmp2/Firmware/$ramdisk_dmg_name
 if [[ $VERSION == 14.* ]]; then
     ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b # use kernel64patcher3, properly patch trust evaluation check on ios 14 arm64e
 elif [[ $VERSION == 13.* ]]; then
-    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -n # make booting take less time
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b13 -n # make booting take less time (added -b13 to hopefully fix haptics issue)
 else
     ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -e -o -r -b15
 fi
