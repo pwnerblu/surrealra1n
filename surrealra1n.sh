@@ -345,56 +345,56 @@ require_dir() {
 
 #
 
-# echo "Checking for updates..."
-# rm -rf update/latest.txt
-# curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
-# LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
-# RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
+echo "Checking for updates..."
+rm -rf update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
+LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
+RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-# if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
-#     echo "A new version of surrealra1n is available: $LATEST_VERSION"
-#     echo "RELEASE NOTES:"
-#     echo "$RELEASE_NOTES"
-#     echo ""
-#     echo "It is strongly recommended to update to get the latest features + bug fixes."
-#     read -p "Would you like to update now? (y/n): " update
-#     if [[ $update == y || $update == Y ]]; then
-#         rm -rf "updatefiles"
-#         mkdir updatefiles
-#         rm -rf "updatefiles/repo"
-#         git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
-#         if [[ ! -d updatefiles/repo ]]; then
-#             echo "Failed to clone repository."
-#             exit 1
-#         fi
-#         rm -rf "surrealra1n.old"
-#         mkdir -p surrealra1n.old # make folder to back up old surrealra1n installation
-#         echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
-#         echo "Backing up your current surrealra1n installation..."
-#         mv -v bin surrealra1n.old/
-#         mv -v futurerestore surrealra1n.old/
-#         mv -v keys surrealra1n.old/
-#         mv -v surrealra1n.sh surrealra1n.old/
-#         rm -rf "bin"
-#         rm -rf "futurerestore"
-#         rm -rf "keys"
-#         echo "Copying new files..."
-#         cp -av updatefiles/repo/. ./
-#         chmod +x surrealra1n.sh
+if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+    echo "A new version of surrealra1n is available: $LATEST_VERSION"
+    echo "RELEASE NOTES:"
+    echo "$RELEASE_NOTES"
+    echo ""
+    echo "It is strongly recommended to update to get the latest features + bug fixes."
+    read -p "Would you like to update now? (y/n): " update
+    if [[ $update == y || $update == Y ]]; then
+        rm -rf "updatefiles"
+        mkdir updatefiles
+        rm -rf "updatefiles/repo"
+        git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
+        if [[ ! -d updatefiles/repo ]]; then
+            echo "Failed to clone repository."
+            exit 1
+        fi
+        rm -rf "surrealra1n.old"
+        mkdir -p surrealra1n.old # make folder to back up old surrealra1n installation
+        echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
+        echo "Backing up your current surrealra1n installation..."
+        mv -v bin surrealra1n.old/
+        mv -v futurerestore surrealra1n.old/
+        mv -v keys surrealra1n.old/
+        mv -v surrealra1n.sh surrealra1n.old/
+        rm -rf "bin"
+        rm -rf "futurerestore"
+        rm -rf "keys"
+        echo "Copying new files..."
+        cp -av updatefiles/repo/. ./
+        chmod +x surrealra1n.sh
 
-#         rm -rf "updatefiles"
-#         echo "surrealra1n has been updated! Please run the script again"
-#         exit 0
-#     else
-#         echo "You have declined the update."
-#         echo "This version of surrealra1n is no longer supported, so it is recommended to update as soon as possible."
-#         outdated=1
-#         read -p "Press enter to continue"
-#     fi
-# else
-#     echo "surrealra1n is up to date."
-#     sleep 1
-# fi
+        rm -rf "updatefiles"
+        echo "surrealra1n has been updated! Please run the script again"
+        exit 0
+    else
+        echo "You have declined the update."
+        echo "This version of surrealra1n is no longer supported, so it is recommended to update as soon as possible."
+        outdated=1
+        read -p "Press enter to continue"
+    fi
+else
+    echo "surrealra1n is up to date."
+    sleep 1
+fi
 
 echo "Checking for existing binaries..."
 
