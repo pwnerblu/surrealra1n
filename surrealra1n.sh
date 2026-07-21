@@ -869,7 +869,25 @@ elif [[ $IDENTIFIER == iPad11,1 ]]; then
     # ipad wifi version doesn't have callan firmware
     # ipad doesn't hav haptic firmware
     # ipad wifi version doesn't have wirelesspower firmware
-    KERNEL2="kernelcache.release.ipad11"
+    KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad11,2 ]]; then
+    REFER="ipad11"
+    REFER2="j210"
+    BOARDID="j211ap"
+    BOARDID2="j210"
+    NAME="iPad mini (5th generation, Cellular) ($BOARDID)"
+    AOP14="aopfw-ipad11aop.im4p"
+    AOP="aopfw-ipad11aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j2x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J211_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
 elif [[ $IDENTIFIER == iPhone11,2 ]]; then
     REFER="iphone11"
     REFER2="d321"
@@ -2036,7 +2054,7 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46828/6A00C15C-8AEB-490E-A468-04E28C68E7C9/iPhone11,8,iPhone12,1_14.0_18A373_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46850/8A4DA7D0-40E1-4079-A159-5B0983102B66/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.0_18A373_Restore.ipsw"
-    elif [[ $IDENTIFIER == iPad11,1 ]]; then
+    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46551/EFCA25AF-50BE-4712-A9C2-1E760AD99B82/iPad_Spring_2019_14.0_18A373_Restore.ipsw"
     fi
     cd work 
@@ -2052,7 +2070,7 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22729/77571761-8A7F-4F67-BB19-12D9BC82405B/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.4.2_18D70_Restore.ipsw"
-    elif [[ $IDENTIFIER == iPad11,1 ]]; then
+    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22329/CF450435-1EDC-4212-A768-D666A1677EC5/iPad_Spring_2019_14.4.2_18D70_Restore.ipsw"
     fi
     cd work 
@@ -2102,7 +2120,7 @@ ramdisk_dmg_name_18=${restore_ramdisk_dmg_18##*/}
 ramdisk_dmg_name=${restore_ramdisk_dmg##*/}
 if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPad11,1 ]]; then
     IDENTITY="0"
-elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 ]]; then
+elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 || $IDENTIFIER == iPad11,2 ]]; then
     IDENTITY="1"
 elif [[ $IDENTIFIER == iPhone11,6 ]]; then
     IDENTITY="2"
