@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 16"
+CURRENT_VERSION="v2.0 beta 17"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -857,7 +857,7 @@ elif [[ $IDENTIFIER == iPad11,1 ]]; then
     REFER2="j210"
     BOARDID="j210ap"
     BOARDID2="j210"
-    NAME="iPad mini (5th generation) Wifi ($BOARDID)"
+    NAME="iPad mini (5th generation, Wi-Fi only) ($BOARDID)"
     AOP14="aopfw-ipad11aop.im4p"
     AOP="aopfw-ipad11aop.RELEASE.im4p"
     IOFW="SmartIOFirmware_ASCv2.im4p"
