@@ -1,5 +1,5 @@
-v2.0 beta 17
+v2.0 beta 17 re-release
 
 RELEASE NOTES:
 
-Add iPad mini 5 support (thanks to @Remedgit for the PR)
+Switch to idevicerestore for SE 2 tether restores
