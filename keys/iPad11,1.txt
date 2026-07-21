@@ -1,0 +1,5 @@
+# Firmware keys are sourced from the Apple Wiki
+
+ibss-15.0: 92ec17dd37d02ca432e0b018fd09afea32d5a7ae28407215cc50763df61b5750acf442c22c2c992fc021e811b9673ce7
+
+ibss-14.0: d4d6fe51f5c9963067c3e47561f4cfcb55d54954046702ff1a83da04fac0a7f88534ad77e133d9ecf3e56fa5c257ca40
