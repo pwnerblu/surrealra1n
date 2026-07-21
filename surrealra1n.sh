@@ -345,56 +345,56 @@ require_dir() {
 
 #
 
-echo "Checking for updates..."
-rm -rf update/latest.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
-LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
-RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
+# echo "Checking for updates..."
+# rm -rf update/latest.txt
+# curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
+# LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
+# RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
-    echo "A new version of surrealra1n is available: $LATEST_VERSION"
-    echo "RELEASE NOTES:"
-    echo "$RELEASE_NOTES"
-    echo ""
-    echo "It is strongly recommended to update to get the latest features + bug fixes."
-    read -p "Would you like to update now? (y/n): " update
-    if [[ $update == y || $update == Y ]]; then
-        rm -rf "updatefiles"
-        mkdir updatefiles
-        rm -rf "updatefiles/repo"
-        git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
-        if [[ ! -d updatefiles/repo ]]; then
-            echo "Failed to clone repository."
-            exit 1
-        fi
-        rm -rf "surrealra1n.old"
-        mkdir -p surrealra1n.old # make folder to back up old surrealra1n installation
-        echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
-        echo "Backing up your current surrealra1n installation..."
-        mv -v bin surrealra1n.old/
-        mv -v futurerestore surrealra1n.old/
-        mv -v keys surrealra1n.old/
-        mv -v surrealra1n.sh surrealra1n.old/
-        rm -rf "bin"
-        rm -rf "futurerestore"
-        rm -rf "keys"
-        echo "Copying new files..."
-        cp -av updatefiles/repo/. ./
-        chmod +x surrealra1n.sh
+# if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+#     echo "A new version of surrealra1n is available: $LATEST_VERSION"
+#     echo "RELEASE NOTES:"
+#     echo "$RELEASE_NOTES"
+#     echo ""
+#     echo "It is strongly recommended to update to get the latest features + bug fixes."
+#     read -p "Would you like to update now? (y/n): " update
+#     if [[ $update == y || $update == Y ]]; then
+#         rm -rf "updatefiles"
+#         mkdir updatefiles
+#         rm -rf "updatefiles/repo"
+#         git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
+#         if [[ ! -d updatefiles/repo ]]; then
+#             echo "Failed to clone repository."
+#             exit 1
+#         fi
+#         rm -rf "surrealra1n.old"
+#         mkdir -p surrealra1n.old # make folder to back up old surrealra1n installation
+#         echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
+#         echo "Backing up your current surrealra1n installation..."
+#         mv -v bin surrealra1n.old/
+#         mv -v futurerestore surrealra1n.old/
+#         mv -v keys surrealra1n.old/
+#         mv -v surrealra1n.sh surrealra1n.old/
+#         rm -rf "bin"
+#         rm -rf "futurerestore"
+#         rm -rf "keys"
+#         echo "Copying new files..."
+#         cp -av updatefiles/repo/. ./
+#         chmod +x surrealra1n.sh
 
-        rm -rf "updatefiles"
-        echo "surrealra1n has been updated! Please run the script again"
-        exit 0
-    else
-        echo "You have declined the update."
-        echo "This version of surrealra1n is no longer supported, so it is recommended to update as soon as possible."
-        outdated=1
-        read -p "Press enter to continue"
-    fi
-else
-    echo "surrealra1n is up to date."
-    sleep 1
-fi
+#         rm -rf "updatefiles"
+#         echo "surrealra1n has been updated! Please run the script again"
+#         exit 0
+#     else
+#         echo "You have declined the update."
+#         echo "This version of surrealra1n is no longer supported, so it is recommended to update as soon as possible."
+#         outdated=1
+#         read -p "Press enter to continue"
+#     fi
+# else
+#     echo "surrealra1n is up to date."
+#     sleep 1
+# fi
 
 echo "Checking for existing binaries..."
 
@@ -813,7 +813,7 @@ KEY_FILE="keys/$IDENTIFIER.txt"
 
 if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
     updatebb_flag="--latest-baseband"
-elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
+elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad11,1 ]]; then
     updatebb_flag="--no-baseband"
 fi
 
@@ -852,6 +852,24 @@ elif [[ $IDENTIFIER == iPhone11,8 ]]; then
     MTFW="N841_Multitouch.im4p"
     WIRELESS="WirelessPower.iphone11b.im4p"
     KERNEL2="kernelcache.release.iphone11x"
+elif [[ $IDENTIFIER == iPad11,1 ]]; then
+    REFER="ipad11"
+    REFER2="j210"
+    BOARDID="j210ap"
+    BOARDID2="j210"
+    NAME="iPad mini (5th generation) Wifi ($BOARDID)"
+    AOP14="aopfw-ipad11aop.im4p"
+    AOP="aopfw-ipad11aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j2x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J210_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11"
 elif [[ $IDENTIFIER == iPhone11,2 ]]; then
     REFER="iphone11"
     REFER2="d321"
@@ -1115,6 +1133,8 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.9"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
+    LATEST_VERSION="26.5.2"
+elif [[ $IDENTIFIER == iPad11* ]]; then
     LATEST_VERSION="26.5.2"
 else
     LATEST_VERSION="12.5.8"
@@ -2016,6 +2036,8 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46828/6A00C15C-8AEB-490E-A468-04E28C68E7C9/iPhone11,8,iPhone12,1_14.0_18A373_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46850/8A4DA7D0-40E1-4079-A159-5B0983102B66/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.0_18A373_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad11,1 ]]; then
+        ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46551/EFCA25AF-50BE-4712-A9C2-1E760AD99B82/iPad_Spring_2019_14.0_18A373_Restore.ipsw"
     fi
     cd work 
     sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
@@ -2030,6 +2052,8 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22729/77571761-8A7F-4F67-BB19-12D9BC82405B/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.4.2_18D70_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad11,1 ]]; then
+        ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22329/CF450435-1EDC-4212-A768-D666A1677EC5/iPad_Spring_2019_14.4.2_18D70_Restore.ipsw"
     fi
     cd work 
     sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
@@ -2053,7 +2077,7 @@ else
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 fi
 #
-if [[ $IDENTIFIER == iPhone11* ]] && [[ $BUILD != 18A5342e ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]] && [[ $BUILD != 18A5342e ]]; then
     # update rd stuff
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
     restored="restored_update"
@@ -2076,7 +2100,7 @@ fs_dmg_name=${fs_dmg##*/}
 fs_dmg_18_name=${fs_dmg_18##*/}
 ramdisk_dmg_name_18=${restore_ramdisk_dmg_18##*/}
 ramdisk_dmg_name=${restore_ramdisk_dmg##*/}
-if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 ]]; then
+if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPad11,1 ]]; then
     IDENTITY="0"
 elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 ]]; then
     IDENTITY="1"
@@ -2101,8 +2125,10 @@ cp -v tmp1/Firmware/AOP/$AOP14 tmp2/Firmware/AOP/$AOP
 cp -v tmp1/Firmware/agx/$GFX tmp2/Firmware/agx/$GFX
 cp -v tmp1/Firmware/ane/$ANE tmp2/Firmware/ane/$ANE
 cp -v tmp1/Firmware/isp_bni/$ISP tmp2/Firmware/isp_bni/$ISP
-cp -v tmp1/Firmware/WirelessPower/$WIRELESS tmp2/Firmware/WirelessPower/$WIRELESS
-cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
+if [[ $IDENTIFIER == iPhone* ]]; then
+    cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
+    cp -v tmp1/Firmware/WirelessPower/$WIRELESS tmp2/Firmware/WirelessPower/$WIRELESS
+fi
 if [[ ($IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12*) &&
       $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
