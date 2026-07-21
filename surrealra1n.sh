@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 16"
+CURRENT_VERSION="v2.0 beta 17"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -811,9 +811,9 @@ KEY_FILE="keys/$IDENTIFIER.txt"
 
 # BB update determine check
 
-if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
+if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad11,2 ]]; then
     updatebb_flag="--latest-baseband"
-elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 ]]; then
+elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad11,1 ]]; then
     updatebb_flag="--no-baseband"
 fi
 
@@ -852,6 +852,42 @@ elif [[ $IDENTIFIER == iPhone11,8 ]]; then
     MTFW="N841_Multitouch.im4p"
     WIRELESS="WirelessPower.iphone11b.im4p"
     KERNEL2="kernelcache.release.iphone11x"
+elif [[ $IDENTIFIER == iPad11,1 ]]; then
+    REFER="ipad11"
+    REFER2="j210"
+    BOARDID="j210ap"
+    BOARDID2="j210"
+    NAME="iPad mini (5th generation, Wi-Fi only) ($BOARDID)"
+    AOP14="aopfw-ipad11aop.im4p"
+    AOP="aopfw-ipad11aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j2x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J210_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad11,2 ]]; then
+    REFER="ipad11"
+    REFER2="j210"
+    BOARDID="j211ap"
+    BOARDID2="j210"
+    NAME="iPad mini (5th generation, Cellular) ($BOARDID)"
+    AOP14="aopfw-ipad11aop.im4p"
+    AOP="aopfw-ipad11aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j2x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J211_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
 elif [[ $IDENTIFIER == iPhone11,2 ]]; then
     REFER="iphone11"
     REFER2="d321"
@@ -1115,6 +1151,8 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.9"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
+    LATEST_VERSION="26.5.2"
+elif [[ $IDENTIFIER == iPad11* ]]; then
     LATEST_VERSION="26.5.2"
 else
     LATEST_VERSION="12.5.8"
@@ -2016,6 +2054,8 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46828/6A00C15C-8AEB-490E-A468-04E28C68E7C9/iPhone11,8,iPhone12,1_14.0_18A373_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46850/8A4DA7D0-40E1-4079-A159-5B0983102B66/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.0_18A373_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 ]]; then
+        ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46551/EFCA25AF-50BE-4712-A9C2-1E760AD99B82/iPad_Spring_2019_14.0_18A373_Restore.ipsw"
     fi
     cd work 
     sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
@@ -2030,6 +2070,8 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22729/77571761-8A7F-4F67-BB19-12D9BC82405B/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.4.2_18D70_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 ]]; then
+        ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22329/CF450435-1EDC-4212-A768-D666A1677EC5/iPad_Spring_2019_14.4.2_18D70_Restore.ipsw"
     fi
     cd work 
     sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
@@ -2053,7 +2095,7 @@ else
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 fi
 #
-if [[ $IDENTIFIER == iPhone11* ]] && [[ $BUILD != 18A5342e ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]] && [[ $BUILD != 18A5342e ]]; then
     # update rd stuff
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
     restored="restored_update"
@@ -2076,9 +2118,9 @@ fs_dmg_name=${fs_dmg##*/}
 fs_dmg_18_name=${fs_dmg_18##*/}
 ramdisk_dmg_name_18=${restore_ramdisk_dmg_18##*/}
 ramdisk_dmg_name=${restore_ramdisk_dmg##*/}
-if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 ]]; then
+if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPad11,1 ]]; then
     IDENTITY="0"
-elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 ]]; then
+elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 || $IDENTIFIER == iPad11,2 ]]; then
     IDENTITY="1"
 elif [[ $IDENTIFIER == iPhone11,6 ]]; then
     IDENTITY="2"
@@ -2101,8 +2143,10 @@ cp -v tmp1/Firmware/AOP/$AOP14 tmp2/Firmware/AOP/$AOP
 cp -v tmp1/Firmware/agx/$GFX tmp2/Firmware/agx/$GFX
 cp -v tmp1/Firmware/ane/$ANE tmp2/Firmware/ane/$ANE
 cp -v tmp1/Firmware/isp_bni/$ISP tmp2/Firmware/isp_bni/$ISP
-cp -v tmp1/Firmware/WirelessPower/$WIRELESS tmp2/Firmware/WirelessPower/$WIRELESS
-cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
+if [[ $IDENTIFIER == iPhone* ]]; then
+    cp -v tmp1/Firmware/$CALLAN tmp2/Firmware/$CALLAN
+    cp -v tmp1/Firmware/WirelessPower/$WIRELESS tmp2/Firmware/WirelessPower/$WIRELESS
+fi
 if [[ ($IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12*) &&
       $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
