@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 17 re-release"
+CURRENT_VERSION="v2.0 beta 18"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -811,9 +811,9 @@ KEY_FILE="keys/$IDENTIFIER.txt"
 
 # BB update determine check
 
-if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad11,2 ]]; then
+if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,4 ]]; then
     updatebb_flag="--latest-baseband"
-elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad11,1 ]]; then
+elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,3 ]]; then
     updatebb_flag="--no-baseband"
 fi
 
@@ -884,6 +884,42 @@ elif [[ $IDENTIFIER == iPad11,2 ]]; then
     ANE="h11_ane_fw_quin.im4p"
     AVE="AppleAVE2FW_H11.im4p"
     MTFW="J211_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad11,3 ]]; then
+    REFER="ipad11"
+    REFER2="j217"
+    BOARDID="j217ap"
+    BOARDID2="j217"
+    NAME="iPad Air (3rd generation, Wi-Fi only) ($BOARDID)"
+    AOP14="aopfw-ipad11aop.im4p"
+    AOP="aopfw-ipad11aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j2x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J217_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad11,4 ]]; then
+    REFER="ipad11"
+    REFER2="j217"
+    BOARDID="j218ap"
+    BOARDID2="j217"
+    NAME="iPad Air (3rd generation, Cellular) ($BOARDID)"
+    AOP14="aopfw-ipad11aop.im4p"
+    AOP="aopfw-ipad11aop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j2x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J218_Multitouch.im4p"
     # ipad wifi version doesn't have callan firmware
     # ipad doesn't hav haptic firmware
     # ipad wifi version doesn't have wirelesspower firmware
@@ -1186,11 +1222,6 @@ Device: $NAME
 ECID: $ECID
 
 Device is in $MODE mode."
-
-if [[ $IDENTIFIER == iPhone12,3 ]]; then
-    echo "iPhone 11 Pro currently has issues, thus it is Not supported"
-    exit 1
-fi
 
 misc_utils(){
 
@@ -2054,7 +2085,7 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46828/6A00C15C-8AEB-490E-A468-04E28C68E7C9/iPhone11,8,iPhone12,1_14.0_18A373_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46850/8A4DA7D0-40E1-4079-A159-5B0983102B66/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.0_18A373_Restore.ipsw"
-    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 ]]; then
+    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,4 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46551/EFCA25AF-50BE-4712-A9C2-1E760AD99B82/iPad_Spring_2019_14.0_18A373_Restore.ipsw"
     fi
     cd work 
@@ -2070,7 +2101,7 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22729/77571761-8A7F-4F67-BB19-12D9BC82405B/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.4.2_18D70_Restore.ipsw"
-    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 ]]; then
+    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,4 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22329/CF450435-1EDC-4212-A768-D666A1677EC5/iPad_Spring_2019_14.4.2_18D70_Restore.ipsw"
     fi
     cd work 
@@ -2122,8 +2153,10 @@ if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == i
     IDENTITY="0"
 elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 || $IDENTIFIER == iPad11,2 ]]; then
     IDENTITY="1"
-elif [[ $IDENTIFIER == iPhone11,6 ]]; then
+elif [[ $IDENTIFIER == iPhone11,6 || $IDENTIFIER == iPad11,3 ]]; then
     IDENTITY="2"
+elif [[ $IDENTIFIER == iPad11,4 ]]; then
+    IDENTITY="3"
 fi
 sudo KERNEL2="$KERNEL2" IDENTITY="$IDENTITY" python3 <<'PY'
 import os
@@ -2230,11 +2263,6 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER 
     sudo rm -rf $ramdisk_download_name
     ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/$restored work/restored_external
     ./bin/ipx_restored_patcher work/restored_external work/restored_patch
-    if [[ $IDENTIFIER == iPhone12,3 ]]; then
-        # skip baseband update on 11 Pro as apparantely that causes issue with a restore
-        mv -v work/restored_patch work/restored_pat
-        ./bin/restoredpatcher work/restored_pat work/restored_patch -b
-    fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
     ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/$restored
