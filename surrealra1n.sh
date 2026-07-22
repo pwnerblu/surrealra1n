@@ -2690,7 +2690,7 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     echo "Sideloading outside of TrollStore may or may not work, your mileage may vary."
     echo "And potentially other broken features"
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
-    if [[ $IDENTIFIER == iPhone11* ]]; then
+    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
         echo "You will need to tether restore to 14.0 beta 4 first, activate the device, then tether restore to the desired version."
     elif [[ $IDENTIFIER == iPhone12,8 ]]; then
         echo "You will need to tether restore to iOS 13.4.1 - 13.7 first, activate the device (may have to activate via Finder/iTunes/Legacy iOS Kit), then tether restore to the desired version."
@@ -2701,7 +2701,7 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
 elif [[ $VERSION == 16.* || $VERSION == 17.* || $VERSION == 18.* || $VERSION == 26.* ]]; then
     echo "iOS 16-26 A12/A13 downgrades are not supported at the moment"
     exit 1
-elif [[ $VERSION == 13.* || $VERSION == 12.* ]] && [[ $IDENTIFIER == iPhone11* ]]; then
+elif [[ $VERSION == 13.* || $VERSION == 12.* ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
     echo "SEP is incompatible"
     exit 1
 elif [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
