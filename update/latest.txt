@@ -1,5 +1,6 @@
-v2.0 beta 17 re-release
+v2.0 beta 18
 
 RELEASE NOTES:
 
-Switch to idevicerestore for SE 2 tether restores
+Add iPad Air 3 support (untested)
+Allow 11 Pro restores again, but really experimental
