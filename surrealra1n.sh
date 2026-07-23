@@ -2748,7 +2748,7 @@ if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
     python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
     echo "If you see the error: No such device (it may have been disconnected)"
     echo "This error is normal on Linux as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
-elif [[ $dist == 3 ]] && [[ $macos_ver == 27.* || $macos_ver == 26.* || $macos_ver == 15.* ]]; then
+elif [[ $macos_ver == 27.* || $macos_ver == 26.* || $macos_ver == 15.* ]]; then
     python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
     echo "usbliter8ctl may error out."
     echo "The error may be normal as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
