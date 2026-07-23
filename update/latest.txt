@@ -1,6 +1,5 @@
-v2.0 beta 18
+v2.0 beta 19
 
 RELEASE NOTES:
 
-Add iPad Air 3 support (untested)
-Allow 11 Pro restores again, but really experimental
+Update some stuff
