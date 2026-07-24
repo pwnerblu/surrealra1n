@@ -2716,14 +2716,27 @@ if [[ $IDENTIFIER == iPhone12* ]] && [[ $VERSION == 14.* ]]; then
     exit 1
 fi
 
-if [[ $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+if [[ $VERSION == 13.* || $VERSION == 14.* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     echo "Rose is very likely incompatible"
     echo "Not continuing."
     exit 1
+elif [[ $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+    echo "Rose may be incompatible"
+    echo "iOS 15.0-15.3.1 support is currently untested behavior!"
+    echo "The following issue may occur with incompatible Rose:"
+    echo "1. Restore may fail"
+    echo "2. An unable to boot device resulting from incomplete restore"
+    read -p "Are you sure you want to continue? (y/N): " confirm_full
+    if [[ $confirm_full == y || $confirm_full == Y ]]; then
+        echo "Proceeding. If the restore fails, please send full logs."
+        sleep 4
+    else
+        echo "Not proceeding"
+        exit 1
+    fi
 elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
-    echo "iOS $LATEST_VERSION Rose may or may not be compatible"
-    echo "Proceed with very extreme caution."
-    read -p "Press enter to continue"
+    echo "Rose should be compatible"
+    sleep 4
 fi
 
 dfu_helper_a11
