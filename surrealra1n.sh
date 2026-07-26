@@ -2726,7 +2726,11 @@ elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $ID
     read -p "Press enter to continue"
 fi
 
-dfu_helper_a11
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
 pwn_device
 det_rsep_flag
 
