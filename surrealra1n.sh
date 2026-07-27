@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 21"
+CURRENT_VERSION="v2.0 beta 21 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2666,13 +2666,14 @@ exit 0
 
 do_tethered_restore_a12_a13(){
 
-if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]] && [[ $dist == 3 || $dist == 4 ]]; then
-    echo ""
-elif [[ $dist != 3 && $dist != 4 ]]; then
-    echo ""
-else
-    echo "A12/A13 downgrades are only supported on macOS 15 and later."
-    exit 1
+# fix issue on Linux
+if [[ $dist == 3 || $dist == 4 ]]; then
+    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+        echo ""
+    else
+        echo "A12/A13 downgrades are only supported on macOS 15 and later."
+        exit 1
+    fi
 fi
 
 if [[ -z "$IPSW_PATH" ]]; then
