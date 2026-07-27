@@ -1,5 +1,6 @@
-v2.0 beta 19
+v2.0 beta 20
 
 RELEASE NOTES:
 
-Update some stuff
+Fixes an issue on macOS 10.15 where binary download may fail
+Limits A12/A13 downgrading on macOS to macOS 15 and later
