@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 19"
+CURRENT_VERSION="v2.0 beta 21 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -252,7 +252,7 @@ elif [[ $dist == 2 ]]; then
         echo "All dependencies are already installed."
     fi
 elif [[ $dist == 5 ]]; then
-    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc python3-pip python3-usb)
+    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc python3-pip python3-pyusb)
     MISSING_PACKAGES=()
 
     for pkg in "${DEPENDENCIES[@]}"; do
@@ -491,18 +491,20 @@ elif [[ $dist == 3 ]]; then
     # install Kernel64Patcher for tether booting iOS 13+
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
-    git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
-    cd Kernel64Patcher
-    make
-    cp Kernel64Patcher ../bin/Kernel64Patcher3
-    cd ..
-    rm -rf "Kernel64Patcher"
-    git clone https://github.com/pwnerblu/iBootpatch2 -b ipad6
-    cd iBootpatch2
-    make
-    cp iBootpatch2 ../bin/iBootpatch2
-    cd ..
-    rm -rf "iBootpatch2"
+    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+        cd Kernel64Patcher
+        make
+        cp Kernel64Patcher ../bin/Kernel64Patcher3
+        cd ..
+        rm -rf "Kernel64Patcher"
+        git clone https://github.com/pwnerblu/iBootpatch2 -b ipad6
+        cd iBootpatch2
+        make
+        cp iBootpatch2 ../bin/iBootpatch2
+        cd ..
+        rm -rf "iBootpatch2"
+    fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
@@ -590,18 +592,20 @@ elif [[ $dist == 4 ]]; then
     # install Kernel64Patcher for tether booting iOS 13+
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
-    git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
-    cd Kernel64Patcher
-    make
-    cp Kernel64Patcher ../bin/Kernel64Patcher3
-    cd ..
-    rm -rf "Kernel64Patcher"
-    git clone https://github.com/pwnerblu/iBootpatch2 -b ipad6
-    cd iBootpatch2
-    make
-    cp iBootpatch2 ../bin/iBootpatch2
-    cd ..
-    rm -rf "iBootpatch2"
+    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+        cd Kernel64Patcher
+        make
+        cp Kernel64Patcher ../bin/Kernel64Patcher3
+        cd ..
+        rm -rf "Kernel64Patcher"
+        git clone https://github.com/pwnerblu/iBootpatch2 -b ipad6
+        cd iBootpatch2
+        make
+        cp iBootpatch2 ../bin/iBootpatch2
+        cd ..
+        rm -rf "iBootpatch2"
+    fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
@@ -1187,9 +1191,9 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.9"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="26.5.2"
+    LATEST_VERSION="26.6"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.5.2"
+    LATEST_VERSION="26.6"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -2662,6 +2666,16 @@ exit 0
 
 do_tethered_restore_a12_a13(){
 
+# fix issue on Linux
+if [[ $dist == 3 || $dist == 4 ]]; then
+    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+        echo ""
+    else
+        echo "A12/A13 downgrades are only supported on macOS 15 and later."
+        exit 1
+    fi
+fi
+
 if [[ -z "$IPSW_PATH" ]]; then
     echo "No IPSW selected. Aborting."
     exit 1
@@ -2739,7 +2753,11 @@ elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $ID
     sleep 4
 fi
 
-dfu_helper_a11
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
 pwn_device
 det_rsep_flag
 
