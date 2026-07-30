@@ -2211,7 +2211,7 @@ else
     cp -v tmp1/Firmware/$fs_dmg_name.root_hash tmp2/Firmware/$fs_dmg_18_name.root_hash 
     cp -v tmp1/Firmware/$fs_dmg_name.mtree tmp2/Firmware/$fs_dmg_18_name.mtree 
 fi
-if [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12,8 ]]; then
+if [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
     echo "Using latest MTFW"
 elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
     echo "Using latest MTFW"
