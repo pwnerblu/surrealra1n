@@ -739,7 +739,7 @@ fi
 
 echo "Checking for dependencies that are required for usbliter8ctl, assuming Python3 is on your system"
 # Check required packages
-PACKAGES=("pyusb" "usb" "capstone")
+PACKAGES=("pyusb" "usb")
 for pkg in "${PACKAGES[@]}"; do
     if pip3 show "$pkg" &>/dev/null; then
         version=$(pip3 show "$pkg" | grep Version | awk '{print $2}')
