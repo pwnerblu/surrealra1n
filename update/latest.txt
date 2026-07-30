@@ -1,5 +1,6 @@
-v2.0 beta 21 re-release
+v2.0 beta 22
 
 RELEASE NOTES:
 
-A12/A13 linux fixes
+Add iOS 14 downgrades for all A13 devices, including iOS 13.4 - 15.3.1 support added for iPhone 11 models
+

@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 21 re-release"
+CURRENT_VERSION="v2.0 beta 22"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -450,7 +450,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fd2e870d832ea59c31a54377370ad469f70e6499/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/a1cbf15ba817d55f53cbaa865ee524d23904de5a/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -551,7 +551,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fd2e870d832ea59c31a54377370ad469f70e6499/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/a1cbf15ba817d55f53cbaa865ee524d23904de5a/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -652,7 +652,7 @@ else
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
     # sshpass
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fd2e870d832ea59c31a54377370ad469f70e6499/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/a1cbf15ba817d55f53cbaa865ee524d23904de5a/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     curl -L -o bin/trustcache https://github.com/CRKatri/trustcache/releases/download/v2.0/trustcache_linux_x86_64
@@ -991,6 +991,8 @@ elif [[ $IDENTIFIER == iPhone12,1 ]]; then
     AOP14="aopfw-iphone12baop.im4p"
     AOP="aopfw-iphone12baop.RELEASE.im4p"
     IOFW="SmartIOFirmware_ASCv2.im4p"
+    IOFW13="SmartIOFirmwareT8030.im4p"
+    AVE13="AppleAVE2FW.im4p"
     GFX="armfw_g12p.im4p"
     ISP="adc-zelus-n104.im4p"
     ANE="h12_ane_fw_metis.im4p"
@@ -1010,6 +1012,8 @@ elif [[ $IDENTIFIER == iPhone12,3 ]]; then
     AOP14="aopfw-iphone12aop.im4p"
     AOP="aopfw-iphone12aop.RELEASE.im4p"
     IOFW="SmartIOFirmware_ASCv2.im4p"
+    IOFW13="SmartIOFirmwareT8030.im4p"
+    AVE13="AppleAVE2FW.im4p"
     GFX="armfw_g12p.im4p"
     ISP="adc-zelus-d4x.im4p"
     ANE="h12_ane_fw_metis.im4p"
@@ -1029,6 +1033,8 @@ elif [[ $IDENTIFIER == iPhone12,5 ]]; then
     AOP14="aopfw-iphone12aop.im4p"
     AOP="aopfw-iphone12aop.RELEASE.im4p"
     IOFW="SmartIOFirmware_ASCv2.im4p"
+    IOFW13="SmartIOFirmwareT8030.im4p"
+    AVE13="AppleAVE2FW.im4p"
     GFX="armfw_g12p.im4p"
     ISP="adc-zelus-d4x.im4p"
     ANE="h12_ane_fw_metis.im4p"
@@ -2084,7 +2090,7 @@ unzip "$IPSW_PATH" -d tmp1
 unzip "$IPSW_PATH_LATEST" -d tmp2
 mkdir -p work
 # iBSS patching of course because yes
-if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
+if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
     if [[ $IDENTIFIER == iPhone11,8 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46828/6A00C15C-8AEB-490E-A468-04E28C68E7C9/iPhone11,8,iPhone12,1_14.0_18A373_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
@@ -2100,7 +2106,7 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]]; then
     ./bin/iBoot64Patcher2 work/iBSS.raw work/iBSS.patchboot -b "-v"
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
-elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* ]]; then
+elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
     if [[ $IDENTIFIER == iPhone11,8 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
@@ -2122,6 +2128,13 @@ elif [[ $VERSION == 15.* ]]; then
     ./bin/iBootPatch work/iBSS.raw work/iBSS.patchboot 
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
+elif [[ $VERSION == 14.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+    # use different patch method for A13 iOS 14. use updated iBootPatch
+    ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+    ./bin/iBootPatch work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
+    ./bin/iBootPatch work/iBSS.raw work/iBSS.patchboot
+    ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
+    ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 else
     ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/iBoot64Patcher2 work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
@@ -2134,7 +2147,7 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]] && [[ $BUILD != 18A5
     # update rd stuff
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
     restored="restored_update"
-elif [[ $IDENTIFIER == iPhone12,8 ]] && [[ $VERSION == 15.* ]]; then
+elif [[ $IDENTIFIER == iPhone12* ]] && [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     # update rd stuff
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
     restored="restored_update"
@@ -2189,7 +2202,7 @@ if [[ ($IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12*) &&
     cp -v tmp1/Firmware/$HAPTICASSET tmp2/Firmware/$HAPTICASSET
 fi
 cp -v tmp1/Firmware/all_flash/$DEVICETREE tmp2/Firmware/all_flash/$DEVICETREE
-if [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12,8 ]]; then
+if [[ $VERSION == 13.* ]]; then
     cp -v tmp1/Firmware/$IOFW13 tmp2/Firmware/$IOFW
     cp -v tmp1/Firmware/ave/$AVE13 tmp2/Firmware/ave/$AVE
 else
@@ -2198,7 +2211,7 @@ else
     cp -v tmp1/Firmware/$fs_dmg_name.root_hash tmp2/Firmware/$fs_dmg_18_name.root_hash 
     cp -v tmp1/Firmware/$fs_dmg_name.mtree tmp2/Firmware/$fs_dmg_18_name.mtree 
 fi
-if [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12,8 ]]; then
+if [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
     echo "Using latest MTFW"
 elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
     echo "Using latest MTFW"
@@ -2253,6 +2266,13 @@ if [[ $VERSION == 15.* ]]; then
         ramdisk_download_name="018-79907-001.dmg"
     fi
     ramdisk_url="https://updates.cdn-apple.com/2021FallFCS/fullrestores/002-02910/AF984499-D03A-43E7-9472-6D16BA756E5E/iPhone10,3,iPhone10,6_15.0_19A346_Restore.ipsw"
+elif [[ $VERSION == 13.* ]]; then
+    if [[ $restored == "restored_update" ]]; then
+        ramdisk_download_name="048-96454-001.dmg"
+    else
+        ramdisk_download_name="048-96245-001.dmg"
+    fi
+    ramdisk_url="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-08721/B905C96C-C875-11E9-8C18-F4CC329DFA63/iPhone10,3,iPhone10,6_13.0_17A577_Restore.ipsw"
 else
     if [[ $restored == "restored_update" ]]; then
         ramdisk_download_name="048-58813-634.dmg"
@@ -2273,7 +2293,7 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER 
     ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/$restored
     ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/$restored
 fi
-if [[ $VERSION == 15.* ]]; then
+if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
     if [[ $IDENTIFIER != iPhone12,8 ]]; then
         ./bin/trustcache append work/trustcache.raw work/restored_patch
@@ -2708,7 +2728,7 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
         echo "You will need to tether restore to 14.0 beta 4 first, activate the device, then tether restore to the desired version."
     elif [[ $IDENTIFIER == iPhone12,8 ]]; then
         echo "You will need to tether restore to iOS 13.4.1 - 13.7 first, activate the device (may have to activate via Finder/iTunes/Legacy iOS Kit), then tether restore to the desired version."
-        echo "You may also stay on iOS 13 if desired more than iOS 15."
+        echo "You may also stay on iOS 13 if desired more than iOS 14/15."
         echo "Haptic home button will not work."
     fi
     read -p "Press enter to continue"
@@ -2718,26 +2738,21 @@ elif [[ $VERSION == 16.* || $VERSION == 17.* || $VERSION == 18.* || $VERSION == 
 elif [[ $VERSION == 13.* || $VERSION == 12.* ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
     echo "SEP is incompatible"
     exit 1
-elif [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+elif [[ $VERSION == 13.4* || $VERSION == 13.5* || $VERSION == 13.6* || $VERSION == 13.7* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
     echo "SEP is partially incompatible"
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     echo "Haptic home button will not work, and AssistiveTouch home button will also not appear"
+    echo "On iPhone 11 models, it will be basically fully functional except for UWB, Face ID, and Passcode"
     read -p "Press enter to continue"
-fi
-
-if [[ $IDENTIFIER == iPhone12* ]] && [[ $VERSION == 14.* ]]; then
-    echo "iOS 14 downgrades on A13 are not supported at the moment"
+elif [[ $VERSION == 13.0* || $VERSION == 13.1* || $VERSION == 13.2* || $VERSION == 13.3* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
+    echo "SEP is incompatible"
     exit 1
 fi
 
-if [[ $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.0* || $VERSION == 15.1* || $VERSION == 15.2* || $VERSION == 15.3* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
-    echo "Rose is very likely incompatible"
-    echo "Not continuing."
-    exit 1
-elif [[ $VERSION == 15.4* || $VERSION == 15.5* || $VERSION == 15.6* ]] && [[ $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
-    echo "iOS $LATEST_VERSION Rose may or may not be compatible"
-    echo "Proceed with very extreme caution."
-    read -p "Press enter to continue"
+if [[ $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone12,5 ]]; then
+    echo "UWB may or may not work."
+    echo "This means: Precise findings for AirTags and such."
+    sleep 6
 fi
 
 if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
