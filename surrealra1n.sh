@@ -1904,8 +1904,6 @@ fi
 
 make_custom_ipsw_ios16(){
 
-mkdir -p restorefiles
-mkdir -p restorefiles/$IDENTIFIER
 mkdir -p restorefiles/$IDENTIFIER/$VERSION
 unzip "$IPSW_PATH" -d tmp1
 unzip "$IPSW_PATH_LATEST" -d tmp2
@@ -1967,8 +1965,6 @@ rm -rf "work"
 
 make_custom_ipsw(){
 
-mkdir -p restorefiles
-mkdir -p restorefiles/$IDENTIFIER
 mkdir -p restorefiles/$IDENTIFIER/$VERSION
 unzip "$IPSW_PATH" -d tmp1
 unzip "$IPSW_PATH_LATEST" -d tmp2
@@ -2080,11 +2076,7 @@ rm -rf "work"
 make_custom_ipsw_a12_ios14(){
 
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
-mkdir -p restorefiles
-mkdir -p restorefiles/$IDENTIFIER
 mkdir -p restorefiles/$IDENTIFIER/$VERSION
-mkdir -p boot
-mkdir -p boot/$IDENTIFIER
 mkdir -p boot/$IDENTIFIER/$VERSION
 unzip "$IPSW_PATH" -d tmp1
 unzip "$IPSW_PATH_LATEST" -d tmp2
@@ -2414,8 +2406,6 @@ else
     ibootpatcher="iBoot64Patcher"
 fi
 rm -rf "$bootdir"
-mkdir -p boot
-mkdir -p boot/$IDENTIFIER
 mkdir -p boot/$IDENTIFIER/$VERSION
 if [[ $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
     unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d work
@@ -2858,8 +2848,6 @@ elif [[ $VERSION == 8.* ]]; then
     grow_to="3200000000"
 fi
 
-mkdir -p noseprestore
-mkdir -p noseprestore/$IDENTIFIER
 mkdir -p noseprestore/$IDENTIFIER/$VERSION
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -2965,8 +2953,6 @@ IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 DTRE_KEY=$(grep "dtre-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 KRNL_KEY=$(grep "krnl-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 bootdir="boot/$IDENTIFIER/$VERSION"
-mkdir -p boot
-mkdir -p boot/$IDENTIFIER
 mkdir -p boot/$IDENTIFIER/$VERSION
 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS_2" -d work
 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC_2" -d work
