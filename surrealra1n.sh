@@ -2094,8 +2094,10 @@ mkdir -p work
 ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
 ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 #
-if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
+if [[ $VERSION == 16.4* || $VERSION == 16.5* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 116000000)
+elif [[ $VERSION == 16.6* ]]; then
+    restore_ramdisk_dmg=$(find_dmg tmp1 largest 118000000)
 elif [[ $VERSION == 16.3* || $VERSION == 16.2* || $VERSION == 16.1* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 114000000)
 else
