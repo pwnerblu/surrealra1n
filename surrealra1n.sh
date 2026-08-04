@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 24"
+CURRENT_VERSION="v2.0 beta 25 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -491,7 +491,7 @@ elif [[ $dist == 3 ]]; then
     # install Kernel64Patcher for tether booting iOS 13+
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
-    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+    if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
         git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
         cd Kernel64Patcher
         make
@@ -592,7 +592,7 @@ elif [[ $dist == 4 ]]; then
     # install Kernel64Patcher for tether booting iOS 13+
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
-    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+    if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
         git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
         cd Kernel64Patcher
         make
@@ -2912,10 +2912,10 @@ do_tethered_restore_a12_a13(){
 
 # fix issue on Linux
 if [[ $dist == 3 || $dist == 4 ]]; then
-    if [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+    if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
         echo ""
     else
-        echo "A12/A13 downgrades are only supported on macOS 15 and later."
+        echo "A12/A13 downgrades are only supported on macOS 12 and later."
         exit 1
     fi
 fi
