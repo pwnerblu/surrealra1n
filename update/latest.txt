@@ -1,6 +1,5 @@
-v2.0 beta 22
+v2.0 beta 23
 
 RELEASE NOTES:
 
-Add iOS 14 downgrades for all A13 devices, including iOS 13.4 - 15.3.1 support added for iPhone 11 models
-
+A12/A13 iOS 16 downgrades (macOS only)
