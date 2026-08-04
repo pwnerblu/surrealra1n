@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 23 re-release"
+CURRENT_VERSION="v2.0 beta 24"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -3556,4 +3556,3 @@ fi
 }
 
 main_menu
-
