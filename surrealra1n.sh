@@ -2075,10 +2075,15 @@ rm -rf "work"
 
 make_custom_ipsw_a12_ios16(){
 
+# iOS 16.0.x is supported on both macOS and Linux
+# iOS 16.1+ is macOS-only due to technical difficulties (per upstream developer)
 if [[ $dist == 3 || $dist == 4 ]]; then
     echo ""
+elif [[ $VERSION == 16.0* ]]; then
+    echo "iOS 16.0.x A12/A13 downgrade on Linux"
 else
-    echo "A12/A13 iOS 16 downgrades are not supported on Linux yet!"
+    echo "A12/A13 iOS 16.1+ downgrades are not supported on Linux yet!"
+    echo "Only iOS 16.0.x is currently supported on Linux."
     exit 1
 fi
 
@@ -2200,55 +2205,98 @@ cp -v tmp1/Firmware/$cryptex_app_name.root_hash tmp2/Firmware/$cryptex_app_name_
 rm -rf tmp2/$KERNEL
 ./bin/img4 -i work/kernelboot.patch -o tmp2/$KERNEL2 -A -T krnl -J || true
 cp -v tmp1/$KERNEL tmp2/$KERNEL
-./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.dmg
-hdiutil attach work/ramdisk.dmg -mountpoint rdwork
-cp -v rdwork/usr/sbin/asr work/asr
-./bin/asr64_patcher work/asr work/asr_patched
-./bin/ldid -e work/asr > work/ents.plist
-./bin/ldid -Swork/ents.plist work/asr_patched
-rm -rf rdwork/usr/sbin/asr 
-cp -v work/asr_patched rdwork/usr/sbin/asr
-chmod 755 rdwork/usr/sbin/asr
-#
-cp -v rdwork/usr/lib/libimg4.dylib work/libimg4.dylib
-./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
-./bin/ldid -Swork/ents.plist work/libimg4.patch
-rm -rf rdwork/usr/lib/libimg4.dylib 
-cp -v work/libimg4.patch rdwork/usr/lib/libimg4.dylib
-chmod 755 rdwork/usr/lib/libimg4.dylib
-# restored patch start
-if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
-    ramdisk_ipsw_url="https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-68311/B777E36E-32B8-4DEF-91CE-9909B04FD22D/iPhone10,3,iPhone10,6_16.4_20E247_Restore.ipsw"
-    ramdisk_dmg="078-23800-379.dmg"
-elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
-    ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
-    ramdisk_dmg="078-64668-109.dmg"
+# ramdisk patching: use hdiutil on macOS, hfsplus on Linux
+if [[ $dist == 3 || $dist == 4 ]]; then
+    # macOS: use hdiutil to mount/modify the ramdisk DMG
+    ./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.dmg
+    hdiutil attach work/ramdisk.dmg -mountpoint rdwork
+    cp -v rdwork/usr/sbin/asr work/asr
+    ./bin/asr64_patcher work/asr work/asr_patched
+    ./bin/ldid -e work/asr > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/asr_patched
+    rm -rf rdwork/usr/sbin/asr 
+    cp -v work/asr_patched rdwork/usr/sbin/asr
+    chmod 755 rdwork/usr/sbin/asr
+    #
+    cp -v rdwork/usr/lib/libimg4.dylib work/libimg4.dylib
+    ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+    ./bin/ldid -Swork/ents.plist work/libimg4.patch
+    rm -rf rdwork/usr/lib/libimg4.dylib 
+    cp -v work/libimg4.patch rdwork/usr/lib/libimg4.dylib
+    chmod 755 rdwork/usr/lib/libimg4.dylib
+    # restored patch start
+    if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-68311/B777E36E-32B8-4DEF-91CE-9909B04FD22D/iPhone10,3,iPhone10,6_16.4_20E247_Restore.ipsw"
+        ramdisk_dmg="078-23800-379.dmg"
+    elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
+        ramdisk_dmg="078-64668-109.dmg"
+    else
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
+        ramdisk_dmg="098-08863-001.dmg"
+    fi
+    cd work
+    sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url
+    cd ..
+    ./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.dmg
+    hdiutil attach work/ramdisk2.dmg -mountpoint rdwork2
+    cp -v rdwork2/usr/local/bin/restored_external work/restored_external
+    hdiutil detach rdwork2
+    ./bin/restoredpatcher work/restored_external work/restored_patch -c # patch cryptex1 install validation
+    ./bin/ldid -e work/restored_external > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/restored_patch
+    rm -rf rdwork/usr/local/bin/restored_external
+    cp -v work/restored_patch rdwork/usr/local/bin/restored_external
+    chmod 755 rdwork/usr/local/bin/restored_external
+    hdiutil detach rdwork
+    # restored end
+    ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
+    ./bin/trustcache append work/trustcache.raw work/restored_patch
+    ./bin/trustcache append work/trustcache.raw work/asr_patched
+    ./bin/trustcache append work/trustcache.raw work/libimg4.patch
+    ./bin/img4 -i work/trustcache.raw -o tmp2/Firmware/$ramdisk_dmg_name_18.trustcache -A -T rtsc
+    # pack rdsk into im4p
+    ./bin/img4 -i work/ramdisk.dmg -o $restore_ramdisk_dmg_18 -A -T rdsk
 else
+    # Linux: use hfsplus CLI to extract/replace files in raw HFS+ image
+    ./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
+    ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+    ./bin/asr64_patcher work/asr work/asr_patched
+    ./bin/ldid -e work/asr > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/asr_patched
+    ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
+    ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+    #
+    ./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
+    ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+    ./bin/ldid -Swork/ents.plist work/libimg4.patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib 
+    ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+    # restored patch start (iOS 16.0.x on Linux uses the 16.0 ramdisk)
     ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
     ramdisk_dmg="098-08863-001.dmg"
+    cd work
+    sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url
+    cd ..
+    ./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.raw
+    ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
+    ./bin/restoredpatcher work/restored_external work/restored_patch -c # patch cryptex1 install validation
+    ./bin/ldid -e work/restored_external > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/restored_patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+    # restored end
+    ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
+    ./bin/trustcache append work/trustcache.raw work/restored_patch
+    ./bin/trustcache append work/trustcache.raw work/asr_patched
+    ./bin/trustcache append work/trustcache.raw work/libimg4.patch
+    ./bin/img4 -i work/trustcache.raw -o tmp2/Firmware/$ramdisk_dmg_name_18.trustcache -A -T rtsc
+    # pack rdsk into im4p
+    ./bin/img4 -i work/ramdisk.raw -o $restore_ramdisk_dmg_18 -A -T rdsk
 fi
-cd work
-sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url
-cd ..
-./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.dmg
-hdiutil attach work/ramdisk2.dmg -mountpoint rdwork2
-cp -v rdwork2/usr/local/bin/restored_external work/restored_external
-hdiutil detach rdwork2
-./bin/restoredpatcher work/restored_external work/restored_patch -c # patch cryptex1 install validation
-./bin/ldid -e work/restored_external > work/ents.plist
-./bin/ldid -Swork/ents.plist work/restored_patch
-rm -rf rdwork/usr/local/bin/restored_external
-cp -v work/restored_patch rdwork/usr/local/bin/restored_external
-chmod 755 rdwork/usr/local/bin/restored_external
-hdiutil detach rdwork
-# restored end
-./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
-./bin/trustcache append work/trustcache.raw work/restored_patch
-./bin/trustcache append work/trustcache.raw work/asr_patched
-./bin/trustcache append work/trustcache.raw work/libimg4.patch
-./bin/img4 -i work/trustcache.raw -o tmp2/Firmware/$ramdisk_dmg_name_18.trustcache -A -T rtsc
-# pack rdsk into im4p
-./bin/img4 -i work/ramdisk.dmg -o $restore_ramdisk_dmg_18 -A -T rdsk
 cd tmp2
 zip -0 -r ../custom.ipsw *
 cd ..
@@ -3508,3 +3556,4 @@ fi
 }
 
 main_menu
+
