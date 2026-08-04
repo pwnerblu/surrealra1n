@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 23"
+CURRENT_VERSION="v2.0 beta 23 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1220,7 +1220,7 @@ IBEC7="iBEC.$BOARDID.RELEASE.im4p"
 KERNEL10="kernelcache.release.$BOARDID2"
 
 INFO_TEXT="surrealra1n - $CURRENT_VERSION
-Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 15.8.5
+Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1
 This build is an early beta. Use at your own risk, and expect bugs.
 
 Uses latest SHSH blobs (for tethered downgrades)
@@ -2098,8 +2098,14 @@ if [[ $VERSION == 16.4* || $VERSION == 16.5* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 116000000)
 elif [[ $VERSION == 16.6* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 118000000)
-elif [[ $VERSION == 16.3* || $VERSION == 16.2* || $VERSION == 16.1* ]]; then
+elif [[ $VERSION == 16.3* || $VERSION == 16.2* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 114000000)
+elif [[ $VERSION == 16.1.2 ]]; then
+    restore_ramdisk_dmg="tmp1/078-65071-114.dmg"
+elif [[ $VERSION == 16.1.1 ]]; then
+    restore_ramdisk_dmg="tmp1/078-65071-113.dmg"
+elif [[ $VERSION == 16.1 ]]; then
+    restore_ramdisk_dmg="tmp1/078-65071-107.dmg"
 else
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 148000000)
 fi
@@ -2905,6 +2911,7 @@ if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
 elif [[ $VERSION == 16.* ]]; then
     echo "Haptic home button will not work."
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
+    echo "Since iOS 16 should activate normally, there is so need to head to iOS 13.x or iOS 14.0 beta 4."
     read -p "Press enter to continue"
 elif [[ $VERSION == 17.* || $VERSION == 18.* || $VERSION == 26.* ]]; then
     echo "iOS 17-26 A12/A13 downgrades are not supported at the moment"
