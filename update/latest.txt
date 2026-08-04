@@ -1,5 +1,6 @@
-v2.0 beta 23 re-release
+v2.0 beta 24
 
 RELEASE NOTES:
 
-Fix iOS 16.1.x restores on A12/A13
+Add support for iOS 16.0.x tethered restores for A12/A13 on Linux
+Thanks to @BatuBey5G for the PR!
