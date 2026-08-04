@@ -1,5 +1,5 @@
-v2.0 beta 25 re-release
+v2.0 beta 26
 
 RELEASE NOTES:
 
-Lower minimum macOS version for A12/A13 restores on macOS from macOS 15 to macOS 12
+experimental
