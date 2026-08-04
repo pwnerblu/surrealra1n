@@ -1,5 +1,5 @@
-v2.0 beta 23
+v2.0 beta 23 re-release
 
 RELEASE NOTES:
 
-A12/A13 iOS 16 downgrades (macOS only)
+Fix iOS 16.1.x restores on A12/A13
