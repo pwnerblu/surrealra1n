@@ -165,7 +165,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     fi
 
     # Check for missing brew dependencies
-    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils")
+    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb")
     for dep in "${BREW_DEPS[@]}"; do
         if ! brew list "$dep" &>/dev/null; then
             echo "[$dep] is not installed. Installing..."
