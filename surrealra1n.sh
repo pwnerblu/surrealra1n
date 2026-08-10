@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 26 re-release"
+CURRENT_VERSION="v2.0 beta 27"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1195,11 +1195,11 @@ if [[ $IDENTIFIER == iPad5* ]]; then
 elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
-    LATEST_VERSION="18.7.9"
+    LATEST_VERSION="18.7.10"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="26.6"
+    LATEST_VERSION="26.6.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.6"
+    LATEST_VERSION="26.6.1"
 else
     LATEST_VERSION="12.5.8"
 fi
