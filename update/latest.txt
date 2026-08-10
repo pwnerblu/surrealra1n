@@ -1,5 +1,6 @@
-v2.0 beta 27 re-release
+v2.0 beta 27 re-release 2
 
 RELEASE NOTES:
 
-Revert changes
+Add iOS 16.1+ tether downgrade support on Linux
+Thanks to @BatuBey5G for the PR!
