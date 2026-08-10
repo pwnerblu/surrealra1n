@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 26 re-release"
+CURRENT_VERSION="v2.0 beta 28"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -351,7 +351,7 @@ curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/he
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
+if [[ $LATEST_VERSION == $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
     echo "RELEASE NOTES:"
     echo "$RELEASE_NOTES"
