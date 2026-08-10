@@ -2262,7 +2262,7 @@ elif [[ $VERSION == 16.0* ]]; then
     echo "iOS 16.0.x A12/A13 downgrade on Linux"
 else
     echo ""
-    echo "WARNING: iOS 16.1+ restores on Linux are EXTREMELY EXPERIMENTAL. Proceed with caution."
+    echo "WARNING: iOS 16.1+ restores on Linux are experimental. Proceed with caution."
     echo ""
     echo "This functionality is brand new and has NOT received the same level of testing as the"
     echo "macOS implementation. It patches the APFS restore ramdisk by building and loading the"
@@ -3227,7 +3227,7 @@ elif [[ $VERSION == 16.* ]]; then
     echo "Since iOS 16 should activate normally, there is so need to head to iOS 13.x or iOS 14.0 beta 4."
     if [[ $dist != 3 && $dist != 4 ]] && [[ $VERSION != 16.0* ]]; then
         echo ""
-        echo "WARNING: iOS 16.1+ restores on Linux are EXTREMELY EXPERIMENTAL. Proceed with caution."
+        echo "WARNING: iOS 16.1+ restores on Linux are experimental. Proceed with caution."
         echo "This build patches the APFS restore ramdisk with the experimental linux-apfs-rw kernel"
         echo "module. It has not received the same level of testing as the macOS implementation, and"
         echo "a failed or interrupted restore may leave the device requiring recovery or restore."
