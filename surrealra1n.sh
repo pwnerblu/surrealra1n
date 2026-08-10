@@ -450,7 +450,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/6fd046857165306c309ecfa7a2e7af2aeb995de3/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -492,7 +492,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
     if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
-        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive -b dev
         cd Kernel64Patcher
         make
         cp Kernel64Patcher ../bin/Kernel64Patcher3
@@ -551,7 +551,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/6fd046857165306c309ecfa7a2e7af2aeb995de3/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -593,7 +593,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
     if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
-        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive -b dev
         cd Kernel64Patcher
         make
         cp Kernel64Patcher ../bin/Kernel64Patcher3
@@ -2118,6 +2118,8 @@ if [[ $VERSION == 16.4* || $VERSION == 16.5* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 116000000)
 elif [[ $VERSION == 16.6* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 118000000)
+elif [[ $VERSION == 17.0* ]]; then
+    restore_ramdisk_dmg=$(find_dmg tmp1 largest 131000000)
 elif [[ $VERSION == 16.3* || $VERSION == 16.2* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 114000000)
 elif [[ $VERSION == 16.1.2 ]]; then
@@ -2129,7 +2131,7 @@ elif [[ $VERSION == 16.1 ]]; then
 else
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 148000000)
 fi
-cryptex_os=$(find_dmg tmp1 largest 3000000000)
+cryptex_os=$(find_dmg tmp1 largest 3500000000)
 cryptex_os_18=$(find_dmg_arm64e tmp2 largest 2100000000)
 cryptex_app=$(find_dmg tmp1 smallest)
 cryptex_app_18=$(find_dmg tmp2 smallest)
@@ -2216,10 +2218,25 @@ cp -v tmp1/Firmware/$cryptex_app_name.trustcache tmp2/Firmware/$cryptex_app_name
 cp -v tmp1/Firmware/$cryptex_app_name.root_hash tmp2/Firmware/$cryptex_app_name_18.root_hash
 #
 ./bin/img4tool -e tmp1/$KERNEL -o work/kernel.raw
-./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -e -o -we # patch cryptex1 validations
+if [[ $VERSION == 16.* ]]; then
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we # patch cryptex1 validations
+else
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we -i -ue # patch cryptex1 validations
+fi
 rm -rf tmp2/$KERNEL
 ./bin/img4 -i work/kernelboot.patch -o tmp2/$KERNEL2 -A -T krnl -J || true
-cp -v tmp1/$KERNEL tmp2/$KERNEL
+if [[ $VERSION == 16.* ]]; then
+    cp -v tmp1/$KERNEL tmp2/$KERNEL
+else
+    # do patch the other Way
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernel.patch -ue
+    ./bin/img4 -i work/kernel.patch -o tmp2/$KERNEL -A -T krnl -J || true
+    # now patch the devicetree
+    curl -L -o bin/dtpatch.py https://github.com/pwnerblu/usbliter8-fun/raw/refs/heads/main/work-27.0b4-n104/patch_dt2.py
+    ./bin/img4 -i tmp1/Firmware/all_flash/$DEVICETREE -o tmp1/DeviceTree.raw
+    python3 bin/dtpatch.py tmp1/DeviceTree.raw -o tmp1/DeviceTree.patch
+    ./bin/img4 -i tmp1/DeviceTree.patch -o tmp2/Firmware/all_flash/$DEVICETREE -A -T dtre
+fi
 # ramdisk patching: use hdiutil on macOS, hfsplus on Linux
 if [[ $dist == 3 || $dist == 4 ]]; then
     # macOS: use hdiutil to mount/modify the ramdisk DMG
@@ -2243,6 +2260,9 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-68311/B777E36E-32B8-4DEF-91CE-9909B04FD22D/iPhone10,3,iPhone10,6_16.4_20E247_Restore.ipsw"
         ramdisk_dmg="078-23800-379.dmg"
+    elif [[ $VERSION == 17.* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-49474/5DF24914-F32D-4940-830F-3D8C8860A75B/iPad_64bit_TouchID_ASTC_17.0_21A329_Restore.ipsw"
+        ramdisk_dmg="097-83622-002.dmg"
     elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
         ramdisk_dmg="078-64668-109.dmg"
@@ -2976,6 +2996,12 @@ elif [[ $VERSION == 16.* ]]; then
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     echo "Since iOS 16 should activate normally, there is so need to head to iOS 13.x or iOS 14.0 beta 4."
     read -p "Press enter to continue"
+elif [[ $VERSION == 17.0 ]]; then
+    echo "iOS 17.x support is really experimental and limited to 17.0 at the moment."
+    echo "You may experience a ton of issues (including broken baseband on certain devices), as we have to patch things to get the device booted."
+    echo "Device will be unable to activate. Do not flood GitHub issues when your device cannot activate."
+    echo "You should only do this if you are researching or wanting to contribute fixing problems, this is not for the Average user."
+    read -p "Press enter to continue"
 elif [[ $VERSION == 17.* || $VERSION == 18.* || $VERSION == 26.* ]]; then
     echo "iOS 17-26 A12/A13 downgrades are not supported at the moment"
     exit 1
@@ -3011,7 +3037,7 @@ restoredir="restorefiles/$IDENTIFIER/$VERSION"
 
 if [[ ! -f "$restoredir/custom.ipsw" ]]; then
     echo "Restore files does not exist, making new ones"
-    if [[ $VERSION == 16.* ]]; then
+    if [[ $VERSION == 16.* || $VERSION == 17.* ]]; then
         make_custom_ipsw_a12_ios16
     else
         make_custom_ipsw_a12_ios14
@@ -3021,7 +3047,7 @@ else
     read -p "Would you like to make new ones? (y/n): " restorefiles_remake
     if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
         rm -rf "$restoredir"
-        if [[ $VERSION == 16.* ]]; then
+        if [[ $VERSION == 16.* || $VERSION == 17.* ]]; then
             make_custom_ipsw_a12_ios16
         else
             make_custom_ipsw_a12_ios14
@@ -3057,7 +3083,7 @@ if [[ $IDENTIFIER == iPhone12,8 ]]; then
     sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/custom.ipsw
     echo "Restore has finished! Read above if there are any errors"
     exit 0
-elif [[ $VERSION == 16.* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+elif [[ $VERSION == 16.* || $VERSION == 17.* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/custom.ipsw
     echo "Restore has finished! Read above if there are any errors"
     exit 0
