@@ -2088,18 +2088,194 @@ rm -rf "work"
 
 }
 
+# ---- Linux APFS helpers (EXPERIMENTAL) ----
+# iOS 16.1+ restore ramdisks are raw APFS containers, which the Linux hfsplus
+# CLI cannot open (it only handles the HFS+ ramdisks used up to iOS 16.0.x).
+# On Linux these ramdisks are patched by mounting them through the
+# linux-apfs-rw kernel module (https://github.com/linux-apfs/linux-apfs-rw),
+# mirroring the hdiutil attach flow used on macOS. Everything in this block is
+# Linux-only; macOS keeps using hdiutil.
+
+APFS_TRACK_FILE="apfs/active_mounts"
+
+# detect_fs_type <image> - print "HFS", "APFS" or "UNKNOWN" for a raw
+# filesystem image (as produced by `img4 -i` from a restore ramdisk).
+detect_fs_type() {
+    local img="$1" sig
+    if [[ ! -f "$img" ]]; then
+        echo "UNKNOWN"
+        return
+    fi
+    # HFS+ / HFSX volumes: signature "H+" / "HX" at offset 1024.
+    # (tr strips null bytes so bash does not warn on binary input.)
+    sig=$(dd if="$img" bs=1 skip=1024 count=2 2>/dev/null | tr -d '\000')
+    if [[ $sig == "H+" || $sig == "HX" ]]; then
+        echo "HFS"
+        return
+    fi
+    # APFS container superblocks: magic "NXSB" at offset 32
+    sig=$(dd if="$img" bs=1 skip=32 count=4 2>/dev/null | tr -d '\000')
+    if [[ $sig == "NXSB" ]]; then
+        echo "APFS"
+        return
+    fi
+    echo "UNKNOWN"
+}
+
+# cleanup_apfs - unmount and detach every APFS loop mount we created, so a
+# failed or interrupted run never leaves stale mounts or loop devices behind.
+# Only entries recorded by apfs_mount in $APFS_TRACK_FILE are touched, so
+# unrelated host loop devices/filesystems are never affected.
+cleanup_apfs() {
+    if [[ ! -f "$APFS_TRACK_FILE" ]]; then
+        return
+    fi
+    local loopdev mnt
+    while read -r loopdev mnt; do
+        [[ -z "$loopdev" || -z "$mnt" ]] && continue
+        sudo umount "$mnt" 2>/dev/null || true
+        sudo losetup -d "$loopdev" 2>/dev/null || true
+    done < "$APFS_TRACK_FILE"
+    rm -f "$APFS_TRACK_FILE"
+}
+
+# setup_apfs_module - make sure the linux-apfs-rw kernel module is built for
+# the running kernel and loaded. Building requires the matching kernel headers;
+# loading requires root and may be blocked by Secure Boot.
+setup_apfs_module() {
+    if [[ $dist == 3 || $dist == 4 ]]; then
+        return
+    fi
+    mkdir -p apfs
+    if [[ -f apfs/apfs.ko && -f apfs/apfs.kernel ]] && [[ "$(cat apfs/apfs.kernel 2>/dev/null)" == "$(uname -r)" ]]; then
+        echo "Found APFS kernel module built for kernel $(uname -r)."
+    else
+        echo "Building the APFS kernel module for kernel $(uname -r)..."
+        if [[ ! -d "/lib/modules/$(uname -r)/build" ]]; then
+            echo "Kernel headers for $(uname -r) are missing, installing..."
+            if [[ $dist == 1 ]]; then
+                sudo apt-get install -y "linux-headers-$(uname -r)" || true
+            elif [[ $dist == 2 ]]; then
+                sudo pacman -S --needed linux-headers || true
+            elif [[ $dist == 5 ]]; then
+                sudo dnf install -y kernel-devel || true
+            fi
+        fi
+        if [[ ! -d "/lib/modules/$(uname -r)/build" ]]; then
+            echo "[!] Could not find or install kernel headers for $(uname -r)."
+            echo "    Install them manually (Debian/Ubuntu: linux-headers-$(uname -r), Arch: linux-headers, Fedora: kernel-devel) and re-run."
+            exit 1
+        fi
+        rm -rf apfs/linux-apfs-rw
+        if ! git clone --depth 1 https://github.com/linux-apfs/linux-apfs-rw apfs/linux-apfs-rw; then
+            echo "[!] Failed to clone linux-apfs-rw (network issue?)."
+            echo "    Check your internet connection and re-run."
+            exit 1
+        fi
+        if ! ( cd apfs/linux-apfs-rw && make ); then
+            echo "[!] Failed to build the APFS kernel module (linux-apfs-rw)."
+            echo "    See the build output above; the module needs kernel headers matching $(uname -r)."
+            exit 1
+        fi
+        cp apfs/linux-apfs-rw/apfs.ko apfs/apfs.ko
+        rm -rf apfs/linux-apfs-rw
+        echo "$(uname -r)" > apfs/apfs.kernel
+    fi
+    if ! lsmod 2>/dev/null | grep -q "^apfs "; then
+        if command -v mokutil &>/dev/null && [[ "$(mokutil --sb-state 2>/dev/null)" == *enabled* ]]; then
+            echo "WARNING: Secure Boot is enabled. Loading an unsigned kernel module may be blocked."
+            echo "         If loading fails below, enroll the module signature or disable Secure Boot."
+        fi
+        echo "Loading the APFS kernel module..."
+        sudo modprobe libcrc32c 2>/dev/null || true
+        if ! sudo insmod apfs/apfs.ko; then
+            echo "[!] Failed to load the APFS kernel module."
+            echo "    Check 'dmesg | grep -i apfs'. If Secure Boot is enabled, enroll the module"
+            echo "    signature with mokutil or disable Secure Boot, then re-run."
+            exit 1
+        fi
+    fi
+    # Clean up any mounts left behind by a previously interrupted run, then
+    # make sure they are also cleaned up if this run gets interrupted.
+    cleanup_apfs
+    trap cleanup_apfs EXIT
+}
+
+# apfs_mount <image> <mountpoint> <ro|rw> - mount an APFS raw image through a
+# loop device using the apfs kernel module. The loop device and mountpoint are
+# recorded in $APFS_TRACK_FILE so cleanup_apfs can undo them.
+apfs_mount() {
+    local img="$1" mnt="$2" mode="${3:-ro}"
+    local opts="ro"
+    if [[ $mode == "rw" ]]; then
+        # The mount is done with sudo (root-owned), but the ramdisk files are
+        # patched as the non-root user, mirroring the macOS hdiutil flow. The
+        # uid/gid overrides make the mount appear user-owned so plain cp/rm/chmod
+        # work, and new files get the same user ownership macOS produces.
+        opts="readwrite,uid=$(id -u),gid=$(id -g)"
+    fi
+    local loopdev
+    loopdev=$(sudo losetup -f --show "$img" 2>/dev/null) || loopdev=""
+    if [[ -z "$loopdev" ]]; then
+        echo "[!] Failed to get a free loop device for $img"
+        echo "    Make sure loop devices are available (e.g. 'modprobe loop') and try again."
+        exit 1
+    fi
+    echo "$loopdev $mnt" >> "$APFS_TRACK_FILE"
+    if ! sudo mount -t apfs -o "$opts" "$loopdev" "$mnt"; then
+        echo "[!] Failed to mount $img ($loopdev) as APFS $mode."
+        echo "    Check 'dmesg | grep -i apfs' for details."
+        cleanup_apfs
+        exit 1
+    fi
+}
+
+# apfs_umount <mountpoint> - unmount and detach the loop device for a mount
+# previously created by apfs_mount.
+apfs_umount() {
+    local mnt="$1" loopdev
+    loopdev=$(awk -v m="$mnt" '$2 == m {print $1; exit}' "$APFS_TRACK_FILE" 2>/dev/null)
+    sudo umount "$mnt" 2>/dev/null || true
+    if [[ -n "$loopdev" ]]; then
+        sudo losetup -d "$loopdev" 2>/dev/null || true
+    fi
+    if [[ -f "$APFS_TRACK_FILE" ]]; then
+        # Only rewrite the track file if awk succeeded, so a failure can never
+        # wipe the recorded mounts that cleanup_apfs relies on.
+        if awk -v m="$mnt" '$2 != m' "$APFS_TRACK_FILE" > "$APFS_TRACK_FILE.tmp" 2>/dev/null; then
+            mv "$APFS_TRACK_FILE.tmp" "$APFS_TRACK_FILE" 2>/dev/null || true
+        else
+            rm -f "$APFS_TRACK_FILE.tmp"
+        fi
+    fi
+}
+
 make_custom_ipsw_a12_ios16(){
 
-# iOS 16.0.x is supported on both macOS and Linux
-# iOS 16.1+ is macOS-only due to technical difficulties (per upstream developer)
+# iOS 16.0.x is supported on both macOS and Linux (the restore ramdisk is HFS+)
+# iOS 16.1+ restore ramdisks use APFS, which the Linux hfsplus CLI cannot handle.
+# On Linux we patch APFS ramdisks through the experimental linux-apfs-rw kernel
+# module, so iOS 16.1+ restores on Linux are EXTREMELY EXPERIMENTAL.
 if [[ $dist == 3 || $dist == 4 ]]; then
     echo ""
 elif [[ $VERSION == 16.0* ]]; then
     echo "iOS 16.0.x A12/A13 downgrade on Linux"
 else
-    echo "A12/A13 iOS 16.1+ downgrades are not supported on Linux yet!"
-    echo "Only iOS 16.0.x is currently supported on Linux."
-    exit 1
+    echo ""
+    echo "WARNING: iOS 16.1+ restores on Linux are EXTREMELY EXPERIMENTAL. Proceed with caution."
+    echo ""
+    echo "This functionality is brand new and has NOT received the same level of testing as the"
+    echo "macOS implementation. It patches the APFS restore ramdisk by building and loading the"
+    echo "experimental linux-apfs-rw kernel module, whose write support can potentially corrupt"
+    echo "the ramdisk. A failed or interrupted restore may leave your device requiring recovery"
+    echo "or a full restore, and this experimental Linux support is NOT equivalent in reliability"
+    echo "to the established macOS implementation."
+    echo ""
+    read -p "Type YES to continue, anything else to abort: " apfs_consent
+    if [[ $apfs_consent != YES ]]; then
+        echo "Aborting."
+        exit 1
+    fi
 fi
 
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -2273,36 +2449,110 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     # pack rdsk into im4p
     ./bin/img4 -i work/ramdisk.dmg -o $restore_ramdisk_dmg_18 -A -T rdsk
 else
-    # Linux: use hfsplus CLI to extract/replace files in raw HFS+ image
+    # Linux: use the hfsplus CLI for HFS+ ramdisks (iOS 16.0.x), or mount APFS
+    # ramdisks (iOS 16.1+) through the linux-apfs-rw kernel module, mirroring the
+    # hdiutil attach flow used on macOS. The filesystem type is detected
+    # automatically from the ramdisk contents.
     ./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
-    ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
-    ./bin/asr64_patcher work/asr work/asr_patched
-    ./bin/ldid -e work/asr > work/ents.plist
-    ./bin/ldid -Swork/ents.plist work/asr_patched
-    ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
-    ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
-    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
-    #
-    ./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
-    ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
-    ./bin/ldid -Swork/ents.plist work/libimg4.patch
-    ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib 
-    ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
-    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
-    # restored patch start (iOS 16.0.x on Linux uses the 16.0 ramdisk)
-    ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
-    ramdisk_dmg="098-08863-001.dmg"
+    ramdisk_fs=$(detect_fs_type work/ramdisk.raw)
+    if [[ $ramdisk_fs == "HFS" ]]; then
+        ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+        ./bin/asr64_patcher work/asr work/asr_patched
+        ./bin/ldid -e work/asr > work/ents.plist
+        ./bin/ldid -Swork/ents.plist work/asr_patched
+        ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr
+        ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+        #
+        ./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
+        ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+        ./bin/ldid -Swork/ents.plist work/libimg4.patch
+        ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib
+        ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
+        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+    elif [[ $ramdisk_fs == "APFS" ]]; then
+        setup_apfs_module
+        mkdir -p work/rdmnt
+        apfs_mount work/ramdisk.raw work/rdmnt rw
+        cp -v work/rdmnt/usr/sbin/asr work/asr
+        ./bin/asr64_patcher work/asr work/asr_patched
+        ./bin/ldid -e work/asr > work/ents.plist
+        ./bin/ldid -Swork/ents.plist work/asr_patched
+        rm -rf work/rdmnt/usr/sbin/asr
+        cp -v work/asr_patched work/rdmnt/usr/sbin/asr
+        chmod 755 work/rdmnt/usr/sbin/asr
+        #
+        cp -v work/rdmnt/usr/lib/libimg4.dylib work/libimg4.dylib
+        ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
+        ./bin/ldid -Swork/ents.plist work/libimg4.patch
+        rm -rf work/rdmnt/usr/lib/libimg4.dylib
+        cp -v work/libimg4.patch work/rdmnt/usr/lib/libimg4.dylib
+        chmod 755 work/rdmnt/usr/lib/libimg4.dylib
+    else
+        echo "[!] Unrecognized filesystem in restore ramdisk ($restore_ramdisk_dmg)."
+        echo "    Expected an HFS+ (iOS 16.0.x) or APFS (iOS 16.1+) filesystem. Aborting for safety."
+        exit 1
+    fi
+    # restored patch start: the restored_external binary must come from a ramdisk
+    # of the matching iOS version (like macOS); the 16.0 ramdisk only works for 16.0.x
+    if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-68311/B777E36E-32B8-4DEF-91CE-9909B04FD22D/iPhone10,3,iPhone10,6_16.4_20E247_Restore.ipsw"
+        ramdisk_dmg="078-23800-379.dmg"
+    elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
+        ramdisk_dmg="078-64668-109.dmg"
+    else
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
+        ramdisk_dmg="098-08863-001.dmg"
+    fi
     cd work
     sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url
     cd ..
     ./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.raw
-    ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
+    ramdisk2_fs=$(detect_fs_type work/ramdisk2.raw)
+    if [[ $ramdisk2_fs == "APFS" ]]; then
+        mkdir -p work/rdmnt2
+        apfs_mount work/ramdisk2.raw work/rdmnt2 ro
+        cp -v work/rdmnt2/usr/local/bin/restored_external work/restored_external
+        apfs_umount work/rdmnt2
+    elif [[ $ramdisk2_fs == "HFS" ]]; then
+        ./bin/hfsplus work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
+    else
+        echo "[!] Unrecognized filesystem in restored_external ramdisk (work/$ramdisk_dmg)."
+        echo "    Expected an HFS+ or APFS filesystem. Aborting for safety."
+        exit 1
+    fi
     ./bin/restoredpatcher work/restored_external work/restored_patch -c # patch cryptex1 install validation
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
-    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
-    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
-    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+    if [[ $ramdisk_fs == "APFS" ]]; then
+        rm -rf work/rdmnt/usr/local/bin/restored_external
+        cp -v work/restored_patch work/rdmnt/usr/local/bin/restored_external
+        chmod 755 work/rdmnt/usr/local/bin/restored_external
+        apfs_umount work/rdmnt
+        # linux-apfs-rw write support is experimental and can silently corrupt a
+        # container, so verify the patched files are readable and byte-identical
+        # before packing the ramdisk; abort with an actionable error if not.
+        mkdir -p work/rdmnt3
+        apfs_mount work/ramdisk.raw work/rdmnt3 ro
+        cp -v work/rdmnt3/usr/sbin/asr work/asr_verify
+        cp -v work/rdmnt3/usr/lib/libimg4.dylib work/libimg4_verify
+        cp -v work/rdmnt3/usr/local/bin/restored_external work/restored_verify
+        apfs_umount work/rdmnt3
+        if ! cmp -s work/asr_verify work/asr_patched || \
+           ! cmp -s work/libimg4_verify work/libimg4.patch || \
+           ! cmp -s work/restored_verify work/restored_patch; then
+            echo "[!] APFS ramdisk verification failed after write."
+            echo "    The linux-apfs-rw write may have corrupted the container."
+            echo "    The ramdisk was NOT packed; check 'dmesg | grep -i apfs' and re-run."
+            exit 1
+        fi
+        echo "APFS ramdisk write verified OK."
+    else
+        ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+        ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+    fi
     # restored end
     ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
     ./bin/trustcache append work/trustcache.raw work/restored_patch
@@ -2975,6 +3225,19 @@ elif [[ $VERSION == 16.* ]]; then
     echo "Haptic home button will not work."
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     echo "Since iOS 16 should activate normally, there is so need to head to iOS 13.x or iOS 14.0 beta 4."
+    if [[ $dist != 3 && $dist != 4 ]] && [[ $VERSION != 16.0* ]]; then
+        echo ""
+        echo "WARNING: iOS 16.1+ restores on Linux are EXTREMELY EXPERIMENTAL. Proceed with caution."
+        echo "This build patches the APFS restore ramdisk with the experimental linux-apfs-rw kernel"
+        echo "module. It has not received the same level of testing as the macOS implementation, and"
+        echo "a failed or interrupted restore may leave the device requiring recovery or restore."
+        echo ""
+        read -p "Type YES to continue, anything else to abort: " apfs_consent
+        if [[ $apfs_consent != YES ]]; then
+            echo "Aborting."
+            exit 1
+        fi
+    fi
     read -p "Press enter to continue"
 elif [[ $VERSION == 17.* || $VERSION == 18.* || $VERSION == 26.* ]]; then
     echo "iOS 17-26 A12/A13 downgrades are not supported at the moment"
