@@ -1,5 +1,4 @@
-v2.0 beta 26 re-release
+v2.0 beta 27
 
 RELEASE NOTES:
-
-experimental
+Bump up iOS versions as 18.7.10 and 26.6.1 has released
