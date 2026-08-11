@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 27 re-release 2"
+CURRENT_VERSION="v2.0 beta 27 re-release 3"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -125,7 +125,7 @@ fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
     # prevent finder from annoying you
-    killall -STOP AMPDevicesAgent AMPDeviceDiscoveryAgent MobileDeviceUpdater 2>/dev/null
+    killall -STOP AMPDevicesAgent AMPDeviceDiscoveryAgent MobileDeviceUpdater 2>/dev/null || true
 fi
 
 # Run macOS version check only if you're on macOS, should fix Linux
@@ -137,10 +137,10 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    if [[ "$(printf '%s\n' "10.15" "$macos_ver" | sort -V | head -n1)" == "10.15" ]]; then
+    if [[ "$(printf '%s\n' "10.14" "$macos_ver" | sort -V | head -n1)" == "10.14" ]]; then
         echo "Your macOS version $macos_ver is supported."
     else
-        echo "surrealra1n only supports macOS 10.15 and later."
+        echo "surrealra1n only supports macOS 10.14 and later."
         exit 1
     fi
 fi
