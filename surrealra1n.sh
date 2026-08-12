@@ -2278,6 +2278,11 @@ else
     fi
 fi
 
+if [[ $VERSION == 17.* ]] && [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+    echo "iOS 17 downgrade is not supported on Linux at the moment."
+    exit 1
+fi
+
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 mkdir -p restorefiles/$IDENTIFIER/$VERSION
 mkdir -p boot/$IDENTIFIER/$VERSION
@@ -2350,6 +2355,9 @@ plist["BuildIdentities"][identity]["Manifest"]["KernelCache"]["Info"]["Path"] = 
 with open("tmp2/BuildManifest.plist", "wb") as f:
     plistlib.dump(plist, f)
 PY
+if [[ $VERSION == 17.* ]]; then
+    sudo plutil -replace BuildIdentities.$IDENTITY.Manifest.RestoreDeviceTree.Info.Path -string "Firmware/all_flash/DeviceTree.im4p" tmp2/BuildManifest.plist
+fi
 cp -v tmp1/Firmware/AOP/$AOP14 tmp2/Firmware/AOP/$AOP
 cp -v tmp1/Firmware/agx/$GFX tmp2/Firmware/agx/$GFX
 cp -v tmp1/Firmware/ane/$ANE tmp2/Firmware/ane/$ANE
@@ -2412,6 +2420,8 @@ else
     ./bin/img4 -i tmp1/Firmware/all_flash/$DEVICETREE -o tmp1/DeviceTree.raw
     python3 bin/dtpatch.py tmp1/DeviceTree.raw -o tmp1/DeviceTree.patch
     ./bin/img4 -i tmp1/DeviceTree.patch -o tmp2/Firmware/all_flash/$DEVICETREE -A -T dtre
+    perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+    ./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/DeviceTree.im4p -A -T rdtr
 fi
 # ramdisk patching: use hdiutil on macOS, hfsplus on Linux
 if [[ $dist == 3 || $dist == 4 ]]; then
@@ -2521,6 +2531,9 @@ else
     elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
         ramdisk_dmg="078-64668-109.dmg"
+    elif [[ $VERSION == 17.* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-49474/5DF24914-F32D-4940-830F-3D8C8860A75B/iPad_64bit_TouchID_ASTC_17.0_21A329_Restore.ipsw"
+        ramdisk_dmg="097-83622-002.dmg"
     else
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
         ramdisk_dmg="098-08863-001.dmg"
