@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 27 re-release 3"
+CURRENT_VERSION="v2.0 beta 27 re-release 4"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2569,7 +2569,10 @@ rm -rf "tmp1"
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 rm -rf "work"
-sudo rmmod apfs
+if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+    # only needed on linux
+    sudo rmmod apfs
+fi
 }
 
 make_custom_ipsw_a12_ios14(){
