@@ -1,5 +1,5 @@
-v2.0 beta 27 re-release 3
+v2.0 beta 27 re-release 4
 
 RELEASE NOTES:
 
-Add support for 10.14 because yes
+Add rmmod (thanks to @Remedgit for the PR!)
