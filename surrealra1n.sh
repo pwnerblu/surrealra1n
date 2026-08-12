@@ -2569,7 +2569,7 @@ rm -rf "tmp1"
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 rm -rf "work"
-
+sudo rmmod apfs
 }
 
 make_custom_ipsw_a12_ios14(){
