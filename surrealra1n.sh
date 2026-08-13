@@ -137,10 +137,10 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    if [[ "$(printf '%s\n' "10.14" "$macos_ver" | sort -V | head -n1)" == "10.14" ]]; then
+    if [[ "$(printf '%s\n' "11.0" "$macos_ver" | sort -V | head -n1)" == "11.0" ]]; then
         echo "Your macOS version $macos_ver is supported."
     else
-        echo "surrealra1n only supports macOS 10.14 and later."
+        echo "surrealra1n only supports macOS 11 and later."
         exit 1
     fi
 fi
@@ -1220,7 +1220,7 @@ IBEC7="iBEC.$BOARDID.RELEASE.im4p"
 KERNEL10="kernelcache.release.$BOARDID2"
 
 INFO_TEXT="surrealra1n - $CURRENT_VERSION
-Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1
+Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 17.3.1
 This build is an early beta. Use at your own risk, and expect bugs.
 
 Uses latest SHSH blobs (for tethered downgrades)
@@ -2299,8 +2299,12 @@ if [[ $VERSION == 16.4* || $VERSION == 16.5* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 116000000)
 elif [[ $VERSION == 16.6* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 118000000)
-elif [[ $VERSION == 17.0* ]]; then
+elif [[ $VERSION == 17.0* || $VERSION == 17.1* || $VERSION == 17.2* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 131000000)
+elif [[ $VERSION == 17.3.1 ]]; then
+    restore_ramdisk_dmg="tmp1/087-41420-059.dmg"
+elif [[ $VERSION == 17.3 ]]; then
+    restore_ramdisk_dmg="tmp1/087-41420-057.dmg"
 elif [[ $VERSION == 16.3* || $VERSION == 16.2* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 114000000)
 elif [[ $VERSION == 16.1.2 ]]; then
@@ -2446,9 +2450,12 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-68311/B777E36E-32B8-4DEF-91CE-9909B04FD22D/iPhone10,3,iPhone10,6_16.4_20E247_Restore.ipsw"
         ramdisk_dmg="078-23800-379.dmg"
-    elif [[ $VERSION == 17.* ]]; then
+    elif [[ $VERSION == 17.0* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-49474/5DF24914-F32D-4940-830F-3D8C8860A75B/iPad_64bit_TouchID_ASTC_17.0_21A329_Restore.ipsw"
         ramdisk_dmg="097-83622-002.dmg"
+    elif [[ $VERSION == 17.1* || $VERSION == 17.2* || $VERSION == 17.3* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-07636/DBDB5860-91CF-4757-B7BD-6402D4445AF2/iPad_64bit_TouchID_ASTC_17.1_21B74_Restore.ipsw"
+        ramdisk_dmg="097-22998-092.dmg"
     elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
         ramdisk_dmg="078-64668-109.dmg"
@@ -2531,9 +2538,12 @@ else
     elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
         ramdisk_dmg="078-64668-109.dmg"
-    elif [[ $VERSION == 17.* ]]; then
+    elif [[ $VERSION == 17.0* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-49474/5DF24914-F32D-4940-830F-3D8C8860A75B/iPad_64bit_TouchID_ASTC_17.0_21A329_Restore.ipsw"
         ramdisk_dmg="097-83622-002.dmg"
+    elif [[ $VERSION == 17.1* || $VERSION == 17.2* || $VERSION == 17.3* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-07636/DBDB5860-91CF-4757-B7BD-6402D4445AF2/iPad_64bit_TouchID_ASTC_17.1_21B74_Restore.ipsw"
+        ramdisk_dmg="097-22998-092.dmg"
     else
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
         ramdisk_dmg="098-08863-001.dmg"
@@ -2602,6 +2612,10 @@ rm -rf "tmp1"
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 rm -rf "work"
+if [[ $dist == 1 || $dist == 2 || $dist == 5 ]] && [[ $VERSION != 16.0* ]]; then
+    # only needed on linux
+    sudo rmmod apfs
+fi
 
 }
 
@@ -3272,8 +3286,8 @@ elif [[ $VERSION == 16.* ]]; then
         fi
     fi
     read -p "Press enter to continue"
-elif [[ $VERSION == 17.0 ]]; then
-    echo "iOS 17.x support is really experimental and limited to 17.0 at the moment."
+elif [[ $VERSION == 17.0* || $VERSION == 17.1* || $VERSION == 17.2* || $VERSION == 17.3* ]]; then
+    echo "iOS 17.x support is really experimental and limited to 17.0 - 17.3.1."
     echo "You may experience a ton of issues (including broken baseband on certain devices), as we have to patch things to get the device booted."
     echo "Device will be unable to activate. Do not flood GitHub issues when your device cannot activate."
     echo "You should only do this if you are researching or wanting to contribute fixing problems, this is not for the Average user."
