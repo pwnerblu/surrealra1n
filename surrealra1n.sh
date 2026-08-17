@@ -165,7 +165,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     fi
 
     # Check for missing brew dependencies
-    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb")
+    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
     for dep in "${BREW_DEPS[@]}"; do
         if ! brew list "$dep" &>/dev/null; then
             echo "[$dep] is not installed. Installing..."
@@ -216,7 +216,7 @@ pick_file() {
 echo "Checking for required dependencies..."
 
 if [[ $dist == 1 ]]; then
-    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd zenity git curl make gcc python3-pip python3-usb)
+    DEPENDENCIES=(libusb-1.0-0-dev libusbmuxd-tools libimobiledevice-utils usbmuxd zenity git curl make gcc python3-pip python3-usb jq bc aria2)
     MISSING_PACKAGES=()
 
     for pkg in "${DEPENDENCIES[@]}"; do
@@ -234,7 +234,7 @@ if [[ $dist == 1 ]]; then
         echo "All dependencies are installed." 
     fi
 elif [[ $dist == 2 ]]; then
-    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel python-pip)
+    DEPENDENCIES=(libusb libusbmuxd libimobiledevice usbmuxd zenity git curl make gcc base-devel python-pip jq bc aria2)
     MISSING_PACKAGES=()
 
 
@@ -252,7 +252,7 @@ elif [[ $dist == 2 ]]; then
         echo "All dependencies are already installed."
     fi
 elif [[ $dist == 5 ]]; then
-    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc python3-pip python3-pyusb)
+    DEPENDENCIES=(libusb1-devel usbmuxd libimobiledevice-utils zenity git curl make gcc python3-pip python3-pyusb jq bc aria2)
     MISSING_PACKAGES=()
 
     for pkg in "${DEPENDENCIES[@]}"; do
@@ -340,6 +340,186 @@ require_dir() {
     if [[ ! -d "$1" ]]; then
         echo "[!] Required directory missing: $1"
         exit 1
+    fi
+}
+
+fetch_firmware() {
+    if [[ $1 == "18A5342e" ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPhone10* ]]; then
+        local json_url="https://remedgit.github.io/files/14b4.json"
+        local json
+        local url
+        json=$(curl -s -H 'Accept: application/json' "$json_url") || {
+            echo "Error: Failed to fetch data from $json_url" >&2
+            return 1
+        }
+        if ! echo "$json" | jq empty 2>/dev/null; then
+            echo "Error: Invalid JSON data" >&2
+            return 1
+        fi
+        url=$(echo "$json" | jq -r --arg dev "$IDENTIFIER" '.[] | select(.devices | index($dev)) | .url' | head -1)
+        if [ -z "$url" ] || [ "$url" = "null" ]; then
+            echo "Error: Firmware not found for device '$IDENTIFIER'" >&2
+            return 1
+        fi
+
+        echo "Downloading firmware..."
+        echo "Source: $url"
+        echo "Downloading to firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+
+        if command -v aria2c >/dev/null 2>&1; then
+            echo "Using aria2c with 16 connections for faster download..."
+            aria2c -x 16 -s 16 -o "firmware_downloads/$IDENTIFIER/18A5342e.ipsw" $url || {
+                echo "Error: Download failed (aria2c)" >&2
+                return 1
+            }
+        else
+            echo "aria2c not found, using curl..."
+            curl -L -o "firmware_downloads/$IDENTIFIER/18A5342e.ipsw" $url || {
+                echo "Error: Download failed (curl)" >&2
+                return 1
+            }
+        fi
+        IPSW_PATH="firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+        rm -rf work/BuildManifest.plist
+        unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+        BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+        VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+        return 0
+    fi
+    local version_request="$1"
+    local api_url="https://api.ipsw.me/v4/ipsw/device/$IDENTIFIER"
+    local json
+    local filter
+    local url md5 identifier2 version2 buildid filesize sha256 sha1 is_signed
+    json=$(curl -s -H 'accept: application/json' "$api_url")
+    if [ -z "$json" ]; then
+        echo "Error: API returned empty content" >&2
+        return 1
+    fi
+    if ! echo "$json" | jq empty 2>/dev/null; then
+        echo "Error: API returned invalid JSON, content:" >&2
+        echo "$json" | head -n 10 >&2
+        return 1
+    fi
+    filter='first(.firmwares[] | select(.version == "'"$version_request"'"))'
+    url=$(echo "$json" | jq -r "$filter | .url")
+    md5=$(echo "$json" | jq -r "$filter | .md5sum")
+    identifier2=$(echo "$json" | jq -r "$filter | .identifier")
+    version2=$(echo "$json" | jq -r "$filter | .version")
+    buildid=$(echo "$json" | jq -r "$filter | .buildid")
+    filesize=$(echo "$json" | jq -r "$filter | .filesize")
+    sha256=$(echo "$json" | jq -r "$filter | .sha256sum")
+    sha1=$(echo "$json" | jq -r "$filter | .sha1sum")
+    is_signed=$(echo "$json" | jq -r "$filter | .signed")
+    # b to gb
+    filesize=$(echo "scale=2; $filesize / 1024 / 1024 / 1024" | bc)
+
+    if [ -z "$url" ] || [ "$url" = "null" ]; then
+        echo "Error: Firmware not found (IDENTIFIER: %s, version: %s)" >&2
+        return 1
+    fi
+    echo
+    echo "Information:"
+    echo "Identifier: $identifier2"
+    echo "Version: $version2"
+    echo "BuildID: $buildid"
+    echo "sha1sum: $sha1"
+    echo "md5sum: $md5"
+    echo "sha256sum: $sha256"
+    echo "Filesize: $filesize GB"
+    echo "Is signed: $is_signed"
+    echo "URL: $url"
+
+    echo
+    read -p "Firmware details are listed above. Press Enter to proceed with download."
+
+    mkdir -p firmware_downloads/$IDENTIFIER
+
+    echo "Downloading firmware..."
+    echo "Source: $url"
+    echo "Downloading to firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+
+    if command -v aria2c >/dev/null 2>&1; then
+        echo "Using aria2c with 16 connections for faster download..."
+        aria2c -x 16 -s 16 -o "firmware_downloads/$IDENTIFIER/${version2}.ipsw" $url || {
+            echo "Error: Download failed (aria2c)" >&2
+            return 1
+        }
+    else
+        echo "aria2c not found, using curl..."
+        curl -L -o "firmware_downloads/$IDENTIFIER/${version2}.ipsw" $url || {
+            echo "Error: Download failed (curl)" >&2
+            return 1
+        }
+    fi
+
+    echo "Download complete, verifying MD5..."
+
+    local local_md5=$(md5sum "firmware_downloads/$IDENTIFIER/${version2}.ipsw" | awk '{print $1}')
+    if [ "$local_md5" != "$md5" ]; then
+        echo "Error: MD5 checksum mismatch!" >&2
+        echo "Expected: $md5" >&2
+        echo "Actual: $local_md5" >&2
+        rm -f "firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+        return 1
+    fi
+
+    echo "MD5 checksum verified successfully, file saved to: firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    return 0
+}
+
+ipsw_selector(){
+    echo "Please select a method to obtain the $1 ipsw."
+    echo "1. Select an IPSW file"
+    echo "2. Download an IPSW file Online"
+    echo "3. Exit"
+    read -p "Please input an option (1-3): " fw_select_opts
+    if [[ $fw_select_opts == 1 ]]; then
+        if [[ $1 == "target" ]]; then
+            IPSW_PATH=$(pick_file "Select an IPSW file")
+            if [[ -z "$IPSW_PATH" ]]; then
+                echo "No IPSW selected. Aborting."
+                exit 1
+            fi
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+            BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+        elif [[ $1 == "base" ]]; then
+            IPSW_PATH_LATEST=$(pick_file "Select iOS $LATEST_VERSION IPSW file")
+            if [[ -z "$IPSW_PATH_LATEST" ]]; then
+                echo "No IPSW selected. Aborting."
+                exit 1
+            fi
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
+            VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            if [[ $VERSION_LATEST != $LATEST_VERSION ]]; then
+                echo "Invalid IPSW. You must select IPSW for iOS $LATEST_VERSION, not iOS $VERSION_LATEST"
+                exit 1
+            fi
+        fi
+    elif [[ $fw_select_opts == 2 ]]; then
+        if [[ $1 == "target" ]]; then
+            if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPhone10* ]]; then
+                echo "If you want to Download iOS14.0 beta4(18A5342e) IPSW, Please enter 18A5342e below"
+            fi
+            read -p "Which version would you like to download: " download_version
+            fetch_firmware $download_version
+            IPSW_PATH="firmware_downloads/$IDENTIFIER/${download_version}.ipsw"
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+            BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+        elif [[ $1 == "base" ]]; then
+            fetch_firmware $LATEST_VERSION
+            IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/${download_version}.ipsw"
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
+            VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+        fi
+    elif [[ $fw_select_opts == 3 ]]; then
+        exit 0
     fi
 }
 
@@ -1195,11 +1375,11 @@ if [[ $IDENTIFIER == iPad5* ]]; then
 elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
-    LATEST_VERSION="18.7.9"
+    LATEST_VERSION="18.7.10"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="26.6"
+    LATEST_VERSION="26.6.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.6"
+    LATEST_VERSION="26.6.1"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -1877,14 +2057,7 @@ echo "3. Start Restore"
 echo "4. Back"
 read -p "Please input an option (1-4): " untether_options
 if [[ $untether_options == 1 ]]; then
-    IPSW_PATH=$(pick_file "Select an IPSW file")
-    if [[ -z "$IPSW_PATH" ]]; then
-        echo "No IPSW selected. Aborting."
-        exit 1
-    fi
-    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
-    BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
-    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    ipsw_selector target
     restore_untethered_opts
 elif [[ $untether_options == 2 ]]; then
     SHSH_PATH=$(pick_file "Select an SHSH2 file")
@@ -3658,29 +3831,10 @@ echo "3. Start Restore"
 echo "4. Back"
 read -p "Please input an option (1-4): " tether_options
 if [[ $tether_options == 1 ]]; then
-    IPSW_PATH=$(pick_file "Select an IPSW file")
-    if [[ -z "$IPSW_PATH" ]]; then
-        echo "No IPSW selected. Aborting."
-        exit 1
-    fi
-    rm -rf work/BuildManifest.plist
-    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
-    BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
-    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    ipsw_selector target
     restore_tethered_opts
 elif [[ $tether_options == 2 ]]; then
-    IPSW_PATH_LATEST=$(pick_file "Select iOS $LATEST_VERSION IPSW file")
-    if [[ -z "$IPSW_PATH_LATEST" ]]; then
-        echo "No IPSW selected. Aborting."
-        exit 1
-    fi
-    rm -rf work/BuildManifest.plist
-    unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
-    VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
-    if [[ $VERSION_LATEST != $LATEST_VERSION ]]; then
-        echo "Invalid IPSW. You must select IPSW for iOS $LATEST_VERSION, not iOS $VERSION_LATEST"
-        exit 1
-    fi
+    ipsw_selector base
     restore_tethered_opts
 elif [[ $tether_options == 3 ]]; then
     if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
@@ -3782,15 +3936,7 @@ echo "2. Start Restore"
 echo "3. Back"
 read -p "Please input an option (1-3): " restore_a7_options_choice
 if [[ $restore_a7_options_choice == 1 ]]; then
-    IPSW_PATH=$(pick_file "Select an IPSW file")
-    if [[ -z "$IPSW_PATH" ]]; then
-        echo "No IPSW selected. Aborting."
-        exit 1
-    fi
-    rm -rf work/BuildManifest.plist
-    unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
-    BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
-    VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+    ipsw_selector target
     if [[ $VERSION == 10.3.3 ]] && [[ $BUILD == 14G60 ]]; then
         restore_a7_options
     else
