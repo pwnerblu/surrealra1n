@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 27 re-release 5"
+CURRENT_VERSION="v2.0 beta 28"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -137,10 +137,10 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    if [[ "$(printf '%s\n' "10.14" "$macos_ver" | sort -V | head -n1)" == "10.14" ]]; then
+    if [[ "$(printf '%s\n' "11.0" "$macos_ver" | sort -V | head -n1)" == "11.0" ]]; then
         echo "Your macOS version $macos_ver is supported."
     else
-        echo "surrealra1n only supports macOS 10.14 and later."
+        echo "surrealra1n only supports macOS 11 and later."
         exit 1
     fi
 fi
@@ -343,6 +343,45 @@ require_dir() {
     fi
 }
 
+verify_checksum() {
+    local file_path=$1
+    local md5_expected=$2
+    local sha1_expected=$3
+    
+    # Try MD5 first if available
+    if [ -n "$md5_expected" ] && [ "$md5_expected" != "null" ]; then
+        echo "Verifying MD5 checksum..."
+        local local_md5=$(md5sum "$file_path" | awk '{print $1}')
+        if [ "$local_md5" = "$md5_expected" ]; then
+            echo "MD5 checksum verified successfully!"
+            return 0
+        else
+            echo "Error: MD5 checksum mismatch!" >&2
+            echo "Expected: $md5_expected" >&2
+            echo "Actual: $local_md5" >&2
+            return 1
+        fi
+    fi
+    
+    # Fall back to SHA1 if MD5 is not available
+    if [ -n "$sha1_expected" ] && [ "$sha1_expected" != "null" ]; then
+        echo "MD5 not available, verifying SHA1 checksum..."
+        local local_sha1=$(sha1sum "$file_path" | awk '{print $1}')
+        if [ "$local_sha1" = "$sha1_expected" ]; then
+            echo "SHA1 checksum verified successfully!"
+            return 0
+        else
+            echo "Error: SHA1 checksum mismatch!" >&2
+            echo "Expected: $sha1_expected" >&2
+            echo "Actual: $local_sha1" >&2
+            return 1
+        fi
+    fi
+    
+    echo "Warning: No valid checksums available for verification" >&2
+    return 0
+}
+
 fetch_firmware() {
     if [[ $1 == "18A5342e" ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPhone10* ]]; then
         local json_url="https://remedgit.github.io/files/14b4.json"
@@ -362,30 +401,45 @@ fetch_firmware() {
             return 1
         fi
 
+        mkdir -p firmware_downloads/$IDENTIFIER
+        IPSW_PATH="firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+
+        if [ -f "$IPSW_PATH" ]; then
+            echo "IPSW file already exists at $IPSW_PATH"
+            echo "Skipping download..."
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+            BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            return 0
+        fi
+
         echo "Downloading firmware..."
         echo "Source: $url"
-        echo "Downloading to firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+        echo "Downloading to $IPSW_PATH"
 
         if command -v aria2c >/dev/null 2>&1; then
             echo "Using aria2c with 16 connections for faster download..."
-            aria2c -x 16 -s 16 -o "firmware_downloads/$IDENTIFIER/18A5342e.ipsw" $url || {
+            aria2c -x 16 -s 16 -o "$IPSW_PATH" $url || {
                 echo "Error: Download failed (aria2c)" >&2
                 return 1
             }
         else
             echo "aria2c not found, using curl..."
-            curl -L -o "firmware_downloads/$IDENTIFIER/18A5342e.ipsw" $url || {
+            curl -L -o "$IPSW_PATH" $url || {
                 echo "Error: Download failed (curl)" >&2
                 return 1
             }
         fi
-        IPSW_PATH="firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+
+        echo "Download complete."
         rm -rf work/BuildManifest.plist
         unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
         BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         return 0
     fi
+    
     local version_request="$1"
     local api_url="https://api.ipsw.me/v4/ipsw/device/$IDENTIFIER"
     local json
@@ -418,6 +472,27 @@ fetch_firmware() {
         echo "Error: Firmware not found (IDENTIFIER: %s, version: %s)" >&2
         return 1
     fi
+    
+    mkdir -p firmware_downloads/$IDENTIFIER
+    local ipsw_file="firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+
+    # Check if file already exists
+    if [ -f "$ipsw_file" ]; then
+        echo "IPSW file already exists at $ipsw_file"
+        echo "Verifying integrity..."
+        if verify_checksum "$ipsw_file" "$md5" "$sha1"; then
+            echo "File integrity verified. Skipping download."
+            return 0
+        else
+            echo "File integrity check failed. Re-downloading..."
+            rm -f "$ipsw_file"
+        fi
+    fi
+    #if [[ $version2 == $LATEST_VERSION ]]; then
+    #    echo "IPSW is latest, redirecting path"
+    #    IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/$LATEST_VERSION.ipsw"
+    #fi
+
     echo
     echo "Information:"
     echo "Identifier: $identifier2"
@@ -433,38 +508,32 @@ fetch_firmware() {
     echo
     read -p "Firmware details are listed above. Press Enter to proceed with download."
 
-    mkdir -p firmware_downloads/$IDENTIFIER
-
     echo "Downloading firmware..."
     echo "Source: $url"
-    echo "Downloading to firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    echo "Downloading to $ipsw_file"
 
     if command -v aria2c >/dev/null 2>&1; then
         echo "Using aria2c with 16 connections for faster download..."
-        aria2c -x 16 -s 16 -o "firmware_downloads/$IDENTIFIER/${version2}.ipsw" $url || {
+        aria2c -x 16 -s 16 -o "$ipsw_file" $url || {
             echo "Error: Download failed (aria2c)" >&2
             return 1
         }
     else
         echo "aria2c not found, using curl..."
-        curl -L -o "firmware_downloads/$IDENTIFIER/${version2}.ipsw" $url || {
+        curl -L -o "$ipsw_file" $url || {
             echo "Error: Download failed (curl)" >&2
             return 1
         }
     fi
 
-    echo "Download complete, verifying MD5..."
-
-    local local_md5=$(md5sum "firmware_downloads/$IDENTIFIER/${version2}.ipsw" | awk '{print $1}')
-    if [ "$local_md5" != "$md5" ]; then
-        echo "Error: MD5 checksum mismatch!" >&2
-        echo "Expected: $md5" >&2
-        echo "Actual: $local_md5" >&2
-        rm -f "firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    echo "Download complete."
+    
+    if ! verify_checksum "$ipsw_file" "$md5" "$sha1"; then
+        rm -f "$ipsw_file"
         return 1
     fi
 
-    echo "MD5 checksum verified successfully, file saved to: firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    echo "File saved to: $ipsw_file"
     return 0
 }
 
@@ -513,7 +582,7 @@ ipsw_selector(){
             VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         elif [[ $1 == "base" ]]; then
             fetch_firmware $LATEST_VERSION
-            IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/${download_version}.ipsw"
+            IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/$LATEST_VERSION.ipsw"
             rm -rf work/BuildManifest.plist
             unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
             VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
@@ -630,7 +699,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/6fd046857165306c309ecfa7a2e7af2aeb995de3/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -672,7 +741,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
     if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
-        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive -b dev
         cd Kernel64Patcher
         make
         cp Kernel64Patcher ../bin/Kernel64Patcher3
@@ -731,7 +800,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/6fd046857165306c309ecfa7a2e7af2aeb995de3/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -773,7 +842,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/Kernel64Patcher
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
     if [[ $macos_ver == 12.* || $macos_ver == 13.* || $macos_ver == 14.* || $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
-        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+        git clone https://github.com/pwnerblu/Kernel64Patcher --recursive -b dev
         cd Kernel64Patcher
         make
         cp Kernel64Patcher ../bin/Kernel64Patcher3
@@ -832,12 +901,12 @@ else
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
     # sshpass
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/6fd046857165306c309ecfa7a2e7af2aeb995de3/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     curl -L -o bin/trustcache https://github.com/CRKatri/trustcache/releases/download/v2.0/trustcache_linux_x86_64
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
-    git clone https://github.com/pwnerblu/Kernel64Patcher --recursive
+    git clone https://github.com/pwnerblu/Kernel64Patcher --recursive -b dev
     cd Kernel64Patcher
     make
     cp Kernel64Patcher ../bin/Kernel64Patcher3
@@ -1400,7 +1469,7 @@ IBEC7="iBEC.$BOARDID.RELEASE.im4p"
 KERNEL10="kernelcache.release.$BOARDID2"
 
 INFO_TEXT="surrealra1n - $CURRENT_VERSION
-Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 16.6.1
+Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 17.3.1
 This build is an early beta. Use at your own risk, and expect bugs.
 
 Uses latest SHSH blobs (for tethered downgrades)
@@ -2451,6 +2520,11 @@ else
     fi
 fi
 
+if [[ $VERSION == 17.* ]] && [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+    echo "iOS 17 downgrade is not supported on Linux at the moment."
+    exit 1
+fi
+
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 mkdir -p restorefiles/$IDENTIFIER/$VERSION
 mkdir -p boot/$IDENTIFIER/$VERSION
@@ -2467,6 +2541,12 @@ if [[ $VERSION == 16.4* || $VERSION == 16.5* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 116000000)
 elif [[ $VERSION == 16.6* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 118000000)
+elif [[ $VERSION == 17.0* || $VERSION == 17.1* || $VERSION == 17.2* ]]; then
+    restore_ramdisk_dmg=$(find_dmg tmp1 largest 131000000)
+elif [[ $VERSION == 17.3.1 ]]; then
+    restore_ramdisk_dmg="tmp1/087-41420-059.dmg"
+elif [[ $VERSION == 17.3 ]]; then
+    restore_ramdisk_dmg="tmp1/087-41420-057.dmg"
 elif [[ $VERSION == 16.3* || $VERSION == 16.2* ]]; then
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 114000000)
 elif [[ $VERSION == 16.1.2 ]]; then
@@ -2478,7 +2558,7 @@ elif [[ $VERSION == 16.1 ]]; then
 else
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 148000000)
 fi
-cryptex_os=$(find_dmg tmp1 largest 3000000000)
+cryptex_os=$(find_dmg tmp1 largest 3500000000)
 cryptex_os_18=$(find_dmg_arm64e tmp2 largest 2100000000)
 cryptex_app=$(find_dmg tmp1 smallest)
 cryptex_app_18=$(find_dmg tmp2 smallest)
@@ -2521,6 +2601,9 @@ plist["BuildIdentities"][identity]["Manifest"]["KernelCache"]["Info"]["Path"] = 
 with open("tmp2/BuildManifest.plist", "wb") as f:
     plistlib.dump(plist, f)
 PY
+if [[ $VERSION == 17.* ]]; then
+    sudo plutil -replace BuildIdentities.$IDENTITY.Manifest.RestoreDeviceTree.Info.Path -string "Firmware/all_flash/DeviceTree.im4p" tmp2/BuildManifest.plist
+fi
 cp -v tmp1/Firmware/AOP/$AOP14 tmp2/Firmware/AOP/$AOP
 cp -v tmp1/Firmware/agx/$GFX tmp2/Firmware/agx/$GFX
 cp -v tmp1/Firmware/ane/$ANE tmp2/Firmware/ane/$ANE
@@ -2565,10 +2648,27 @@ cp -v tmp1/Firmware/$cryptex_app_name.trustcache tmp2/Firmware/$cryptex_app_name
 cp -v tmp1/Firmware/$cryptex_app_name.root_hash tmp2/Firmware/$cryptex_app_name_18.root_hash
 #
 ./bin/img4tool -e tmp1/$KERNEL -o work/kernel.raw
-./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -e -o -we # patch cryptex1 validations
+if [[ $VERSION == 16.* ]]; then
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we # patch cryptex1 validations
+else
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we -i -ue # patch cryptex1 validations
+fi
 rm -rf tmp2/$KERNEL
 ./bin/img4 -i work/kernelboot.patch -o tmp2/$KERNEL2 -A -T krnl -J || true
-cp -v tmp1/$KERNEL tmp2/$KERNEL
+if [[ $VERSION == 16.* ]]; then
+    cp -v tmp1/$KERNEL tmp2/$KERNEL
+else
+    # do patch the other Way
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernel.patch -ue
+    ./bin/img4 -i work/kernel.patch -o tmp2/$KERNEL -A -T krnl -J || true
+    # now patch the devicetree
+    curl -L -o bin/dtpatch.py https://github.com/pwnerblu/usbliter8-fun/raw/refs/heads/main/work-27.0b4-n104/patch_dt2.py
+    ./bin/img4 -i tmp1/Firmware/all_flash/$DEVICETREE -o tmp1/DeviceTree.raw
+    python3 bin/dtpatch.py tmp1/DeviceTree.raw -o tmp1/DeviceTree.patch
+    ./bin/img4 -i tmp1/DeviceTree.patch -o tmp2/Firmware/all_flash/$DEVICETREE -A -T dtre
+    perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+    ./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/DeviceTree.im4p -A -T rdtr
+fi
 # ramdisk patching: use hdiutil on macOS, hfsplus on Linux
 if [[ $dist == 3 || $dist == 4 ]]; then
     # macOS: use hdiutil to mount/modify the ramdisk DMG
@@ -2592,6 +2692,12 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     if [[ $VERSION == 16.4* || $VERSION == 16.5* || $VERSION == 16.6* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2023SpringFCS/fullrestores/032-68311/B777E36E-32B8-4DEF-91CE-9909B04FD22D/iPhone10,3,iPhone10,6_16.4_20E247_Restore.ipsw"
         ramdisk_dmg="078-23800-379.dmg"
+    elif [[ $VERSION == 17.0* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-49474/5DF24914-F32D-4940-830F-3D8C8860A75B/iPad_64bit_TouchID_ASTC_17.0_21A329_Restore.ipsw"
+        ramdisk_dmg="097-83622-002.dmg"
+    elif [[ $VERSION == 17.1* || $VERSION == 17.2* || $VERSION == 17.3* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-07636/DBDB5860-91CF-4757-B7BD-6402D4445AF2/iPad_64bit_TouchID_ASTC_17.1_21B74_Restore.ipsw"
+        ramdisk_dmg="097-22998-092.dmg"
     elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
         ramdisk_dmg="078-64668-109.dmg"
@@ -2674,6 +2780,12 @@ else
     elif [[ $VERSION == 16.1* || $VERSION == 16.2* || $VERSION == 16.3* ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-92982/6DF106AB-8868-433F-8C3F-05D50785E81E/iPhone10,3,iPhone10,6_16.1_20B82_Restore.ipsw"
         ramdisk_dmg="078-64668-109.dmg"
+    elif [[ $VERSION == 17.0* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-49474/5DF24914-F32D-4940-830F-3D8C8860A75B/iPad_64bit_TouchID_ASTC_17.0_21A329_Restore.ipsw"
+        ramdisk_dmg="097-83622-002.dmg"
+    elif [[ $VERSION == 17.1* || $VERSION == 17.2* || $VERSION == 17.3* ]]; then
+        ramdisk_ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-07636/DBDB5860-91CF-4757-B7BD-6402D4445AF2/iPad_64bit_TouchID_ASTC_17.1_21B74_Restore.ipsw"
+        ramdisk_dmg="097-22998-092.dmg"
     else
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
         ramdisk_dmg="098-08863-001.dmg"
@@ -2742,10 +2854,11 @@ rm -rf "tmp1"
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 rm -rf "work"
-if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+if [[ $dist == 1 || $dist == 2 || $dist == 5 ]] && [[ $VERSION != 16.0* ]]; then
     # only needed on linux
     sudo rmmod apfs
 fi
+
 }
 
 make_custom_ipsw_a12_ios14(){
@@ -3415,6 +3528,12 @@ elif [[ $VERSION == 16.* ]]; then
         fi
     fi
     read -p "Press enter to continue"
+elif [[ $VERSION == 17.0* || $VERSION == 17.1* || $VERSION == 17.2* || $VERSION == 17.3* ]]; then
+    echo "iOS 17.x support is really experimental and limited to 17.0 - 17.3.1."
+    echo "You may experience a ton of issues (including broken baseband on certain devices), as we have to patch things to get the device booted."
+    echo "Device will be unable to activate. Do not flood GitHub issues when your device cannot activate."
+    echo "You should only do this if you are researching or wanting to contribute fixing problems, this is not for the Average user."
+    read -p "Press enter to continue"
 elif [[ $VERSION == 17.* || $VERSION == 18.* || $VERSION == 26.* ]]; then
     echo "iOS 17-26 A12/A13 downgrades are not supported at the moment"
     exit 1
@@ -3438,19 +3557,11 @@ if [[ $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == i
     sleep 6
 fi
 
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
-    dfu_helper_a11
-else
-    dfu_helper
-fi
-pwn_device
-det_rsep_flag
-
 restoredir="restorefiles/$IDENTIFIER/$VERSION"
 
 if [[ ! -f "$restoredir/custom.ipsw" ]]; then
     echo "Restore files does not exist, making new ones"
-    if [[ $VERSION == 16.* ]]; then
+    if [[ $VERSION == 16.* || $VERSION == 17.* ]]; then
         make_custom_ipsw_a12_ios16
     else
         make_custom_ipsw_a12_ios14
@@ -3460,13 +3571,20 @@ else
     read -p "Would you like to make new ones? (y/n): " restorefiles_remake
     if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
         rm -rf "$restoredir"
-        if [[ $VERSION == 16.* ]]; then
+        if [[ $VERSION == 16.* || $VERSION == 17.* ]]; then
             make_custom_ipsw_a12_ios16
         else
             make_custom_ipsw_a12_ios14
         fi
     fi
 fi
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
+pwn_device
+det_rsep_flag
 curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
 if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
     python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
@@ -3496,7 +3614,7 @@ if [[ $IDENTIFIER == iPhone12,8 ]]; then
     sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/custom.ipsw
     echo "Restore has finished! Read above if there are any errors"
     exit 0
-elif [[ $VERSION == 16.* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
+elif [[ $VERSION == 16.* || $VERSION == 17.* ]] && [[ $IDENTIFIER != iPhone12,8 ]]; then
     sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/custom.ipsw
     echo "Restore has finished! Read above if there are any errors"
     exit 0
@@ -3770,8 +3888,6 @@ restore_tethered_opts(){
 
 clear 
 echo "$INFO_TEXT"
-echo "seprmvr64 restores to iOS 7 and 9 are not removed."
-echo "The separate seprmvr64 restore options was removed because the functionality was migrated to this menu"
 echo ""
 echo "Options:"
 echo ""
@@ -3918,12 +4034,6 @@ fi
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
     return
-fi
-
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
-    echo "A12/A13 device support is entirely experimental."
-    echo "Expect to have issues or bugs."
-    read -p "Press enter to continue"
 fi
 
 clear 

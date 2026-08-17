@@ -1,6 +1,8 @@
-v2.0 beta 27 re-release 5
+v2.0 beta 28
 
 RELEASE NOTES:
 
-Add firmware fetcher (thanks to @Remedgit for the PR!)
-Bump up latest iOS versions
+Update minimum macOS version to macOS 11
+Add support for iOS 17.0 - 17.3.1 restores (experimental, expect lots of things to break, for research only). 17.x restores are macOS only
+
+Improve fw_fetcher.
