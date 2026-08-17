@@ -1,5 +1,6 @@
-v2.0 beta 27 re-release 4
+v2.0 beta 27 re-release 5
 
 RELEASE NOTES:
 
-Add rmmod (thanks to @Remedgit for the PR!)
+Add firmware fetcher (thanks to @Remedgit for the PR!)
+Bump up latest iOS versions
