@@ -343,6 +343,45 @@ require_dir() {
     fi
 }
 
+verify_checksum() {
+    local file_path=$1
+    local md5_expected=$2
+    local sha1_expected=$3
+    
+    # Try MD5 first if available
+    if [ -n "$md5_expected" ] && [ "$md5_expected" != "null" ]; then
+        echo "Verifying MD5 checksum..."
+        local local_md5=$(md5sum "$file_path" | awk '{print $1}')
+        if [ "$local_md5" = "$md5_expected" ]; then
+            echo "MD5 checksum verified successfully!"
+            return 0
+        else
+            echo "Error: MD5 checksum mismatch!" >&2
+            echo "Expected: $md5_expected" >&2
+            echo "Actual: $local_md5" >&2
+            return 1
+        fi
+    fi
+    
+    # Fall back to SHA1 if MD5 is not available
+    if [ -n "$sha1_expected" ] && [ "$sha1_expected" != "null" ]; then
+        echo "MD5 not available, verifying SHA1 checksum..."
+        local local_sha1=$(sha1sum "$file_path" | awk '{print $1}')
+        if [ "$local_sha1" = "$sha1_expected" ]; then
+            echo "SHA1 checksum verified successfully!"
+            return 0
+        else
+            echo "Error: SHA1 checksum mismatch!" >&2
+            echo "Expected: $sha1_expected" >&2
+            echo "Actual: $local_sha1" >&2
+            return 1
+        fi
+    fi
+    
+    echo "Warning: No valid checksums available for verification" >&2
+    return 0
+}
+
 fetch_firmware() {
     if [[ $1 == "18A5342e" ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPhone10* ]]; then
         local json_url="https://remedgit.github.io/files/14b4.json"
@@ -362,30 +401,45 @@ fetch_firmware() {
             return 1
         fi
 
+        mkdir -p firmware_downloads/$IDENTIFIER
+        IPSW_PATH="firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+
+        if [ -f "$IPSW_PATH" ]; then
+            echo "IPSW file already exists at $IPSW_PATH"
+            echo "Skipping download..."
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+            BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            return 0
+        fi
+
         echo "Downloading firmware..."
         echo "Source: $url"
-        echo "Downloading to firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+        echo "Downloading to $IPSW_PATH"
 
         if command -v aria2c >/dev/null 2>&1; then
             echo "Using aria2c with 16 connections for faster download..."
-            aria2c -x 16 -s 16 -o "firmware_downloads/$IDENTIFIER/18A5342e.ipsw" $url || {
+            aria2c -x 16 -s 16 -o "$IPSW_PATH" $url || {
                 echo "Error: Download failed (aria2c)" >&2
                 return 1
             }
         else
             echo "aria2c not found, using curl..."
-            curl -L -o "firmware_downloads/$IDENTIFIER/18A5342e.ipsw" $url || {
+            curl -L -o "$IPSW_PATH" $url || {
                 echo "Error: Download failed (curl)" >&2
                 return 1
             }
         fi
-        IPSW_PATH="firmware_downloads/$IDENTIFIER/18A5342e.ipsw"
+
+        echo "Download complete."
         rm -rf work/BuildManifest.plist
         unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
         BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         return 0
     fi
+    
     local version_request="$1"
     local api_url="https://api.ipsw.me/v4/ipsw/device/$IDENTIFIER"
     local json
@@ -418,6 +472,27 @@ fetch_firmware() {
         echo "Error: Firmware not found (IDENTIFIER: %s, version: %s)" >&2
         return 1
     fi
+    
+    mkdir -p firmware_downloads/$IDENTIFIER
+    local ipsw_file="firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+
+    # Check if file already exists
+    if [ -f "$ipsw_file" ]; then
+        echo "IPSW file already exists at $ipsw_file"
+        echo "Verifying integrity..."
+        if verify_checksum "$ipsw_file" "$md5" "$sha1"; then
+            echo "File integrity verified. Skipping download."
+            return 0
+        else
+            echo "File integrity check failed. Re-downloading..."
+            rm -f "$ipsw_file"
+        fi
+    fi
+    #if [[ $version2 == $LATEST_VERSION ]]; then
+    #    echo "IPSW is latest, redirecting path"
+    #    IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/$LATEST_VERSION.ipsw"
+    #fi
+
     echo
     echo "Information:"
     echo "Identifier: $identifier2"
@@ -433,38 +508,32 @@ fetch_firmware() {
     echo
     read -p "Firmware details are listed above. Press Enter to proceed with download."
 
-    mkdir -p firmware_downloads/$IDENTIFIER
-
     echo "Downloading firmware..."
     echo "Source: $url"
-    echo "Downloading to firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    echo "Downloading to $ipsw_file"
 
     if command -v aria2c >/dev/null 2>&1; then
         echo "Using aria2c with 16 connections for faster download..."
-        aria2c -x 16 -s 16 -o "firmware_downloads/$IDENTIFIER/${version2}.ipsw" $url || {
+        aria2c -x 16 -s 16 -o "$ipsw_file" $url || {
             echo "Error: Download failed (aria2c)" >&2
             return 1
         }
     else
         echo "aria2c not found, using curl..."
-        curl -L -o "firmware_downloads/$IDENTIFIER/${version2}.ipsw" $url || {
+        curl -L -o "$ipsw_file" $url || {
             echo "Error: Download failed (curl)" >&2
             return 1
         }
     fi
 
-    echo "Download complete, verifying MD5..."
-
-    local local_md5=$(md5sum "firmware_downloads/$IDENTIFIER/${version2}.ipsw" | awk '{print $1}')
-    if [ "$local_md5" != "$md5" ]; then
-        echo "Error: MD5 checksum mismatch!" >&2
-        echo "Expected: $md5" >&2
-        echo "Actual: $local_md5" >&2
-        rm -f "firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    echo "Download complete."
+    
+    if ! verify_checksum "$ipsw_file" "$md5" "$sha1"; then
+        rm -f "$ipsw_file"
         return 1
     fi
 
-    echo "MD5 checksum verified successfully, file saved to: firmware_downloads/$IDENTIFIER/${version2}.ipsw"
+    echo "File saved to: $ipsw_file"
     return 0
 }
 
@@ -513,7 +582,7 @@ ipsw_selector(){
             VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         elif [[ $1 == "base" ]]; then
             fetch_firmware $LATEST_VERSION
-            IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/${download_version}.ipsw"
+            IPSW_PATH_LATEST="firmware_downloads/$IDENTIFIER/$LATEST_VERSION.ipsw"
             rm -rf work/BuildManifest.plist
             unzip -j "$IPSW_PATH_LATEST" "BuildManifest.plist" -d work
             VERSION_LATEST=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
@@ -531,7 +600,7 @@ curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/he
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
-if [[ $LATEST_VERSION == $CURRENT_VERSION ]]; then
+if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
     echo "A new version of surrealra1n is available: $LATEST_VERSION"
     echo "RELEASE NOTES:"
     echo "$RELEASE_NOTES"
@@ -3488,14 +3557,6 @@ if [[ $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == i
     sleep 6
 fi
 
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
-    dfu_helper_a11
-else
-    dfu_helper
-fi
-pwn_device
-det_rsep_flag
-
 restoredir="restorefiles/$IDENTIFIER/$VERSION"
 
 if [[ ! -f "$restoredir/custom.ipsw" ]]; then
@@ -3517,6 +3578,13 @@ else
         fi
     fi
 fi
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]]; then
+    dfu_helper_a11
+else
+    dfu_helper
+fi
+pwn_device
+det_rsep_flag
 curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
 if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
     python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
@@ -3820,8 +3888,6 @@ restore_tethered_opts(){
 
 clear 
 echo "$INFO_TEXT"
-echo "seprmvr64 restores to iOS 7 and 9 are not removed."
-echo "The separate seprmvr64 restore options was removed because the functionality was migrated to this menu"
 echo ""
 echo "Options:"
 echo ""
@@ -3968,12 +4034,6 @@ fi
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
     return
-fi
-
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
-    echo "A12/A13 device support is entirely experimental."
-    echo "Expect to have issues or bugs."
-    read -p "Press enter to continue"
 fi
 
 clear 
