@@ -1,5 +1,8 @@
-v2.0 beta 27 re-release 3
+v2.0 beta 28
 
 RELEASE NOTES:
 
-Add support for 10.14 because yes
+Update minimum macOS version to macOS 11
+Add support for iOS 17.0 - 17.3.1 restores (experimental, expect lots of things to break, for research only). 17.x restores are macOS only
+
+Improve fw_fetcher.
