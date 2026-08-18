@@ -1,8 +1,6 @@
-v2.0 beta 28
+v2.0 beta 29
 
 RELEASE NOTES:
 
-Update minimum macOS version to macOS 11
-Add support for iOS 17.0 - 17.3.1 restores (experimental, expect lots of things to break, for research only). 17.x restores are macOS only
-
-Improve fw_fetcher.
+Expand iOS 17 support for up to 17.6.1 on A12/A13 (previously this was at 17.3.1). Developers only and macOS only.
+Add support for making iOS 18.4 ramdisk on A12/A13 devices. (see surrealSSHRD option)
