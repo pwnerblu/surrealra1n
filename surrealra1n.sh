@@ -67,8 +67,10 @@ download_with_retry() {
     local max_attempts=3
     local attempt=1
     while [[ $attempt -le $max_attempts ]]; do
+        set +e
         curl -L -f -o "$output" "$url" 2>/dev/null
         local curl_exit=$?
+        set -e
         if [[ $curl_exit -eq 0 ]] && [[ -f "$output" ]]; then
             local file_size
             file_size=$(wc -c < "$output" | tr -d ' ')
@@ -98,7 +100,7 @@ download_with_retry() {
         sleep 2
     done
     echo "[!] Error: Failed to download $output after $max_attempts attempts"
-    return 1
+    return 0
 }
 
 echo "Your surrealra1n version: $CURRENT_VERSION"
@@ -707,7 +709,6 @@ if [[ -f "./bin/img4" && \
       -f "./bin/Kernel64Patcher2" && \
       -f "./bin/dmg" && \
       -f "./bin/pzb" && \
-      -f "./bin/zenity" && \
       -f "./bin/iBoot64Patcher" && \
       -f "./bin/asr64_patcher" && \
       -f "./bin/ipx_restored_patcher" && \
@@ -967,7 +968,6 @@ else
     download_with_retry "https://github.com/appleiPodTouch4/spironolactone/raw/refs/heads/main/Linux/x86_64/iBoot64patcher_cryptic" "bin/iBoot64Patcher2" 1024
     download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass" "bin/sshpass" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iproxy" "bin/iproxy" 1024
-    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/zenity" "bin/zenity" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dmg" "bin/dmg" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/ipatcher" "bin/ipatcher" 1024
     # install additional restored_external patcher (iPhone X only)
