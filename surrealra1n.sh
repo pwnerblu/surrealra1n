@@ -25,9 +25,11 @@ set -euo pipefail
 
 error_handler() {
     local exit_code=$?
-    local failed_command="$BASH_COMMAND"
-    local line_number="${BASH_LINENO[0]}"
+    local failed_command="${BASH_COMMAND:-unknown}"
+    local line_number="${BASH_LINENO[0]:-unknown}"
     local script_file="${BASH_SOURCE[1]:-$0}"
+    # Strip escape sequences from failed command to prevent terminal corruption
+    failed_command=$(printf '%s' "$failed_command" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | tr -d '\r' | head -c 512)
 
     {
         echo "[!] surrealra1n has crashed due to an issue"
@@ -44,17 +46,60 @@ error_handler() {
         echo "[!] Issues THAT DO NOT CONTAIN PROPER LOGS, DETAILS, OR ANYTHING RELEVANT, WILL BE CLOSED AS INVALID."
         echo 
         echo "[!] To attach this log into your issue, do the following:"
-        if [[ $dist == 3 || $dist == 4 ]]; then
+        if [[ "${dist:-0}" == 3 || "${dist:-0}" == 4 ]]; then
             echo "Cmd + A -> Cmd + C, then paste the entire log into your issue you're opening"
         else
             echo "Ctrl + Shift + A -> Ctrl + Shift + C, then paste the entire log into the issue you're opening"
         fi
-    } 
+    } 2>/dev/null || true
 
     exit "$exit_code"
 }
 
 trap 'error_handler $LINENO' ERR
+
+# Download a file with retry and validate it's not an HTML error page
+# Usage: download_with_retry <url> <output_path> [min_size_bytes]
+download_with_retry() {
+    local url="$1"
+    local output="$2"
+    local min_size="${3:-1024}"
+    local max_attempts=3
+    local attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        curl -L -f -o "$output" "$url" 2>/dev/null
+        local curl_exit=$?
+        if [[ $curl_exit -eq 0 ]] && [[ -f "$output" ]]; then
+            local file_size
+            file_size=$(wc -c < "$output" | tr -d ' ')
+            if [[ $file_size -ge $min_size ]]; then
+                # Check if file is HTML (GitHub error page)
+                if file "$output" 2>/dev/null | grep -qi "text\|html\|ascii"; then
+                    local head_bytes
+                    head_bytes=$(head -c 64 "$output" 2>/dev/null)
+                    if echo "$head_bytes" | grep -qi "<!doctype\|<html\|<head"; then
+                        echo "[!] Warning: $output appears to be an HTML page, retrying... (attempt $attempt/$max_attempts)"
+                        rm -f "$output"
+                        attempt=$((attempt + 1))
+                        sleep 2
+                        continue
+                    fi
+                fi
+                return 0
+            else
+                echo "[!] Warning: $output is too small (${file_size} bytes, minimum ${min_size}), retrying... (attempt $attempt/$max_attempts)"
+                rm -f "$output"
+            fi
+        else
+            echo "[!] Warning: Failed to download $output (curl exit $curl_exit), retrying... (attempt $attempt/$max_attempts)"
+            rm -f "$output"
+        fi
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+    echo "[!] Error: Failed to download $output after $max_attempts attempts"
+    return 1
+}
 
 echo "Your surrealra1n version: $CURRENT_VERSION"
 # Request sudo password upfront
@@ -205,7 +250,7 @@ fi
 
 pick_file() {
     local p
-    p=$($zenity --file-selection --title="$1" 2>/dev/null)
+    p=$($zenity --file-selection --title="$1" 2>/dev/null) || true
     if [[ -z "$p" ]]; then
         read -e -r -p "$1 - enter absolute path (blank to cancel): " p </dev/tty
     fi
@@ -889,23 +934,23 @@ else
 
     mkdir -p bin futurerestore
 
-    curl -L -o bin/img4 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4
-    curl -L -o bin/img4tool https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4tool
-    curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/KPlooshFinder
-    curl -L -o bin/pzb https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/pzb
-    curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dsc64patcher
-    curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kerneldiff
-    curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dtree_patcher
-    curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery
-    curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/iBoot64Patcher
-    curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher
-    curl -L -o bin/hfsplus https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4" "bin/img4" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/img4tool" "bin/img4tool" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/KPlooshFinder" "bin/KPlooshFinder" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/pzb" "bin/pzb" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dsc64patcher" "bin/dsc64patcher" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kerneldiff" "bin/kerneldiff" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dtree_patcher" "bin/dtree_patcher" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery" "bin/irecovery" 1024
+    download_with_retry "https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/iBoot64Patcher" "bin/iBoot64Patcher" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher" "bin/Kernel64Patcher2" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus" "bin/hfsplus" 1024
     # sshpass
     # iboot patcher oops
     curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
-    curl -L -o bin/trustcache https://github.com/CRKatri/trustcache/releases/download/v2.0/trustcache_linux_x86_64
+    download_with_retry "https://github.com/CRKatri/trustcache/releases/download/v2.0/trustcache_linux_x86_64" "bin/trustcache" 1024
     # fetch pwnerblu fork of Kernel64Patcher and iBootpatch2 for tether booting iOS 14.x on A12 device.
     git clone https://github.com/pwnerblu/Kernel64Patcher --recursive -b dev
     cd Kernel64Patcher
@@ -919,14 +964,14 @@ else
     cp iBootpatch2 ../bin/iBootpatch2
     cd ..
     rm -rf "iBootpatch2"
-    curl -L -o bin/iBoot64Patcher2 https://github.com/appleiPodTouch4/spironolactone/raw/refs/heads/main/Linux/x86_64/iBoot64patcher_cryptic
-    curl -L -o bin/sshpass https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass
-    curl -L -o bin/iproxy https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iproxy
-    curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/zenity
-    curl -L -o bin/dmg https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dmg
-    curl -L -o bin/ipatcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/ipatcher
+    download_with_retry "https://github.com/appleiPodTouch4/spironolactone/raw/refs/heads/main/Linux/x86_64/iBoot64patcher_cryptic" "bin/iBoot64Patcher2" 1024
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass" "bin/sshpass" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iproxy" "bin/iproxy" 1024
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/zenity" "bin/zenity" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/dmg" "bin/dmg" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/ipatcher" "bin/ipatcher" 1024
     # install additional restored_external patcher (iPhone X only)
-    curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/ipx_restored_patcher
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/ipx_restored_patcher" "bin/ipx_restored_patcher" 1024
     # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
     curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/d7b2626fdbf53ef0a2d5bbbbb50c40719315161b/main.c
     gcc main.c -o bin/restoredpatcher
@@ -953,17 +998,17 @@ else
     cd ..
     rm -rf "libimg4_patcher"
     # install Kernel64Patcher for tether booting iOS 13+
-    curl -L -o bin/Kernel64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/Kernel64Patcher
-    curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster
-    curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/tsschecker
-    curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
-    curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kairos
+    download_with_retry "https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/Kernel64Patcher" "bin/Kernel64Patcher" 1024
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/gaster" "bin/gaster" 1024
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/tsschecker" "bin/tsschecker" 1024
+    download_with_retry "https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64" "bin/ldid" 1024
+    download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/kairos" "bin/kairos" 1024
     # download activate.sh and backup.sh from hiylx's eclipsera1n, for backing up and restoring iOS 16+ activation files on 14.0-15.7(.2)
     curl -L -o activate.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/activate.sh
     curl -L -o backup.sh https://github.com/hiylx/eclipsera1n/raw/refs/heads/main/backup.sh
-    curl -L -o futurerestore/futurerestore.zip https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip
+    download_with_retry "https://github.com/LukeeGD/futurerestore/releases/download/latest/futurerestore-Linux-x86_64-RELEASE-main.zip" "futurerestore/futurerestore.zip" 1024
     # fetch idevicerestore for 7.0-9.3.5 restores 
-    curl -L -o bin/idevicerestore https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/idevicerestore2
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/idevicerestore2" "bin/idevicerestore" 1024
     # libs
     rm -rf "lib"
     mkdir lib
@@ -1582,7 +1627,7 @@ if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $dist == 1 || $d
 fi
 
 echo "Checking if this device is in pwned DFU already"
-irecovery_output=$(./bin/irecovery -q)
+irecovery_output=$(./bin/irecovery -q 2>/dev/null) || true
 if echo "$irecovery_output" | grep -q "PWND"; then
     echo "Device is pwned!"
     if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
@@ -1608,7 +1653,7 @@ else
 fi
 
 echo "Checking if this device has pwned successfully"
-irecovery_output=$(./bin/irecovery -q)
+irecovery_output=$(./bin/irecovery -q 2>/dev/null) || true
 if echo "$irecovery_output" | grep -q "PWND"; then
     echo "Device is pwned!"
 else
@@ -1904,10 +1949,7 @@ if [[ $VERSION == 10.3* || $VERSION == 11.* || $VERSION == 12.* || $VERSION == 1
     unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS" -d work
     unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d work
     if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.0 ]]; then # just for 14.0 beta 4 restore
-        cd work
-        sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
-        sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
-        cd ..
+        ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
     fi
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
@@ -2182,7 +2224,6 @@ cd ..
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 mkdir -p work
-cd work 
 if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
     url_ios16="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
 elif [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
@@ -2190,9 +2231,7 @@ elif [[ $IDENTIFIER == iPhone10,2 || $IDENTIFIER == iPhone10,5 ]]; then
 else
     url_ios16="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65931/BD2515B7-7802-4EB4-9377-98E3238EA5A8/iPhone_4.7_P3_16.0_20A362_Restore.ipsw"
 fi
-sudo ../bin/pzb -g 098-08863-001.dmg $url_ios16
-sudo ../bin/pzb -g $KERNEL $url_ios16
-cd ..
+( cd work && sudo ../bin/pzb -g 098-08863-001.dmg "$url_ios16" && sudo ../bin/pzb -g $KERNEL "$url_ios16" )
 restore_ramdisk_dmg=$(find_dmg work smallest)
 ./bin/img4 -i work/$KERNEL -o work/kernel.raw
 ./bin/KPlooshFinder work/kernel.raw work/kernel.patched
@@ -2727,9 +2766,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
         ramdisk_dmg="098-08863-001.dmg"
     fi
-    cd work
-    sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url
-    cd ..
+    ( cd work && sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url )
     ./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.dmg
     hdiutil attach work/ramdisk2.dmg -mountpoint rdwork2
     cp -v rdwork2/usr/local/bin/restored_external work/restored_external
@@ -2812,9 +2849,7 @@ else
         ramdisk_ipsw_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-65861/0A0400A0-2174-4D49-91B7-43FC9DE24272/iPhone10,3,iPhone10,6_16.0_20A362_Restore.ipsw"
         ramdisk_dmg="098-08863-001.dmg"
     fi
-    cd work
-    sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url
-    cd ..
+    ( cd work && sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url )
     ./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.raw
     ramdisk2_fs=$(detect_fs_type work/ramdisk2.raw)
     if [[ $ramdisk2_fs == "APFS" ]]; then
@@ -2900,9 +2935,7 @@ if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]] && [[ $IDENTIFIER == iPhone1
     elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,4 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46551/EFCA25AF-50BE-4712-A9C2-1E760AD99B82/iPad_Spring_2019_14.0_18A373_Restore.ipsw"
     fi
-    cd work 
-    sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
-    cd ..
+    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/iBoot64Patcher2 work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
     ./bin/iBoot64Patcher2 work/iBSS.raw work/iBSS.patchboot -b "-v"
@@ -2916,9 +2949,7 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
     elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,4 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22329/CF450435-1EDC-4212-A768-D666A1677EC5/iPad_Spring_2019_14.4.2_18D70_Restore.ipsw"
     fi
-    cd work 
-    sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
-    cd ..
+    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/iBoot64Patcher2 work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
     ./bin/iBoot64Patcher2 work/iBSS.raw work/iBSS.patchboot -b "-v"
@@ -3202,10 +3233,7 @@ else
     unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC" -d work
     unzip -j "$IPSW_PATH" "Firmware/all_flash/$DEVICETREE" -d work
     if [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 14.0 ]]; then # just for 14.0 beta 4 restore
-        cd work
-        sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
-        sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
-        cd ..
+        ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
     fi
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
@@ -3363,7 +3391,7 @@ echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
 mkdir -p shsh
 mkdir -p boot
-ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 echo "$VERSION" > boot/$ECID.txt
 sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
 
@@ -3500,9 +3528,7 @@ elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER ==
 elif [[ $IDENTIFIER == iPad11* ]]; then
     latest_url="https://updates.cdn-apple.com/2026SummerFCS/fullrestores/140-75126/51E6CF98-E76E-45CC-A0BF-978D0D210406/iPad_Spring_2019_26.6.1_23G83_Restore.ipsw"
 fi
-cd work
-sudo ../bin/pzb -g BuildManifest.plist $latest_url
-cd ..
+( cd work && sudo ../bin/pzb -g BuildManifest.plist $latest_url )
 
 }
 
@@ -3643,15 +3669,15 @@ else
 fi
 sleep 6
 echo "Checking if device is in Recovery mode"
-MODE=$(./bin/irecovery -q | grep "^MODE:" | cut -d ':' -f2 | xargs)
+MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
 if [[ $MODE == Recovery ]]; then
     echo "Device has been detected in Recovery mode."
 else
     echo "Device not detected in Recovery. Exiting"
     exit 1
 fi
-APNONCE=$(./bin/irecovery -q | grep "^NONC:" | cut -d ':' -f2 | xargs)
-ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+APNONCE=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs) || true
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 mkdir -p boot
 echo "$VERSION" > boot/$ECID.txt
 if [[ $IDENTIFIER == iPhone12,8 ]]; then
@@ -3918,7 +3944,7 @@ im4m="$IDENTIFIER-im4m"
 dfu_helper
 pwn_device
 sleep 5
-ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 mkdir -p boot
 echo "$VERSION" > boot/$ECID.txt
 sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/$ipsw_custom
@@ -4143,16 +4169,7 @@ elif [[ $IDENTIFIER == iPad11* ]]; then
 fi
 curl -L -o work/ssh.tar.gz https://github.com/verygenericname/sshtars/raw/refs/heads/main/ssh.tar.gz
 gzip -d work/ssh.tar.gz
-cd work
-sudo ../bin/pzb -g $ramdisk_dmg $ipsw_url
-sudo ../bin/pzb -g Firmware/$ramdisk_dmg.trustcache $ipsw_url
-sudo ../bin/pzb -g Firmware/agx/$GFX $ipsw_url
-sudo ../bin/pzb -g Firmware/ane/$ANE $ipsw_url
-sudo ../bin/pzb -g Firmware/$IOFW $ipsw_url
-sudo ../bin/pzb -g Firmware/all_flash/$DEVICETREE $ipsw_url
-sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
-sudo ../bin/pzb -g $KERNEL $ipsw_url
-cd ..
+( cd work && sudo ../bin/pzb -g $ramdisk_dmg $ipsw_url && sudo ../bin/pzb -g Firmware/$ramdisk_dmg.trustcache $ipsw_url && sudo ../bin/pzb -g Firmware/agx/$GFX $ipsw_url && sudo ../bin/pzb -g Firmware/ane/$ANE $ipsw_url && sudo ../bin/pzb -g Firmware/$IOFW $ipsw_url && sudo ../bin/pzb -g Firmware/all_flash/$DEVICETREE $ipsw_url && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url && sudo ../bin/pzb -g $KERNEL $ipsw_url )
 ./bin/img4 -i work/$IBSS -o work/iBSS.raw
 ./bin/iBootPatch -v -b "-v rd=md0 wdt=-1" work/iBSS.raw $sshrd_path/iBSS.patch
 # kernel
@@ -4217,7 +4234,7 @@ echo "usbliter8ctl may error out."
 echo "The error may be normal as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
 sleep 6
 echo "Checking if device is in Recovery mode"
-MODE=$(./bin/irecovery -q | grep "^MODE:" | cut -d ':' -f2 | xargs)
+MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
 if [[ $MODE == Recovery ]]; then
     echo "Device has been detected in Recovery mode."
 else
