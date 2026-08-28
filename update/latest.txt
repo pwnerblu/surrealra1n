@@ -1,5 +1,5 @@
-v2.0 beta 30
+v2.0 RC
 
 RELEASE NOTES:
 
-Bug Fixes
+A12/A13 iOS 16 downgrades will now automatically have developer mode enabled upon restore (using a kernel patch)
