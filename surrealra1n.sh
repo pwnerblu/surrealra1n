@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 beta 30"
+CURRENT_VERSION="v2.0 RC"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2697,9 +2697,9 @@ cp -v tmp1/Firmware/$cryptex_app_name.root_hash tmp2/Firmware/$cryptex_app_name_
 #
 ./bin/img4tool -e tmp1/$KERNEL -o work/kernel.raw
 if [[ $VERSION == 16.* ]]; then
-    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we # patch cryptex1 validations
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we -d # patch cryptex1 validations
 else
-    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we -i -ue # patch cryptex1 validations
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we -i -ue -d # patch cryptex1 validations
 fi
 rm -rf tmp2/$KERNEL
 ./bin/img4 -i work/kernelboot.patch -o tmp2/$KERNEL2 -A -T krnl -J || true
@@ -3584,6 +3584,7 @@ elif [[ $VERSION == 16.* ]]; then
     echo "Haptic home button will not work."
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     echo "Since iOS 16 should activate normally, there is so need to head to iOS 13.x or iOS 14.0 beta 4."
+    echo "Developer mode will also be enabled with this restore automatically, you do not need to manually enable it."
     if [[ $dist != 3 && $dist != 4 ]] && [[ $VERSION != 16.0* ]]; then
         echo ""
         echo "WARNING: iOS 16.1+ restores on Linux are experimental. Proceed with caution."
