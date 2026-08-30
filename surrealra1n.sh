@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 RC"
+CURRENT_VERSION="v2.0 RC 2"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1125,6 +1125,8 @@ fi
 if [[ $IDENTIFIER == iPhone6* ]]; then
     REFER="iphone6"
     REFER2="iphone6"
+elif [[ $IDENTIFIER == NONE ]]; then
+    updatebb_flag="lol"
 elif [[ $IDENTIFIER == iPhone7* ]]; then
     REFER="iphone7"
 elif [[ $IDENTIFIER == iPod7* ]]; then
@@ -1527,6 +1529,72 @@ Device: $NAME
 ECID: $ECID
 
 Device is in $MODE mode."
+
+save_activation_records(){
+
+if [[ $MODE == Normal ]]; then
+    echo "Make sure your device is jailbroken, and has openSSH installed!"
+    sleep 5
+else
+    echo "Saving activation records cannot be done when the device is in recovery, or DFU."
+    echo "Your device must be in normal mode, and jailbroken to save activation records."
+    exit 1
+fi
+
+if [[ $DEVICE_VERSION == 15.* ]]; then
+    CONNECT_AS="mobile"
+else
+    CONNECT_AS="root"
+fi
+echo "SSH will connect as $CONNECT_AS"
+echo "Make sure your computer and device is connected to the same Wi-Fi network."
+read -p "Insert the IP of your device, go to Settings/Wi-Fi/Wi-Fi network/Information/IP Address: " ip_address
+read -p "Enter the SSH Password of your device: " sshpwd
+mkdir -p activation_records/$ECID
+sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/containers/Data/System/*/Library/activation_records/activation_record.plist activation_records/$ECID/activation_record.plist
+if [[ ! -f "activation_records/$ECID/activation_record.plist" ]]; then
+    echo "activation_record.plist did not save correctly. Cannot continue."
+    exit 1
+fi
+sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv activation_records/$ECID/IC-Info.sisv
+if [[ ! -f "activation_records/$ECID/IC-Info.sisv" ]]; then
+    echo "IC-Info.sisv did not save correctly. Cannot continue."
+    exit 1
+fi
+if [[ $DEVICE_VERSION == 15.* ]]; then
+    # re-set permissions for com.apple.commcenter.device_specific_nobackup.plist and move to different dir, so you can download it when connected via mobile
+    sudo ./bin/sshpass -p "$sshpwd" ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address" "echo "$sshpwd" | sudo -S cp /private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist /private/var/containers/Data/System/"
+    sudo ./bin/sshpass -p "$sshpwd" ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address" "echo "$sshpwd" | sudo -S chown mobile:mobile /private/var/containers/Data/System/com.apple.commcenter.device_specific_nobackup.plist"
+    sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/containers/Data/System/com.apple.commcenter.device_specific_nobackup.plist activation_records/$ECID/com.apple.commcenter.device_specific_nobackup.plist
+else
+    sudo ./bin/sshpass -p "$sshpwd" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $CONNECT_AS@"$ip_address":/private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist activation_records/$ECID/com.apple.commcenter.device_specific_nobackup.plist
+fi
+if [[ ! -f "activation_records/$ECID/com.apple.commcenter.device_specific_nobackup.plist" ]]; then 
+    echo "com.apple.commcenter.device_specific_nobackup.plist did not save correctly. Cannot continue."
+    sudo rm -rf activation_records/$ECID
+    exit 1
+fi
+echo "Activation records are now saved"
+sleep 4
+
+}
+
+activation_records_check(){
+
+if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
+    ECID_CLEAN="${ECID#0x}"
+    ECID_CLEAN="${ECID_CLEAN#0X}"
+    ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
+else
+    ECID_CLEAN="$ECID"
+    ECID_DEC="$ECID"
+fi
+
+if [[ ! -f "activation_records/$ECID_DEC/activation_record.plist" || ! -f "activation_records/$ECID_DEC/IC-Info.sisv" ]]; then
+    save_activation_records
+fi
+
+}
 
 misc_utils(){
 
@@ -2112,7 +2180,7 @@ elif [[ $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10
             break
         fi
     done
-elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
     download_iphone6_sep
     prepatch_ibssibec_fr
     while true; do
@@ -2275,6 +2343,22 @@ else
     find tmp1/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec rm -f {} +
     find tmp2/Firmware/all_flash/ -type f ! -name '*DeviceTree*' -exec cp {} tmp1/Firmware/all_flash/ \;
 fi
+if [[ ( $VERSION == 12.* && ( $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ) ) ||
+      $VERSION == 13.1* ||
+      $VERSION == 13.2* ||
+      $VERSION == 13.3* ]]; then
+    mkdir -p work
+    ramdisk_ipsw_url="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42831/7341A77D-6526-4C64-8753-D886106F97CD/iPad_64bit_TouchID_13.4_17E255_Restore.ipsw"
+    ramdisk_dmg="048-64389-366.dmg"
+    ( cd work && sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url )
+    ( cd work && sudo ../bin/pzb -g $KERNEL $ramdisk_ipsw_url )
+    ( cd work && sudo ../bin/pzb -g Firmware/all_flash/$DEVICETREE $ramdisk_ipsw_url )
+    mv -v work/$KERNEL tmp1/$KERNEL
+    mv -v work/$DEVICETREE tmp1/Firmware/all_flash/$DEVICETREE
+    restore_ramdisk_dmg="work/048-64389-366.dmg"
+else
+    restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
+fi
 if [[ $VERSION == 14.* ]] && [[ $IDENTIFIER == iPhone10* ]]; then
     ./bin/img4 -i tmp1/$KERNEL -o work/kernelboot.raw
     ./bin/Kernel64Patcher work/kernelboot.raw work/kernelboot.patch -b
@@ -2290,7 +2374,6 @@ cd ..
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 mkdir -p work
-restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
 update_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
 if [[ $VERSION == 10.2* || $VERSION == 10.1* ]]; then
     cp -v tmp1/$KERNEL10 work/kernel.im4p
@@ -3276,9 +3359,13 @@ elif [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPad5* ]]; then
     ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
     ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
 fi
-if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 11.* ]]; then
+if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
     ./bin/img4 -i work/$krnl -o work/kernel.raw
-    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
+    if [[ $VERSION == 12.* ]]; then
+        ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 12 --skip-sks --skip-acm --skip-amfi
+    else
+        ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 11 --skip-sks --skip-acm --skip-amfi
+    fi
     ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
     ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
 fi
@@ -3288,6 +3375,7 @@ if [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7
     ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
     ./bin/img4 -i work/$krnl -o $bootdir/Kernelcache.img4 -T rkrn -M $im4m -P work/kernel.diff -J || true
 fi
+echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
 
 }
 
@@ -3375,8 +3463,8 @@ elif [[ $IDENTIFIER == iPhone10* ]] && [[ $VERSION == 16.6* ]]; then
     read -p "Press enter to continue"
 fi
 
-if [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
-    echo "11.3-12.4.1 downgrades are supported but they have not been integrated yet into surrealra1n $CURRENT_VERSION"
+if [[ $VERSION == 11.* ]] && [[ $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad5,4 ]]; then
+    echo "A8X iOS 11 downgrades are NOT supported yet in surrealra1n $CURRENT_VERSION"
     exit 1
 fi
 
@@ -3462,7 +3550,7 @@ elif [[ $IDENTIFIER == iPad4* || $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 10
             break
         fi
     done
-elif [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 ]] && [[ $VERSION == 11.* || $VERSION == 12.* ]]; then
     download_iphone6_sep
     prepatch_ibssibec_fr
     while true; do
@@ -3742,6 +3830,22 @@ elif [[ $VERSION == 8.* ]]; then
     grow_to="3200000000"
 fi
 
+if [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPod7* || $VERSION == 7.0* ]]; then
+    actrec_restore=1
+else
+    actrec_restore=0
+fi
+
+if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
+    ECID_CLEAN="${ECID#0x}"
+    ECID_CLEAN="${ECID_CLEAN#0X}"
+    ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
+else
+    ECID_CLEAN="$ECID"
+    ECID_DEC="$ECID"
+fi
+
+
 mkdir -p noseprestore/$IDENTIFIER/$VERSION
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -3791,9 +3895,28 @@ fi
 ./bin/hfsplus tmp1/ramdisk.raw rm usr/sbin/asr
 ./bin/hfsplus tmp1/ramdisk.raw add tmp1/asr_patched usr/sbin/asr
 ./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/sbin/asr
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]]; then
+    ./bin/hfsplus tmp1/ramdisk.raw extract usr/local/bin/restored_external tmp1/restored_external
+    ./bin/restoredpatcher tmp1/restored_external tmp1/restored_patch -b
+    ./bin/ldid -e tmp1/restored_external > tmp1/ents.plist
+    ./bin/ldid -Stmp1/ents.plist tmp1/restored_patch
+    ./bin/hfsplus tmp1/ramdisk.raw rm usr/local/bin/restored_external
+    ./bin/hfsplus tmp1/ramdisk.raw add tmp1/restored_patch usr/local/bin/restored_external
+    ./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+fi
 ./bin/img4 -i tmp1/ramdisk.raw -o $smallestlatest_dmg -A -T rdsk
 rm -rf $rootfslatest_dmg
 ./bin/dmg extract $rootfs_dmg tmp1/rootfs.raw -k $ROOT_KEY
+# dyld patches
+if [[ $VERSION == 7.* ]]; then
+    ./bin/hfsplus tmp1/rootfs.raw extract System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+    ./bin/dsc64patcher dyld.raw dyld.patch -7
+    ./bin/hfsplus tmp1/rootfs.raw rm System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    ./bin/hfsplus tmp1/rootfs.raw add dyld.patch System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    rm -rf dyld.*
+    ./bin/hfsplus tmp1/rootfs.raw chmod 755 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    ./bin/hfsplus tmp1/rootfs.raw chown 0:0 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+fi
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
 fi
@@ -3804,6 +3927,38 @@ else
     echo "Removing powerd"
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/CoreServices/powerd.bundle/powerd
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.powerd.plist
+    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
+        # fixes
+        ./bin/hfsplus tmp1/rootfs.raw rm usr/libexec/biometrickitd
+        ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.biometrickitd.plist
+    fi
+fi
+if [[ $actrec_restore == 1 ]]; then
+    actsave_dir="activation_records/$ECID_DEC"
+    if [[ $VERSION == 8.3* || $VERSION == 8.4* || $VERSION == 9.* ]]; then
+        make_actdir="./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/mad/activation_records"
+        placetodir="./bin/hfsplus "tmp1/rootfs.raw" add $actsave_dir/activation_record.plist private/var/mobile/Library/mad/activation_records/activation_record.plist"
+        chmodfile="./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/mobile/Library/mad/activation_records/activation_record.plist"
+    else
+        make_actdir="./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/root/Library/Lockdown/activation_records"
+        placetodir="./bin/hfsplus "tmp1/rootfs.raw" add $actsave_dir/activation_record.plist private/var/root/Library/Lockdown/activation_records/activation_record.plist"
+        chmodfile="./bin/hfsplus "tmp1/rootfs.raw" chmod 666 private/var/root/Library/Lockdown/activation_records/activation_record.plist"
+    fi
+    echo "Making dirs..."
+    $make_actdir
+    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes
+    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless
+    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library
+    ./bin/hfsplus "tmp1/rootfs.raw" mkdir private/var/wireless/Library/Preferences
+    echo "Injecting activation files into rootfs..."
+    $placetodir
+    ./bin/hfsplus "tmp1/rootfs.raw" add $actsave_dir/IC-Info.sisv private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+    sudo ./bin/hfsplus "tmp1/rootfs.raw" add $actsave_dir/com.apple.commcenter.device_specific_nobackup.plist private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+    echo "Setting permissions..."
+    $chmodfile
+    ./bin/hfsplus "tmp1/rootfs.raw" chmod 664 private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv
+    ./bin/hfsplus "tmp1/rootfs.raw" chmod 600 private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist
+
 fi
 if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
     if [[ $VERSION == 7.1* ]]; then
@@ -3872,6 +4027,7 @@ fi
 ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
 ./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
 rm -rf "work"
+echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
 
 }
 
@@ -3901,25 +4057,49 @@ echo "3. Password protected Wi-Fi networks will not work"
 echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
 echo "5. Potentially other broken features"
 read -p "Press enter to continue"
-if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]]; then
-    echo "A8 is currently unsupported as we are rewriting surrealra1n, but it should be back eventually."
-    exit 1
-fi
 
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
 stitch_activation=0
+if [[ "$ECID" == 0x* || "$ECID" == 0X* ]]; then
+    ECID_CLEAN="${ECID#0x}"
+    ECID_CLEAN="${ECID_CLEAN#0X}"
+    ECID_DEC=$(printf '%d' "0x$ECID_CLEAN")
+else
+    ECID_CLEAN="$ECID"
+    ECID_DEC="$ECID"
+fi
+if [[ $VERSION == 7.0* || $VERSION == 9.* ]]; then
+    stitch_activation=1
+fi
 if [[ $JAILBREAK == 1 ]] && [[ $stitch_activation != 1 ]]; then
     ipsw_custom="customJB.ipsw"
 elif [[ $JAILBREAK == 1 ]] && [[ $stitch_activation == 1 ]]; then
-    ipsw_custom="customJB_$ECID.ipsw"
+    ipsw_custom="customJB_$ECID_DEC.ipsw"
 elif [[ $JAILBREAK != 1 ]] && [[ $stitch_activation == 1 ]]; then
-    ipsw_custom="custom_$ECID.ipsw"
+    ipsw_custom="custom_$ECID_DEC.ipsw"
 else
     ipsw_custom="custom.ipsw"
 fi
 
+if [[ $VERSION == 9.3* ]]; then
+    echo "9.3.x restores are unsupported"
+    exit 1
+elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
+    echo "This model is not supported yet"
+    exit 1
+fi
+
 if [[ ! -f "$restoredir/$ipsw_custom" ]]; then
     echo "Restore files does not exist, making new ones"
+    if [[ $VERSION == 7.0* || $VERSION == 9.* ]]; then
+        activation_records_check
+        actrec_restore=1
+    elif [[ $IDENTIFIER == iPad5* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPod7* ]]; then
+        activation_records_check
+        actrec_restore=1
+    else
+        actrec_restore=0
+    fi
     prepare_seprmvr64_ipsw_legacy
 else
     echo "Restore files already exist"
@@ -4209,6 +4389,18 @@ echo "SSH ramdisk is created successfully!"
 }
 
 sshrd_a12(){
+
+if [[ $IDENTIFIER == NONE ]]; then
+    main_menu
+    return
+elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+    echo ""
+else
+    echo "Unsupported device"
+    sleep 4
+    main_menu
+    return
+fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
     echo "Welcome to surrealsshrd v1.0 alpha"
