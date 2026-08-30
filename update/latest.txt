@@ -1,5 +1,5 @@
-v2.0 RC
+v2.0 RC 2
 
 RELEASE NOTES:
 
-A12/A13 iOS 16 downgrades will now automatically have developer mode enabled upon restore (using a kernel patch)
+Re-add iOS 12 A8X downgrade support, and reimplement A8(X) seprmvr64 restores.
