@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 RC 3"
+CURRENT_VERSION="v2.0"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -644,7 +644,7 @@ ipsw_selector(){
 
 echo "Checking for updates..."
 rm -rf update/latest.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/update/latest.txt
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
@@ -659,7 +659,7 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
         rm -rf "updatefiles"
         mkdir updatefiles
         rm -rf "updatefiles/repo"
-        git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
+        git clone --branch main https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
         if [[ ! -d updatefiles/repo ]]; then
             echo "Failed to clone repository."
             exit 1
@@ -1771,6 +1771,45 @@ fi
 
 }
 
+switch_to_development(){
+
+echo "Fetching latest development version info..."
+curl -L -o update/latest_dev.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
+DEV_VERSION=$(head -n 1 "update/latest_dev.txt" | tr -d '\r\n')
+echo "Current version: $CURRENT_VERSION"
+echo "Latest development version: $DEV_VERSION"
+echo ""
+echo "WARNING: You are about to switch to the development branch."
+echo "Development versions are unstable and may contain bugs or breaking changes."
+echo ""
+read -p "Are you sure you want to switch to development? (y/N): " switch_confirm
+if [[ $switch_confirm == Y || $switch_confirm == y ]]; then
+    echo "Backing up your current surrealra1n installation..."
+    rm -rf "surrealra1n.old"
+    mkdir -p surrealra1n.old
+    echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
+    mv -v bin surrealra1n.old/
+    mv -v futurerestore surrealra1n.old/
+    mv -v keys surrealra1n.old/
+    mv -v surrealra1n.sh surrealra1n.old/
+    git clone --branch development https://github.com/pwnerblu/surrealra1n repo --recursive
+    if [[ ! -d repo ]]; then
+        echo "Failed to clone repository."
+        exit 1
+    fi
+    echo "Copying new files..."
+    cp -av repo/. ./
+    chmod +x surrealra1n.sh
+    rm -rf "repo"
+    echo "surrealra1n has been switched to development $DEV_VERSION! Please run the script again."
+    exit 0
+else
+    echo "Switch to development has been canceled."
+    main_menu
+fi
+
+}
+
 switch_to_main(){
 
 echo "Fetching latest stable version info..."
@@ -1832,7 +1871,7 @@ else
     echo "Latest stable version is $MAIN_VERSION (main branch)."
     echo "This will upgrade you to stable without wiping your boot/restore files."
     echo ""
-    read -p "Would you like to switch to stable? (y/N): " switch_confirm
+    read -p "Would you like to switch to stable? (Y/n): " switch_confirm
     if [[ $switch_confirm == Y || $switch_confirm == y ]]; then
         rm -rf "surrealra1n.old"
         mkdir -p surrealra1n.old
@@ -4469,7 +4508,7 @@ echo ""
 echo "1. Downgrade Options"
 echo "2. Misc Utilities"
 echo "3. surrealSSHRD (A12/A13)"
-echo "4. Switch to main branch"
+echo "4. Switch to development branch (not recommended)"
 echo "5. Exit"
 read -p "Please input an option (1-5): " option
 if [[ $option == 1 ]]; then
@@ -4479,7 +4518,7 @@ elif [[ $option == 2 ]]; then
 elif [[ $option == 3 ]]; then
     sshrd_a12
 elif [[ $option == 4 ]]; then
-    switch_to_main
+    switch_to_development
 elif [[ $option == 5 ]]; then
     echo "surrealra1n is exiting"
     exit 0
