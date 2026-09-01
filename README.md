@@ -14,7 +14,7 @@ View the [Supported Devices](https://github.com/pwnerblu/surrealra1n/wiki/Suppor
 
 Download surrealra1n [here](https://github.com/pwnerblu/surrealra1n/releases/latest) or clone it using git:
 ```
-git clone -b development https://github.com/pwnerblu/surrealra1n
+git clone -b main https://github.com/pwnerblu/surrealra1n
 ```
 Extract the zip file and open a terminal window to the folder that contains surrealra1n, then launch it using the command: ```./surrealra1n.sh```.
 
