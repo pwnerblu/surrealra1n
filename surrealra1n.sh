@@ -1518,7 +1518,6 @@ KERNEL10="kernelcache.release.$BOARDID2"
 
 INFO_TEXT="surrealra1n - $CURRENT_VERSION
 Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 17.6.1
-This build is an early beta. Use at your own risk, and expect bugs.
 
 Uses latest SHSH blobs (for tethered downgrades)
 iSuns9 fork of asr64_patcher is used for patching ASR
