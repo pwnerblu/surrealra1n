@@ -1,4 +1,6 @@
 # surrealra1n 
+## WARNING: This is an archive branch for v1.x, do not expect support from this, and the codebase is obsolete as of now. surrealra1n v2.x has a better codebase/implementation than v1.x.
+## Version on this branch is v1.3.28.
 
 A tethered downgrade tool for iPhone 5S, all A8(X), and A11 devices
 
