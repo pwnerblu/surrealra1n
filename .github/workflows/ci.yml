@@ -4,7 +4,7 @@ on:
     paths:
       - 'update/latest.txt'
     branches:
-      - development
+      - main
 jobs:
   create-release:
     runs-on: ubuntu-latest
