@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 RC 2"
+CURRENT_VERSION="v2.0 RC 3"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -746,7 +746,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/63832ad59d4d27b007a618badf95bd550bd7f2ef/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/05cd068ca7ec03d20e85103c1a3778634c8cf346/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -847,7 +847,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/63832ad59d4d27b007a618badf95bd550bd7f2ef/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/05cd068ca7ec03d20e85103c1a3778634c8cf346/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     # from spironolactone oops
@@ -948,7 +948,7 @@ else
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus" "bin/hfsplus" 1024
     # sshpass
     # iboot patcher oops
-    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/fa95b97d52cdc1a13c8891e644bd4c2451967910/patch.c
+    curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/05cd068ca7ec03d20e85103c1a3778634c8cf346/patch.c
     gcc ibootpatch.c -o bin/iBootPatch
     rm -rf ibootpatch.c
     download_with_retry "https://github.com/CRKatri/trustcache/releases/download/v2.0/trustcache_linux_x86_64" "bin/trustcache" 1024
@@ -2656,7 +2656,7 @@ unzip "$IPSW_PATH_LATEST" -d tmp2
 mkdir -p work
 ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
 ./bin/iBootPatch work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
-./bin/iBootPatch work/iBSS.raw work/iBSS.patchboot 
+./bin/iBootPatch -v -b "-v" work/iBSS.raw work/iBSS.patchboot 
 ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
 ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 #
@@ -3041,14 +3041,14 @@ elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION 
 elif [[ $VERSION == 15.* ]]; then
     ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/iBootPatch work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
-    ./bin/iBootPatch work/iBSS.raw work/iBSS.patchboot 
+    ./bin/iBootPatch -v -b "-v" work/iBSS.raw work/iBSS.patchboot 
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 elif [[ $VERSION == 14.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
     # use different patch method for A13 iOS 14. use updated iBootPatch
     ./bin/img4 -i tmp1/Firmware/dfu/$IBSS -o work/iBSS.raw -k $IBSS_KEY
     ./bin/iBootPatch work/iBSS.raw boot/$IDENTIFIER/iBSS.patch
-    ./bin/iBootPatch work/iBSS.raw work/iBSS.patchboot
+    ./bin/iBootPatch -v -b "-v" work/iBSS.raw work/iBSS.patchboot
     ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 else
@@ -4056,6 +4056,9 @@ echo "2. Passcode will not work"
 echo "3. Password protected Wi-Fi networks will not work"
 echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
 echo "5. Potentially other broken features"
+if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
+    echo "6. Baseband will not work."
+fi
 read -p "Press enter to continue"
 
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
@@ -4083,9 +4086,6 @@ fi
 
 if [[ $VERSION == 9.3* ]]; then
     echo "9.3.x restores are unsupported"
-    exit 1
-elif [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 ]]; then
-    echo "This model is not supported yet"
     exit 1
 fi
 
