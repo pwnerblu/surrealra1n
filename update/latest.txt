@@ -1,5 +1,6 @@
-v2.0 RC 2
+v2.0 RC 3
 
 RELEASE NOTES:
 
-Re-add iOS 12 A8X downgrade support, and reimplement A8(X) seprmvr64 restores.
+Add seprmvr64 iOS 9 restore support on iPad mini 4 and cellular iPad Air 2.
+Add verbose boot capabilities for A12 iOS 15.0+ and A13 iOS 14.0+ tether downgrade.
