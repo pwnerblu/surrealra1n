@@ -1,6 +1,21 @@
-v2.0 RC 3
+v2.0
 
 RELEASE NOTES:
 
-Add seprmvr64 iOS 9 restore support on iPad mini 4 and cellular iPad Air 2.
-Add verbose boot capabilities for A12 iOS 15.0+ and A13 iOS 14.0+ tether downgrade.
+Refractor a lot of code, hopefully fix some bugs.
+Remove CLI flags in favor of a menu-driven UX approach.
+
+Auto-check dependencies when possible even on macOS.
+Bump up minimum macOS version to 11.0.
+Fix deep sleep panics on 7.x seprmvr64 restores without needing jailbreak. Also fixes weird freezes on iOS 7.0.x iPhone 5S downgrades.
+Add tether downgrade support for iOS 14.x (13.x for A13)-16.x for A12/A13 iPhones, and some A12 iPads. iOS 17 support is technically available up to 17.6.1, though it is more targeted towards developers as it is entirely experimental, also iOS 17 support is macOS only. macOS 12 and later is required for A12/A13 downgrades in general if you are using macOS.
+
+Add iPad Air 1 support (normal and seprmvr64).
+Add iOS 10.1-10.2.1 tether restore support for A8 (excluding A8X) devices
+Improve iPad mini 4 11.3-12.4.1 tethered downgrade by using iPhone 6 12.5.8 SEP instead of 15.x SEP.
+Also adds the capability to untether downgrade iPad mini 4 to 11.3-12.4.1 if you have valid SHSH blobs, thanks to iPhone 6 12.5.8 SEP
+Add iPad mini 2 seprmvr64 stuff. Add iPad Air 2 Cellular, iPad mini 4 seprmvr64 restores to iOS 9.0-9.2.1.
+iOS 8 seprmvr64 restores are not supported anymore.
+
+iPad Air 2 11.3-11.4.1 restores are currenty not added in this rewrite.
+iPad mini 3 support is not added yet.
