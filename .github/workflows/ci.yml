@@ -61,9 +61,10 @@ jobs:
           release_name: ${{ steps.parse.outputs.version_raw }}
           body: ${{ steps.parse.outputs.notes }}
           draft: false
-          # prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') }}
+          prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') || contains(steps.parse.outputs.version_raw, 'RC') }}
       
       - name: Mark as Latest Release
+        if: ${{ !contains(steps.parse.outputs.version_raw, 'beta') && !contains(steps.parse.outputs.version_raw, 'RC') }}
         run: |
           gh release edit ${{ steps.parse.outputs.tag }} --latest
         env:
