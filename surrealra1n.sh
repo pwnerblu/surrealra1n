@@ -4323,6 +4323,15 @@ fi
 
 restore_utils(){
 
+if [[ $outdated == 1 ]]; then
+    echo "This surrealra1n beta has expired"
+    echo "A newer beta is available. Please update to continue."
+    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
+    sleep 10
+    main_menu
+    return
+fi
+
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
     return
