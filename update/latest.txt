@@ -1,6 +1,6 @@
-v2.0 RC 3
+v2.1 beta
 
 RELEASE NOTES:
 
-Add seprmvr64 iOS 9 restore support on iPad mini 4 and cellular iPad Air 2.
-Add verbose boot capabilities for A12 iOS 15.0+ and A13 iOS 14.0+ tether downgrade.
+Add support for making iOS 17.5 ramdisks for A12/A13 devices
+Add support for creating FakeVar on A12/A13 running iOS 18 or later (developers only, only tested on iPhone XR 18.7.10)
