@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0 RC 3"
+CURRENT_VERSION="v2.1 beta"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -800,6 +800,12 @@ elif [[ $dist == 3 ]]; then
         cp iBootpatch2 ../bin/iBootpatch2
         cd ..
         rm -rf "iBootpatch2"
+        git clone https://github.com/pwnerblu/iBootpatch2 -b funny
+        cd iBootpatch2
+        make
+        cp iBootpatch2 ../bin/iBootpatch3
+        cd ..
+        rm -rf "iBootpatch2"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
@@ -899,6 +905,12 @@ elif [[ $dist == 4 ]]; then
         cd iBootpatch2
         make
         cp iBootpatch2 ../bin/iBootpatch2
+        cd ..
+        rm -rf "iBootpatch2"
+        git clone https://github.com/pwnerblu/iBootpatch2 -b funny
+        cd iBootpatch2
+        make
+        cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
     fi
@@ -1518,7 +1530,6 @@ KERNEL10="kernelcache.release.$BOARDID2"
 
 INFO_TEXT="surrealra1n - $CURRENT_VERSION
 Tether Downgrader for some checkm8 64bit devices, iOS 7.0 - 17.6.1
-This build is an early beta. Use at your own risk, and expect bugs.
 
 Uses latest SHSH blobs (for tethered downgrades)
 iSuns9 fork of asr64_patcher is used for patching ASR
@@ -1771,6 +1782,45 @@ fi
 
 }
 
+switch_to_development(){
+
+echo "Fetching latest development version info..."
+curl -L -o update/latest_dev.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
+DEV_VERSION=$(head -n 1 "update/latest_dev.txt" | tr -d '\r\n')
+echo "Current version: $CURRENT_VERSION"
+echo "Latest development version: $DEV_VERSION"
+echo ""
+echo "WARNING: You are about to switch to the development branch."
+echo "Development versions are unstable and may contain bugs or breaking changes."
+echo ""
+read -p "Are you sure you want to switch to development? (y/N): " switch_confirm
+if [[ $switch_confirm == Y || $switch_confirm == y ]]; then
+    echo "Backing up your current surrealra1n installation..."
+    rm -rf "surrealra1n.old"
+    mkdir -p surrealra1n.old
+    echo "$CURRENT_VERSION" > surrealra1n.old/oldversion.txt
+    mv -v bin surrealra1n.old/
+    mv -v futurerestore surrealra1n.old/
+    mv -v keys surrealra1n.old/
+    mv -v surrealra1n.sh surrealra1n.old/
+    git clone --branch development https://github.com/pwnerblu/surrealra1n repo --recursive
+    if [[ ! -d repo ]]; then
+        echo "Failed to clone repository."
+        exit 1
+    fi
+    echo "Copying new files..."
+    cp -av repo/. ./
+    chmod +x surrealra1n.sh
+    rm -rf "repo"
+    echo "surrealra1n has been switched to development $DEV_VERSION! Please run the script again."
+    exit 0
+else
+    echo "Switch to development has been canceled."
+    main_menu
+fi
+
+}
+
 switch_to_main(){
 
 echo "Fetching latest stable version info..."
@@ -1832,7 +1882,7 @@ else
     echo "Latest stable version is $MAIN_VERSION (main branch)."
     echo "This will upgrade you to stable without wiping your boot/restore files."
     echo ""
-    read -p "Would you like to switch to stable? (y/N): " switch_confirm
+    read -p "Would you like to switch to stable? (Y/n): " switch_confirm
     if [[ $switch_confirm == Y || $switch_confirm == y ]]; then
         rm -rf "surrealra1n.old"
         mkdir -p surrealra1n.old
@@ -4273,15 +4323,6 @@ fi
 
 restore_utils(){
 
-if [[ $outdated == 1 ]]; then
-    echo "This surrealra1n beta has expired"
-    echo "A newer beta is available. Please update to continue."
-    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
-    sleep 10
-    main_menu
-    return
-fi
-
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
     return
@@ -4315,7 +4356,55 @@ fi
 
 }
 
+ios184(){
+
+ramdisk_dmg="090-43874-358.dmg"
+if [[ $IDENTIFIER == iPhone12,8 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-15768/008C2862-195B-48EE-B790-997431B752FD/iPhone12,8_18.4_22E240_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone12,5 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-15843/BDD88763-DC3F-4DB6-B82D-133EAB3E5F49/iPhone12,3,iPhone12,5_18.4_22E240_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone12,1 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-14797/272F08A9-B8B7-4649-9954-D83781B69280/iPhone12,1_18.4_22E240_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone11,8 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-14374/4BFDFFD2-985B-46A1-9444-D7EFB985F545/iPhone11,8_18.4_22E240_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-13816/F8D156A2-DBE7-49A4-8C2C-6EF6F6776F06/iPhone11,2,iPhone11,4,iPhone11,6_18.4_22E240_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad11* ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-14949/21FC3275-F323-4DF7-B410-3C2703F200CB/iPad_Spring_2019_18.4_22E240_Restore.ipsw"
+fi
+
+}
+
+ios175(){
+
+ramdisk_dmg="090-24459-112.dmg"
+if [[ $IDENTIFIER == iPhone12,8 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2024SpringFCS/fullrestores/052-39310/C4EC1938-411B-4999-91AF-31AD24FDCE63/iPhone12,8_17.5_21F79_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone12,5 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2024SpringFCS/fullrestores/052-39300/4FE26628-C36C-4AC4-A941-8846700C5F39/iPhone12,3,iPhone12,5_17.5_21F79_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone12,1 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2024SpringFCS/fullrestores/052-39253/2CBCD25D-6FE6-41AE-BA15-A5ECCABE2DAB/iPhone12,1_17.5_21F79_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone11,8 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2024SpringFCS/fullrestores/052-39331/01B884E9-B6BA-493B-B9C2-A877A9F29360/iPhone11,8_17.5_21F79_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2024SpringFCS/fullrestores/052-39325/8BB623C4-E600-4BC0-A5F3-2416D0FF2369/iPhone11,2,iPhone11,4,iPhone11,6_17.5_21F79_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad11* ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2024SpringFCS/fullrestores/052-39324/51A41966-4F0F-4BFD-AD3E-F007C678327E/iPad_Spring_2019_17.5_21F79_Restore.ipsw"
+fi
+
+}
+
 sshrd_build_a12(){
+
+echo "Which iOS version for SSHRD would you like to make?"
+echo "1. iOS 18.4"
+echo "2. iOS 17.5"
+#echo "3. iOS 16.4"
+#echo "4. iOS 16.0 (do not use this ramdisk if device is on 16.4 or later)"
+#echo "5. iOS 15.4 (do not use this ramdisk if device is on 16.4 or later)"
+#echo "6. iOS 14.5 (do not use this ramdisk if device is on 16.4 or later)"
+#echo "7. iOS 14.0 (do not use this ramdisk if device is on 16.4 or later)"
+read -p "Please select an option (1-2): " version_option
 
 sshrd_path="SSHRD/$IDENTIFIER"
 mkdir -p $sshrd_path
@@ -4334,29 +4423,32 @@ if [[ -z "$SHSH_PATH" ]]; then
 fi
 im4m="work/im4m"
 ./bin/img4tool -e -s $SHSH_PATH -m work/im4m
-ramdisk_dmg="090-43874-358.dmg"
-if [[ $IDENTIFIER == iPhone12,8 ]]; then
-    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-15768/008C2862-195B-48EE-B790-997431B752FD/iPhone12,8_18.4_22E240_Restore.ipsw"
-elif [[ $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone12,5 ]]; then
-    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-15843/BDD88763-DC3F-4DB6-B82D-133EAB3E5F49/iPhone12,3,iPhone12,5_18.4_22E240_Restore.ipsw"
-elif [[ $IDENTIFIER == iPhone12,1 ]]; then
-    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-14797/272F08A9-B8B7-4649-9954-D83781B69280/iPhone12,1_18.4_22E240_Restore.ipsw"
-elif [[ $IDENTIFIER == iPhone11,8 ]]; then
-    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-14374/4BFDFFD2-985B-46A1-9444-D7EFB985F545/iPhone11,8_18.4_22E240_Restore.ipsw"
-elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
-    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-13816/F8D156A2-DBE7-49A4-8C2C-6EF6F6776F06/iPhone11,2,iPhone11,4,iPhone11,6_18.4_22E240_Restore.ipsw"
-elif [[ $IDENTIFIER == iPad11* ]]; then
-    ipsw_url="https://updates.cdn-apple.com/2025SpringFCS/fullrestores/082-14949/21FC3275-F323-4DF7-B410-3C2703F200CB/iPad_Spring_2019_18.4_22E240_Restore.ipsw"
+if [[ $version_option == 1 ]]; then
+    VERSION="18.4"
+    ios184
+    key=""
+elif [[ $version_option == 2 ]]; then
+    VERSION="17.5"
+    IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+    key="-k $IBSS_KEY"
+    ios175
+else
+    echo "Invalid option"
+    exit 1
 fi
 curl -L -o work/ssh.tar.gz https://github.com/verygenericname/sshtars/raw/refs/heads/main/ssh.tar.gz
 gzip -d work/ssh.tar.gz
 ( cd work && sudo ../bin/pzb -g $ramdisk_dmg $ipsw_url && sudo ../bin/pzb -g Firmware/$ramdisk_dmg.trustcache $ipsw_url && sudo ../bin/pzb -g Firmware/agx/$GFX $ipsw_url && sudo ../bin/pzb -g Firmware/ane/$ANE $ipsw_url && sudo ../bin/pzb -g Firmware/$IOFW $ipsw_url && sudo ../bin/pzb -g Firmware/all_flash/$DEVICETREE $ipsw_url && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url && sudo ../bin/pzb -g $KERNEL $ipsw_url )
-./bin/img4 -i work/$IBSS -o work/iBSS.raw
+./bin/img4 -i work/$IBSS -o work/iBSS.raw $key
 ./bin/iBootPatch -v -b "-v rd=md0 wdt=-1" work/iBSS.raw $sshrd_path/iBSS.patch
 # kernel
 ./bin/img4tool -e work/$KERNEL -o work/kernel.raw
-./bin/Kernel64Patcher3 work/kernel.raw work/kernel.patch -ue
-./bin/img4 -i work/kernel.patch -o $sshrd_path/kernel.img4 -M $im4m -A -T rkrn
+if [[ $version_option == 1 || $version_option == 2 ]]; then
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernel.patch -ue
+    ./bin/img4 -i work/kernel.patch -o $sshrd_path/kernel.img4 -M $im4m -A -T rkrn
+else
+    ./bin/img4 -i work/kernel.raw -o $sshrd_path/kernel.img4 -M $im4m -A -T rkrn
+fi
 # before ramdisk
 ./bin/img4 -i work/$GFX -o $sshrd_path/GFX.img4 -M $im4m
 ./bin/img4 -i work/$ANE -o $sshrd_path/ANE.img4 -M $im4m
@@ -4383,8 +4475,71 @@ find tarwork > work/list.txt
 # Done!
 rm -rf work
 rm -rf tarwork
+echo "$VERSION" > SSHRD/$IDENTIFIER/version.txt
 sleep 4
 echo "SSH ramdisk is created successfully!"
+
+}
+
+connect_to_ssh(){
+
+./bin/iproxy 2222 22 &>/dev/null &
+./bin/sshpass -p 'alpine' ssh -o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -p2222 root@localhost "${1:-}"
+
+}
+
+create_fakevar_a12(){
+
+echo "FakeVar will not activate normally. This functionality is not for an end-user."
+echo "And we will not provide bypassing activation with this."
+sleep 4
+boot_dir="boot/$IDENTIFIER/fakevar"
+mkdir -p $boot_dir
+echo "fakevar" > boot/$ECID.txt 
+./bin/iproxy 2222 22 &>/dev/null &
+mkdir -p work
+curl -L -o work/var.tar.xz https://github.com/khanhduytran0/khanhduytran0.github.io/raw/master/var.tar.xz
+xz -d work/var.tar.xz
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs /dev/disk1s1 /mnt1 || true"
+current_ios=$(./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cat /mnt1/System/Library/CoreServices/SystemVersion.plist || true")
+ios184
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/newfs_apfs -A -D -o role=r -v DataX /dev/disk0s1 || true"
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,4 ]]; then
+    preboot="/dev/disk1s6"
+    data="/dev/disk1s9"
+else
+    preboot="/dev/disk1s5"
+    data="/dev/disk1s8"
+fi
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
+./bin/img4 -i work/$IBSS -o work/iBSS.raw
+./bin/iBootPatch -v -b "-v" work/iBSS.raw work/iBSS.patch
+./bin/iBootpatch3 work/iBSS.patch $boot_dir/iBSS.boot
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs $data /mnt2 || true"
+./bin/sshpass -p "alpine" scp -P2222 work/var.tar root@localhost:/mnt2/var.tar
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "tar -xvf /mnt2/var.tar -C /mnt2 || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt2/var.tar || true"
+./bin/sshpass -p "alpine" scp -P2222 hax/disabled.plist root@localhost:/mnt2/db/com.apple.xpc.launchd/disabled.plist
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs $preboot /mnt6 || true"
+active=$(./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cat /mnt6/active || true")
+./bin/sshpass -p "alpine" scp -P2222 root@localhost:/mnt6/$active/usr/standalone/firmware/devicetree.img4 work/devicetree.img4
+./bin/sshpass -p "alpine" scp -P2222 root@localhost:/mnt6/$active/System/Library/Caches/com.apple.kernelcaches/kernelcache work/kernelcache
+./bin/img4tool -e work/devicetree.img4 -m work/im4m
+./bin/img4tool -e work/devicetree.img4 -p work/devicetree.im4p
+./bin/img4tool -e work/kernelcache -p work/kernelcache.im4p
+./bin/img4tool -e work/kernelcache.im4p -o work/kernel.raw
+./bin/img4tool -e work/devicetree.im4p -o work/devicetree.raw
+curl -L -o bin/dtpatch.py https://github.com/pwnerblu/usbliter8-fun/raw/refs/heads/funny/work-27.0b4-n104/patch_dt2.py
+python3 bin/dtpatch.py work/DeviceTree.raw -o work/DeviceTree.patch
+./bin/dtree_patcher work/DeviceTree.patch work/DeviceTree.patch2 -d r
+./bin/Kernel64Patcher3 work/kernel.raw work/kernel.patch -i
+./bin/img4 -i work/DeviceTree.patch2 -o work/devicetred.img4 -M work/im4m -A -T dtre
+./bin/img4 -i work/kernel.patch -o work/kernelcachd -M work/im4m -A -T krnl
+./bin/sshpass -p "alpine" scp -P2222 work/devicetred.img4 root@localhost:/mnt6/$active/usr/standalone/firmware/devicetred.img4
+./bin/sshpass -p "alpine" scp -P2222 work/kernelcachd root@localhost:/mnt6/$active/System/Library/Caches/com.apple.kernelcaches/kernelcachd
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot || true" || true
+echo "FakeVar is created! You can boot into FakeVar with Just Boot."
+exit 0
 
 }
 
@@ -4403,16 +4558,45 @@ else
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    echo "Welcome to surrealsshrd v1.0 alpha"
+    echo ""
 else
-    echo "A12/A13 SSHRD requires macOS!"
-    sleep 2
-    main_menu
+    echo "surrealSSHRD requires macOS."
+    exit 1
 fi
-echo "iOS 18.4 ramdisk will be used"
+
+echo "Welcome to surrealsshrd v1.0 beta"
 echo "SSHtars are from SSHRD_Script: https://github.com/verygenericname/SSHRD_Script"
 sshrd_path="SSHRD/$IDENTIFIER"
 if [[ ! -d $sshrd_path ]] || [[ ! -f $sshrd_path/iBSS.patch ]] || [[ ! -f $sshrd_path/ramdisk.img4 ]] || [[ ! -f $sshrd_path/trustcache.img4 ]] || [[ ! -f $sshrd_path/GFX.img4 ]] || [[ ! -f $sshrd_path/ANE.img4 ]] || [[ ! -f $sshrd_path/SIO.img4 ]] || [[ ! -f $sshrd_path/DeviceTree.img4 ]] || [[ ! -f $sshrd_path/kernel.img4 ]]; then
+    sshrd_build_a12
+    sshrd_just_made=1
+    make_ramdisk_again=0
+else
+    sshrd_just_made=0
+fi
+sshrdversion=$(cat $sshrd_path/version.txt)
+if [[ $sshrdversion == 16.0* || $sshrdversion == 15.* || $sshrdversion == 14.* ]] && [[ $sshrd_just_made == 0 ]]; then
+    echo "The ramdisk that currently exists for $IDENTIFIER is for $sshrdversion"
+    echo "If your device is running 16.3.1 or lower, it may be okay to use this one."
+    echo "If your device is on iOS 16.4 or later, do not boot this ramdisk. Create a ramdisk with at least iOS 16.4 as ramdisk version."
+    read -p "Would you like to remake the ramdisk? (y/n): " remake_ramdisk_opt
+    if [[ $remake_ramdisk_opt == Y || $remake_ramdisk_opt == y ]]; then
+        make_ramdisk_again=1
+    else
+        make_ramdisk_again=0
+    fi
+elif [[ $sshrdversion == 17.* || $sshrdversion == 18.* ]] && [[ $sshrd_just_made == 0 ]]; then
+    echo "The ramdisk that currently exists for $IDENTIFIER is for $sshrdversion"
+    echo "If your device is running 16.4 or later, it may be okay to use this one."
+    echo "If your device is on 16.3.1 and lower, it might be best to create a ramdisk for below iOS 16.4."
+    read -p "Would you like to remake the ramdisk? (y/n): " remake_ramdisk_opt
+    if [[ $remake_ramdisk_opt == Y || $remake_ramdisk_opt == y ]]; then
+        make_ramdisk_again=1
+    else
+        make_ramdisk_again=0
+    fi
+fi
+if [[ $make_ramdisk_again == 1 ]]; then
     sshrd_build_a12
 fi
 if [[ $IDENTIFIER == iPhone* ]]; then
@@ -4434,6 +4618,7 @@ else
     echo "Device not detected in Recovery. Exiting"
     exit 1
 fi
+ECID=$(./bin/irecovery -q | grep "^ECID:" | cut -d ':' -f2 | xargs)
 irecovery -f $sshrd_path/ramdisk.img4
 irecovery -c ramdisk
 irecovery -f $sshrd_path/trustcache.img4
@@ -4452,10 +4637,17 @@ echo "SSH ramdisk should now be booting! In a moment, you will connect to SSH se
 echo "Port: 2222 | Host: sftp://127.0.0.1 | User: root | Password: alpine"
 echo "Keep in mind, mounting data partition may not work at the moment!"
 sleep 12
-./bin/iproxy 2222 22 &>/dev/null &
-./bin/sshpass -p 'alpine' ssh -o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -p2222 root@localhost "${1:-}"
-echo "Exiting"
-exit 0
+echo "Options:"
+echo "1. Create FakeVar (iOS 18+)"
+echo "2. Connect to SSH"
+echo "3. Exit"
+read -p "Select an option (1-3): " option_ssh
+if [[ $option_ssh == 1 ]]; then
+    create_fakevar_a12
+elif [[ $option_ssh == 2 ]]; then
+    connect_to_ssh
+fi
+
 
 }
 
