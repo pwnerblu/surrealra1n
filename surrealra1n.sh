@@ -172,8 +172,9 @@ elif [[ -r /etc/os-release ]]; then
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    # prevent finder from annoying you
-    killall -STOP AMPDevicesAgent AMPDeviceDiscoveryAgent MobileDeviceUpdater 2>/dev/null || true
+    # A previous failed run may have left these agents suspended. ideviceinfo
+    # needs the macOS device stack responsive during device detection.
+    killall -CONT AMPDevicesAgent AMPDeviceDiscoveryAgent MobileDeviceUpdater 2>/dev/null || true
 fi
 
 # Run macOS version check only if you're on macOS, should fix Linux
@@ -1045,53 +1046,94 @@ else
 fi
 
 echo "Checking for dependencies that are required for usbliter8ctl, assuming Python3 is on your system"
-# Check required packages
-PACKAGES=("pyusb" "usb")
+# PyUSB provides the Python module named "usb"; there is no second dependency.
+PACKAGES=("pyusb")
 for pkg in "${PACKAGES[@]}"; do
-    if pip3 show "$pkg" &>/dev/null; then
-        version=$(pip3 show "$pkg" | grep Version | awk '{print $2}')
+    if PACKAGE_INFO=$(pip3 show "$pkg" 2>/dev/null); then
+        version=$(awk -F ': ' '$1 == "Version" { print $2 }' <<< "$PACKAGE_INFO")
         echo "$pkg: $version"
     else
         echo "$pkg not installed"
         echo "Running: pip3 install $pkg"
-        if pip3 install "$pkg" 2>&1 | grep -q "externally-managed"; then
-            echo "Externally managed environment detected, retrying with --break-system-packages"
-            pip3 install "$pkg" --break-system-packages
+        if ! PIP_INSTALL_OUTPUT=$(pip3 install "$pkg" 2>&1); then
+            if [[ "$PIP_INSTALL_OUTPUT" == *"externally-managed"* ]]; then
+                echo "Externally managed environment detected, retrying with --break-system-packages"
+                pip3 install "$pkg" --break-system-packages
+            else
+                printf '%s\n' "$PIP_INSTALL_OUTPUT"
+                echo "[!] Failed to install $pkg"
+                exit 1
+            fi
         fi
     fi
 done
 
-IDEVICE_INFO=$(ideviceinfo 2>&1) || true
-IDEVICE_STATUS=$?
-if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* && "$IDEVICE_INFO" != *"ERROR:"* ]]; then
-    IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
-    ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
-    SERIAL=$(echo "$IDEVICE_INFO" | grep "^SerialNumber:" | cut -d ':' -f2 | xargs)
-    DEVICE_VERSION=$(echo "$IDEVICE_INFO" | grep "^ProductVersion:" | cut -d ':' -f2 | xargs)
-    MODE="Normal"
-elif [[ $IDEVICE_STATUS -ne 0 && "$IDEVICE_INFO" != *"No device found!"* ]] || [[ "$IDEVICE_INFO" == *"ERROR:"* && "$IDEVICE_INFO" != *"No device found!"* ]]; then
-    # ideviceinfo ran but failed for another reason, try -s
-    IDEVICE_INFO=$(ideviceinfo -s 2>&1) || true
-    IDEVICE_STATUS=$?
-    if [[ $IDEVICE_STATUS -eq 0 && "$IDEVICE_INFO" != *"No device found!"* ]]; then
-        IDENTIFIER=$(echo "$IDEVICE_INFO" | grep "^ProductType:" | cut -d ':' -f2 | xargs)
-        ECID=$(echo "$IDEVICE_INFO" | grep "^UniqueChipID:" | cut -d ':' -f2 | xargs)
-        DEVICE_VERSION=$(echo "$IDEVICE_INFO" | grep "^ProductVersion:" | cut -d ':' -f2 | xargs)
-        SERIAL="none"
-        MODE="Normal"
+device_info_value() {
+    local key="$1"
+    local info="$2"
+    awk -v target="${key}:" '
+        index($0, target) == 1 {
+            value = substr($0, length(target) + 1)
+            sub(/^[[:space:]]*/, "", value)
+            sub(/[[:space:]]*$/, "", value)
+            print value
+            exit
+        }
+    ' <<< "$info"
+}
+
+IDEVICE_LAST_ERROR=""
+read_normal_device() {
+    local device_output=""
+    local detected_identifier=""
+    local detected_ecid=""
+    local detected_serial=""
+    local detected_version=""
+
+    if device_output=$(ideviceinfo "$@" 2>&1); then
+        detected_identifier=$(device_info_value "ProductType" "$device_output")
+        detected_ecid=$(device_info_value "UniqueChipID" "$device_output")
+        detected_serial=$(device_info_value "SerialNumber" "$device_output")
+        detected_version=$(device_info_value "ProductVersion" "$device_output")
     else
-        echo "ideviceinfo failed after two attempts."
-        exit 1
+        IDEVICE_LAST_ERROR="$device_output"
+        return 1
     fi
+
+    if [[ -z "$detected_identifier" || -z "$detected_ecid" || -z "$detected_version" ]]; then
+        IDEVICE_LAST_ERROR="ideviceinfo returned incomplete device information"
+        return 1
+    fi
+
+    IDEVICE_INFO="$device_output"
+    IDENTIFIER="$detected_identifier"
+    ECID="$detected_ecid"
+    SERIAL="${detected_serial:-none}"
+    DEVICE_VERSION="$detected_version"
+    return 0
+}
+
+USBMUX_DEVICE_LIST=$(idevice_id -l 2>/dev/null || true)
+if [[ "$USBMUX_DEVICE_LIST" == *"SSHRD_Script"* ]]; then
+    echo "[!] The connected device is currently booted into an SSH ramdisk."
+    echo "[!] Reboot it into normal, recovery, or DFU mode, then run surrealra1n again."
+    exit 1
+fi
+
+if read_normal_device || read_normal_device -s; then
+    MODE="Normal"
 else
     echo "[*] Device is not in normal mode. Trying recovery/DFU mode..."
+    if [[ -n "$IDEVICE_LAST_ERROR" && "$IDEVICE_LAST_ERROR" != *"No device found!"* ]]; then
+        echo "[!] ideviceinfo: $IDEVICE_LAST_ERROR"
+    fi
     # Try irecovery
     IRECOVERY_INFO=$(./bin/irecovery -q 2>/dev/null) || true
     if [[ -n "$IRECOVERY_INFO" ]]; then
         echo "[*] Device is in Recovery or DFU mode."
-        IDENTIFIER=$(echo "$IRECOVERY_INFO" | grep "^PRODUCT:" | cut -d ':' -f2 | xargs)
-        ECID=$(echo "$IRECOVERY_INFO" | grep "^ECID:" | cut -d ':' -f2 | xargs)
-        MODE=$(echo "$IRECOVERY_INFO" | grep "^MODE:" | cut -d ':' -f2 | xargs)
+        IDENTIFIER=$(device_info_value "PRODUCT" "$IRECOVERY_INFO")
+        ECID=$(device_info_value "ECID" "$IRECOVERY_INFO")
+        MODE=$(device_info_value "MODE" "$IRECOVERY_INFO")
         echo "[+] Device Identifier: $IDENTIFIER"
         echo "[+] ECID: $ECID"
     else

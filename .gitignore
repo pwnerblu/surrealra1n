@@ -1,3 +1,9 @@
 bin/*
 !bin/notice.txt
 apfs/  
+SSHRD/*
+shsh/*
+futurerestore/*
+.DS_Store
+activate.sh
+backup.sh
