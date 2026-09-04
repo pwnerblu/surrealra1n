@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 2"
+CURRENT_VERSION="v2.1 beta 2 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -4096,6 +4096,12 @@ if [[ $VERSION == 8.* ]]; then
         exit 1
     fi
     JAILBREAK=0
+fi
+
+if [[ $VERSION == 8.3* || $VERSION == 8.4* ]]; then
+    echo "iOS 8.3-8.4.1 restores are not supported"
+    echo "It may be added in the future though."
+    exit 1
 fi
 
 if [[ -z "$IPSW_PATH" ]]; then
