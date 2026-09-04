@@ -4089,8 +4089,10 @@ echo "Boot files have been created successfully! You may now boot, assuming the 
 do_tethered_seprmvr64_restore(){
 
 if [[ $VERSION == 8.* ]]; then
-    if [[ $IDENTIFIER != iPhone7,2 ]]; then
-        echo "iOS 8 tethered restores are currently supported only on iPhone 6 (iPhone7,2)."
+    if [[ $IDENTIFIER != iPhone6,1 && $IDENTIFIER != iPhone6,2 &&
+          $IDENTIFIER != iPhone7,1 && $IDENTIFIER != iPhone7,2 &&
+          $IDENTIFIER != iPod7,1 && $IDENTIFIER != iPad5,3 ]]; then
+        echo "iOS 8 tethered restore is not supported on $IDENTIFIER."
         exit 1
     fi
     JAILBREAK=0
@@ -4221,11 +4223,13 @@ elif [[ $tether_options == 3 ]]; then
         do_tethered_restore_a12_a13
     elif [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* ]]; then
         if [[ $VERSION == 8.* ]]; then
-            if [[ $IDENTIFIER != iPhone7,2 ]]; then
-                echo "iOS 8 tethered restores are currently supported only on iPhone 6 (iPhone7,2)."
+            if [[ $IDENTIFIER != iPhone6,1 && $IDENTIFIER != iPhone6,2 &&
+                  $IDENTIFIER != iPhone7,1 && $IDENTIFIER != iPhone7,2 &&
+                  $IDENTIFIER != iPod7,1 && $IDENTIFIER != iPad5,3 ]]; then
+                echo "iOS 8 tethered restore is not supported on $IDENTIFIER."
                 exit 1
             fi
-            echo "iOS 8 restore enabled for iPhone 6 (iPhone7,2)."
+            echo "iOS 8 restore enabled for $NAME."
             echo "Jailbreak will not be installed."
             JAILBREAK=0
         elif [[ $VERSION == 7.* ]]; then
