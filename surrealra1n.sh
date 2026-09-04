@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.0"
+CURRENT_VERSION="v2.0.1"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1274,9 +1274,9 @@ elif [[ $IDENTIFIER == iPhone11,6 ]]; then
     ISP="adc-petra-d3x.im4p"
     ANE="h11_ane_fw_quin.im4p"
     AVE="AppleAVE2FW_H11.im4p"
-    CALLAN="D331p_CallanFirmware.im4p"
-    HAPTICASSET="D331p_HapticAssets.im4p"
-    MTFW="D331p_Multitouch.im4p"
+    CALLAN="D331P_CallanFirmware.im4p"
+    HAPTICASSET="D331P_HapticAssets.im4p"
+    MTFW="D331P_Multitouch.im4p"
     WIRELESS="WirelessPower.iphone11.im4p"
     KERNEL2="kernelcache.release.iphone11x"
 elif [[ $IDENTIFIER == iPhone12,1 ]]; then
