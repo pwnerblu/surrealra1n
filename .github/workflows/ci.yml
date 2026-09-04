@@ -25,7 +25,10 @@ jobs:
           echo "version_raw=$VERSION" >> $GITHUB_OUTPUT
           
           # Generate tag name based on version format
-          if [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)\ re-release\ ([0-9]+)$ ]]; then
+          if [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            # Semantic versioning: v2.0.1 → 2.0.1
+            TAG="$VERSION_NO_V"
+          elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)\ re-release\ ([0-9]+)$ ]]; then
             TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}-rr${BASH_REMATCH[3]}"
           elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)\ re-release$ ]]; then
             TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}-rr"
