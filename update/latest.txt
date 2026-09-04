@@ -1,7 +1,5 @@
-v2.1 beta 2
+v2.1 beta 2 re-release
 
 RELEASE NOTES:
 
-Bring back iOS 8 seprmvr64 tether downgrade support for some devices.
-Thanks to @dethr1der for the PR! Also dyld shared cache patch is included while making CFW.
-This has not been tested on all iOS 8 versions, if there is a problem, open up an issue on the Issues tab!
+Limit iOS 8 seprmvr64 restore range to iOS 8.0-8.2
