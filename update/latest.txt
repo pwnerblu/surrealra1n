@@ -1,6 +1,7 @@
-v2.1 beta
+v2.1 beta 2
 
 RELEASE NOTES:
 
-Add support for making iOS 17.5 ramdisks for A12/A13 devices in surrealSSHRD option.
-Add support for creating FakeVar on A12/A13 running iOS 18 or later (developers only, only tested on iPhone XR 18.7.10)
+Bring back iOS 8 seprmvr64 tether downgrade support for some devices.
+Thanks to @dethr1der for the PR! Also dyld shared cache patch is included while making CFW.
+This has not been tested on all iOS 8 versions, if there is a problem, open up an issue on the Issues tab!
