@@ -1,5 +1,5 @@
-v2.1 beta 2 re-release
+v2.1 beta 2 re-release 2
 
 RELEASE NOTES:
 
-Limit iOS 8 seprmvr64 restore range to iOS 8.0-8.2
+Fix XS Max restores on Linux
