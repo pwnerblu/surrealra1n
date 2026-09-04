@@ -3958,9 +3958,14 @@ fi
 rm -rf $rootfslatest_dmg
 ./bin/dmg extract $rootfs_dmg tmp1/rootfs.raw -k $ROOT_KEY
 # dyld patches
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    if [[ $VERSION == 7.* ]]; then
+        dsc_patch_version="-7"
+    else
+        dsc_patch_version="-8"
+    fi
     ./bin/hfsplus tmp1/rootfs.raw extract System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
-    ./bin/dsc64patcher dyld.raw dyld.patch -7
+    ./bin/dsc64patcher dyld.raw dyld.patch "$dsc_patch_version"
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus tmp1/rootfs.raw add dyld.patch System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     rm -rf dyld.*
@@ -4082,6 +4087,16 @@ echo "Boot files have been created successfully! You may now boot, assuming the 
 }
 
 do_tethered_seprmvr64_restore(){
+
+if [[ $VERSION == 8.* ]]; then
+    if [[ $IDENTIFIER != iPhone6,1 && $IDENTIFIER != iPhone6,2 &&
+          $IDENTIFIER != iPhone7,1 && $IDENTIFIER != iPhone7,2 &&
+          $IDENTIFIER != iPod7,1 && $IDENTIFIER != iPad5,3 ]]; then
+        echo "iOS 8 tethered restore is not supported on $IDENTIFIER."
+        exit 1
+    fi
+    JAILBREAK=0
+fi
 
 if [[ -z "$IPSW_PATH" ]]; then
     echo "No IPSW selected. Aborting."
@@ -4208,8 +4223,15 @@ elif [[ $tether_options == 3 ]]; then
         do_tethered_restore_a12_a13
     elif [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* ]]; then
         if [[ $VERSION == 8.* ]]; then
-            echo "seprmvr64 restores to 8.x are not supported in surrealra1n"
-            exit 1
+            if [[ $IDENTIFIER != iPhone6,1 && $IDENTIFIER != iPhone6,2 &&
+                  $IDENTIFIER != iPhone7,1 && $IDENTIFIER != iPhone7,2 &&
+                  $IDENTIFIER != iPod7,1 && $IDENTIFIER != iPad5,3 ]]; then
+                echo "iOS 8 tethered restore is not supported on $IDENTIFIER."
+                exit 1
+            fi
+            echo "iOS 8 restore enabled for $NAME."
+            echo "Jailbreak will not be installed."
+            JAILBREAK=0
         elif [[ $VERSION == 7.* ]]; then
             read -p "Would you like to jailbreak as part of this restore? (Y/n): " jailbreak_choice
             if [[ $jailbreak_choice == Y || $jailbreak_choice == y ]]; then
