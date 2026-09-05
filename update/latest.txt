@@ -1,5 +1,5 @@
-v2.1 beta 2 re-release 2
+v2.1 beta 3
 
 RELEASE NOTES:
 
-Fix XS Max restores on Linux
+Fix baseband on A8 iOS 8/9 downgrades. iPad Air 2 is not included.
