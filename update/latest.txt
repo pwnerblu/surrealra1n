@@ -1,5 +1,5 @@
-v2.1 beta 3
+v2.1 beta 3 re-release
 
 RELEASE NOTES:
 
-Fix baseband on A8 iOS 8/9 downgrades. iPad Air 2 is not included.
+hm
