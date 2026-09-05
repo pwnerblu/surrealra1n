@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 3"
+CURRENT_VERSION="v2.1 beta 3 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -4023,6 +4023,7 @@ DTRE_KEY=$(grep "dtre-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 KRNL_KEY=$(grep "krnl-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 bootdir="boot/$IDENTIFIER/$VERSION"
 mkdir -p boot/$IDENTIFIER/$VERSION
+rm -rf "work"
 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBSS_2" -d work
 unzip -j "$IPSW_PATH" "Firmware/dfu/$IBEC_2" -d work
 unzip -j "$IPSW_PATH" "Firmware/all_flash/$ALLFLASH/$DEVICETREE" -d work
