@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 2 re-release 2"
+CURRENT_VERSION="v2.1 beta 3"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -3645,6 +3645,7 @@ else
 fi
 
 echo "Restore has completed! Read above if there is any errors"
+sleep 2
 prepare_boot_files
 exit 0
 
@@ -3914,47 +3915,11 @@ if [[ $VERSION == 7.0* ]]; then
 else
     smallest_dmg=$(find_dmg tmp1 smallest)
 fi
-./bin/img4 -i tmp1/Firmware/dfu/$IBSS_2 -o tmp1/iBSS.raw -k $IBSS_KEY
-./bin/img4 -i tmp1/Firmware/dfu/$IBEC_2 -o tmp1/iBEC.raw -k $IBEC_KEY
-./bin/$ibootpatcher tmp1/iBSS.raw tmp1/iBSS.patch
-./bin/$ibootpatcher tmp1/iBEC.raw tmp1/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
-./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
-./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
-./bin/img4 -i tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE -o tmp1/DeviceTree.raw -k $DTRE_KEY
-perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
-./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
-./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.raw -k $KRNL_KEY
-./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.im4p -k $KRNL_KEY -D
-if [[ $VERSION == 7.* ]]; then
-    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
-elif [[ $VERSION == 8.* ]]; then
-    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,2 ]]; then
+    a8_baseband_device
 else
-    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 9 -f 9 -k -v
+    other_device
 fi
-./bin/kerneldiff tmp1/kernel.raw tmp1/kernel.patch tmp1/kernel.diff
-./bin/img4 -i tmp1/kernel.im4p -o tmp2/$KERNEL -T rkrn -P tmp1/kernel.diff -J || true
-./bin/img4 -i $smallest_dmg -o tmp1/ramdisk.raw -k $RDSK_KEY
-./bin/hfsplus tmp1/ramdisk.raw grow 40000000
-./bin/hfsplus tmp1/ramdisk.raw extract usr/sbin/asr tmp1/asr
-./bin/asr64_patcher tmp1/asr tmp1/asr_patched
-if [[ $VERSION == 8.* || $VERSION == 9.* ]]; then
-    ./bin/ldid -e tmp1/asr > tmp1/ents.plist
-    ./bin/ldid -Stmp1/ents.plist tmp1/asr_patched
-fi
-./bin/hfsplus tmp1/ramdisk.raw rm usr/sbin/asr
-./bin/hfsplus tmp1/ramdisk.raw add tmp1/asr_patched usr/sbin/asr
-./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/sbin/asr
-if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]]; then
-    ./bin/hfsplus tmp1/ramdisk.raw extract usr/local/bin/restored_external tmp1/restored_external
-    ./bin/restoredpatcher tmp1/restored_external tmp1/restored_patch -b
-    ./bin/ldid -e tmp1/restored_external > tmp1/ents.plist
-    ./bin/ldid -Stmp1/ents.plist tmp1/restored_patch
-    ./bin/hfsplus tmp1/ramdisk.raw rm usr/local/bin/restored_external
-    ./bin/hfsplus tmp1/ramdisk.raw add tmp1/restored_patch usr/local/bin/restored_external
-    ./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/local/bin/restored_external
-fi
-./bin/img4 -i tmp1/ramdisk.raw -o $smallestlatest_dmg -A -T rdsk
 rm -rf $rootfslatest_dmg
 ./bin/dmg extract $rootfs_dmg tmp1/rootfs.raw -k $ROOT_KEY
 # dyld patches
@@ -4086,6 +4051,213 @@ echo "Boot files have been created successfully! You may now boot, assuming the 
 
 }
 
+do_regular_restore_seprmvr64(){
+
+rm -rf "shsh"
+mkdir -p shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+im4m="$IDENTIFIER-im4m"
+
+dfu_helper
+pwn_device
+sleep 5
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+mkdir -p boot
+echo "$VERSION" > boot/$ECID.txt
+sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/$ipsw_custom
+
+}
+
+a8_baseband_device(){
+
+smallest_dmg="058-67088-028.dmg"
+#
+IBSS_KEY2=$(grep "ibss-10.2.1:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY2=$(grep "ibec-10.2.1:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+if [[ $IDENTIFIER == iPhone7,2 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.2.1/031-96803-20170112-6151BFBE-D81D-11E6-8553-F701D55B5B9D/iPhone_4.7_10.2.1_14D27_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.2.1/031-96800-20170112-6151CD56-D81D-11E6-A447-F501D55B5B9D/iPhone_5.5_10.2.1_14D27_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad5,2 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.2.1/031-96827-20170112-6158A946-D81D-11E6-AE88-FD01D55B5B9D/iPad_64bit_TouchID_10.2.1_14D27_Restore.ipsw"
+fi
+if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]]; then
+    mkdir -p work
+    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS10 $ipsw_url )
+    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBEC10 $ipsw_url )
+    ( cd work && sudo ../bin/pzb -g $smallest_dmg $ipsw_url )
+    ( cd work && sudo ../bin/pzb -g Firmware/all_flash/$ALLFLASH/$DEVICETREE $ipsw_url )
+    ( cd work && sudo ../bin/pzb -g $KERNEL10 $ipsw_url )
+fi
+./bin/img4 -i work/$IBSS10 -o tmp1/iBSS.raw -k $IBSS_KEY2
+./bin/img4 -i work/$IBEC10  -o tmp1/iBEC.raw -k $IBEC_KEY2
+./bin/kairos tmp1/iBSS.raw tmp1/iBSS.patch
+./bin/kairos tmp1/iBEC.raw tmp1/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
+./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
+./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
+./bin/img4 -i work/$DEVICETREE -o tmp1/DeviceTree.raw 
+perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
+./bin/img4 -i work/$smallest_dmg -o tmp1/ramdisk.raw
+./bin/hfsplus tmp1/ramdisk.raw grow 60000000
+./bin/hfsplus tmp1/ramdisk.raw extract usr/sbin/asr tmp1/asr
+./bin/asr64_patcher tmp1/asr tmp1/asr_patched
+./bin/ldid -e tmp1/asr > tmp1/ents.plist
+./bin/ldid -Stmp1/ents.plist tmp1/asr_patched
+./bin/hfsplus tmp1/ramdisk.raw rm usr/sbin/asr
+./bin/hfsplus tmp1/ramdisk.raw add tmp1/asr_patched usr/sbin/asr
+./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/sbin/asr
+./bin/img4 -i tmp1/ramdisk.raw -o $smallestlatest_dmg -A -T rdsk
+./bin/img4 -i work/$KERNEL10 -o tmp1/kernel.raw
+./bin/KPlooshFinder tmp1/kernel.raw tmp1/kernel.patch
+./bin/Kernel64Patcher2 tmp1/kernel.patch tmp1/kernel.patch2 -u 11 --skip-sks --skip-amfi --skip-acm
+./bin/kerneldiff tmp1/kernel.raw tmp1/kernel.patch2 tmp1/kernel.diff
+./bin/img4 -i work/$KERNEL10 -o tmp2/$KERNEL -T rkrn -P tmp1/kernel.diff -J || true
+#
+
+}
+
+other_device(){
+
+./bin/img4 -i tmp1/Firmware/dfu/$IBSS_2 -o tmp1/iBSS.raw -k $IBSS_KEY
+./bin/img4 -i tmp1/Firmware/dfu/$IBEC_2 -o tmp1/iBEC.raw -k $IBEC_KEY
+./bin/$ibootpatcher tmp1/iBSS.raw tmp1/iBSS.patch
+./bin/$ibootpatcher tmp1/iBEC.raw tmp1/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
+./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
+./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
+./bin/img4 -i tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE -o tmp1/DeviceTree.raw -k $DTRE_KEY
+perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
+./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.raw -k $KRNL_KEY
+./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.im4p -k $KRNL_KEY -D
+if [[ $VERSION == 7.* ]]; then
+    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
+elif [[ $VERSION == 8.* ]]; then
+    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
+else
+    ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 9 -f 9 -k -v
+fi
+./bin/kerneldiff tmp1/kernel.raw tmp1/kernel.patch tmp1/kernel.diff
+./bin/img4 -i tmp1/kernel.im4p -o tmp2/$KERNEL -T rkrn -P tmp1/kernel.diff -J || true
+./bin/img4 -i $smallest_dmg -o tmp1/ramdisk.raw -k $RDSK_KEY
+./bin/hfsplus tmp1/ramdisk.raw grow 40000000
+./bin/hfsplus tmp1/ramdisk.raw extract usr/sbin/asr tmp1/asr
+./bin/asr64_patcher tmp1/asr tmp1/asr_patched
+if [[ $VERSION == 8.* || $VERSION == 9.* ]]; then
+    ./bin/ldid -e tmp1/asr > tmp1/ents.plist
+    ./bin/ldid -Stmp1/ents.plist tmp1/asr_patched
+fi
+./bin/hfsplus tmp1/ramdisk.raw rm usr/sbin/asr
+./bin/hfsplus tmp1/ramdisk.raw add tmp1/asr_patched usr/sbin/asr
+./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/sbin/asr
+if [[ $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5* || $IDENTIFIER == iPod7* ]]; then
+    ./bin/hfsplus tmp1/ramdisk.raw extract usr/local/bin/restored_external tmp1/restored_external
+    ./bin/restoredpatcher tmp1/restored_external tmp1/restored_patch -b
+    ./bin/ldid -e tmp1/restored_external > tmp1/ents.plist
+    ./bin/ldid -Stmp1/ents.plist tmp1/restored_patch
+    ./bin/hfsplus tmp1/ramdisk.raw rm usr/local/bin/restored_external
+    ./bin/hfsplus tmp1/ramdisk.raw add tmp1/restored_patch usr/local/bin/restored_external
+    ./bin/hfsplus tmp1/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+fi
+./bin/img4 -i tmp1/ramdisk.raw -o $smallestlatest_dmg -A -T rdsk
+
+}
+
+do_special_restore_seprmvr64(){
+
+rm -rf "shsh"
+mkdir -p shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+IBSS_KEY=$(grep "ibss-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+if [[ $IDENTIFIER == iPhone7,2 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02962-20170327-7584E8B4-0D86-11E7-B580-8CCE122AC769/iPhone_4.7_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02950-20170327-75843ACC-0D86-11E7-ACCC-80CE122AC769/iPhone_5.5_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad5* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+fi
+mkdir -p work
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
+./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+im4m="$IDENTIFIER-im4m"
+./bin/img4 -i work/$IBSS -o work/iBSS.dec -k $IBSS_KEY
+./bin/img4 -i work/$IBEC -o work/iBEC.dec -k $IBEC_KEY
+./bin/iBoot64Patcher work/iBSS.dec work/iBSS.patch
+./bin/iBoot64Patcher work/iBEC.dec work/iBEC.patch
+./bin/img4 -i work/iBSS.patch -o work/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patch -o work/iBEC.img4 -A -T ibec -M $im4m
+dfu_helper
+pwn_device
+download_tvos_sep
+det_rsep_flag
+sleep 5
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+mkdir -p boot
+echo "$VERSION" > boot/$ECID.txt
+./bin/irecovery -f work/iBSS.img4
+./bin/irecovery -f work/iBEC.img4
+sleep 5
+echo "Checking if device is in Recovery mode"
+MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+if [[ $MODE == Recovery ]]; then
+    echo "Device has been detected in Recovery mode."
+else
+    echo "Device not detected in Recovery. Exiting"
+    exit 1
+fi
+APNONCE=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs)
+rm -rf "shsh"
+mkdir -p shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+while true; do
+    set +e
+    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+        ./futurerestore/futurerestore -t $SHSH_PATH \
+        --sep $sep_path --sep-manifest $manifest_path \
+        --custom-latest $LATEST_VERSION \
+        $updatebb_flag $rsep_flag $restoredir/$ipsw_custom
+    EXIT_CODE=$?
+    set -e
+    if [[ $EXIT_CODE -eq 139 ]]; then
+        echo "futurerestore segfaulted (exit 139), retrying..."
+        sleep 2
+    else
+        break
+    fi
+done
+if [[ $EXIT_CODE -eq 0 ]]; then
+    echo "Restore has completed! Read above if there are any errors"
+    sleep 2
+    prepare_boot_files_seprmvr64
+    exit 0
+else
+    echo "futurerestore failed with exit code $EXIT_CODE"
+    exit 1
+fi
+
+}
+
 do_tethered_seprmvr64_restore(){
 
 if [[ $VERSION == 8.* ]]; then
@@ -4181,26 +4353,13 @@ else
     fi
 fi
 
-rm -rf "shsh"
-mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
-# Find the .shsh2 file in the shsh directory
-SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
-if [[ -z "$SHSH_PATH" ]]; then
-    echo "No SHSH file found in the shsh folder. Aborting"
-    exit 1
+if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPhone7* ]]; then
+    do_special_restore_seprmvr64
+else
+    do_regular_restore_seprmvr64
 fi
-./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
-im4m="$IDENTIFIER-im4m"
-
-dfu_helper
-pwn_device
-sleep 5
-ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
-mkdir -p boot
-echo "$VERSION" > boot/$ECID.txt
-sudo LD_LIBRARY_PATH="lib" ./bin/idevicerestore -ey $restoredir/$ipsw_custom
 echo "Restore has finished! Read above if there's any errors"
+sleep 2
 prepare_boot_files_seprmvr64
 exit 0
 
