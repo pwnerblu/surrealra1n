@@ -205,12 +205,12 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     fi
 
     # Check for Homebrew
-    if ! command -v brew &>/dev/null; then
-        echo "[!] Homebrew is not installed. You will need to install Homebrew from https://brew.sh"
-        exit 1
-    else
-        echo "Homebrew is installed."
-    fi
+    #if ! command -v brew &>/dev/null; then
+    #    echo "[!] Homebrew is not installed. You will need to install Homebrew from https://brew.sh"
+    #    exit 1
+    #else
+    #    echo "Homebrew is installed."
+    #fi
 
     # Check for missing brew dependencies
     BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
