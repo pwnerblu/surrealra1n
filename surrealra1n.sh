@@ -236,6 +236,31 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 #    done
 #fi
 
+
+    DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
+    if [[ $darwin_package_manager -eq 1 ]]; then
+       for dep in "${DEPS[@]}"; do
+           if ! brew list "$dep" &>/dev/null; then
+               echo "[$dep] is not installed. Installing..."
+               brew install "$dep"
+           else
+               echo "[$dep] is installed."
+           fi
+       done
+    else
+       for dep in "${DEPS[@]}"; do
+	   if ! port installed | grep "$dep" &>/dev/null; then
+ 		   echo "[$dep] is not installed. Installing..."
+	 	   sudo port install "$dep"
+           else
+		   echo "[$dep] is installed."
+           fi
+       done
+    fi
+
+fi	
+
+
 # Check for Rosetta 2 (Apple Silicon only)
 if [[ $dist == 3 ]]; then
     if ! /usr/bin/pgrep -q oahd; then
