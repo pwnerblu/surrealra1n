@@ -221,6 +221,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 	    darwin_package_manager=2
     else
 	    echo "No package manager installed. Please install Homebrew or MacPorts."
+	    exit 1
     fi
 
 
@@ -257,7 +258,6 @@ if [[ $dist == 3 || $dist == 4 ]]; then
            fi
        done
     fi
-
 fi	
 
 
