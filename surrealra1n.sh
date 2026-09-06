@@ -225,16 +225,16 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 
 
     # Check for missing brew dependencies
-    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
-    for dep in "${BREW_DEPS[@]}"; do
-        if ! brew list "$dep" &>/dev/null; then
-            echo "[$dep] is not installed. Installing..."
-            brew install "$dep"
-        else
-            echo "[$dep] is installed."
-        fi
-    done
-fi
+#    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
+#    for dep in "${BREW_DEPS[@]}"; do
+#        if ! brew list "$dep" &>/dev/null; then
+#            echo "[$dep] is not installed. Installing..."
+#            brew install "$dep"
+#        else
+#            echo "[$dep] is installed."
+#        fi
+#    done
+#fi
 
 # Check for Rosetta 2 (Apple Silicon only)
 if [[ $dist == 3 ]]; then
