@@ -205,13 +205,6 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         echo "Xcode Command Line Tools are installed."
     fi
 
-    # Check for Homebrew
-    #if ! command -v brew &>/dev/null; then
-    #    echo "[!] Homebrew is not installed. You will need to install Homebrew from https://brew.sh"
-    #    exit 1
-    #else
-    #    echo "Homebrew is installed."
-    #fi
    
     if command -v brew &>/dev/null; then
 	    echo "Using homebrew"
@@ -223,19 +216,6 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 	    echo "No package manager installed. Please install Homebrew or MacPorts."
 	    exit 1
     fi
-
-
-    # Check for missing brew dependencies
-#    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
-#    for dep in "${BREW_DEPS[@]}"; do
-#        if ! brew list "$dep" &>/dev/null; then
-#            echo "[$dep] is not installed. Installing..."
-#            brew install "$dep"
-#        else
-#            echo "[$dep] is installed."
-#        fi
-#    done
-#fi
 
 
     DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
