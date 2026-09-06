@@ -20,6 +20,7 @@ VERSION=""
 BUILD=""
 VERSION_LATEST=""
 outdated=""
+package_manager_darwin=0
 
 set -euo pipefail
 
@@ -211,6 +212,17 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     #else
     #    echo "Homebrew is installed."
     #fi
+   
+    if command -v brew &>/dev/null; then
+	    echo "Using homebrew"
+	    darwin_package_manager=1
+    elif command -v port &>/dev/null; then
+	    echo "Using macports"
+	    darwin_package_manager=2
+    else
+	    echo "No package manager installed. Please install Homebrew or MacPorts."
+    fi
+
 
     # Check for missing brew dependencies
     BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
