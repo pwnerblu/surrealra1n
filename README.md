@@ -2,7 +2,7 @@
 
 A tethered downgrade tool for some A7/A8(X) devices, all A11 devices and A12/A13 iPhones.
 
-Supports macOS and Linux
+Supports macOS (11.0+) and Linux
 
 For surrealra1n support, join the [surrealra1n](https://discord.gg/kDXVHhTQs2) Discord Server
 
