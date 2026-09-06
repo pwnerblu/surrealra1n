@@ -215,6 +215,9 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 	    darwin_package_manager=2
     else
 	    echo "No package manager installed. Please install Homebrew or MacPorts."
+	    # These need to be updated once macOS 27 Golden Gate is released.
+	    echo "Homebrew is recommended on Macs running macOS 14 Sonoma or later: https://brew.sh"
+	    echo "MacPorts is recommended on Macs running macOS 13 Ventura or earlier: https://macports.org"
 	    exit 1
     fi
 
