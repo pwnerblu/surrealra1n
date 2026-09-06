@@ -208,10 +208,10 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     # Check if either Homebrew or MacPorts is installed. brew is prioritized, might be worth changing this though.
    
     if command -v brew &>/dev/null; then
-	    echo "Using homebrew"
+	    echo "Using Homebrew"
 	    darwin_package_manager=1
     elif command -v port &>/dev/null; then
-	    echo "Using macports"
+	    echo "Using MacPorts"
 	    darwin_package_manager=2
     else
 	    echo "No package manager installed. Please install Homebrew or MacPorts."
