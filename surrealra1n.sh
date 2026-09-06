@@ -251,7 +251,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
        for dep in "${DEPS[@]}"; do
 	   if ! port installed | grep "$dep" &>/dev/null; then
  		   echo "[$dep] is not installed. Installing..."
-	 	   sudo port install "$dep"
+	 	   sudo port -N install "$dep"
            else
 		   echo "[$dep] is installed."
            fi
