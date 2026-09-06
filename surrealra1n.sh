@@ -205,6 +205,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         echo "Xcode Command Line Tools are installed."
     fi
 
+    # Check if either Homebrew or MacPorts is installed. brew is prioritized, might be worth changing this though.
    
     if command -v brew &>/dev/null; then
 	    echo "Using homebrew"
@@ -217,7 +218,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 	    exit 1
     fi
 
-
+    # Install dependencies using either brew or port. Both package managers conveniently use the same names for each package
     DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
     if [[ $darwin_package_manager -eq 1 ]]; then
        for dep in "${DEPS[@]}"; do
