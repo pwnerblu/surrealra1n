@@ -221,7 +221,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 	    exit 1
     fi
 
-    # Install dependencies using either brew or port. Both package managers conveniently use the same names for each package
+    # Install dependencies using either brew or port. Both package managers conveniently use the same names for each package.
     DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
     if [[ $darwin_package_manager -eq 1 ]]; then
        for dep in "${DEPS[@]}"; do
