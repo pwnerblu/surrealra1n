@@ -21,6 +21,7 @@ BUILD=""
 VERSION_LATEST=""
 outdated=""
 package_manager_darwin=0
+BREW_MIN="14.0"
 
 set -euo pipefail
 
@@ -210,7 +211,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     if command -v brew &>/dev/null; then
 	    echo "Using Homebrew"
 	    darwin_package_manager=1
-        if [[ "$(printf '%s\n' "14.0" "$macos_ver" | sort -V | head -n1)" != "14.0" ]]; then
+        if [[ "$(printf '%s\n' "$BREW_MIN" "$macos_ver" | sort -V | head -n1)" != "$BREW_MIN" ]]; then
             echo "Using Homebrew is not recommended on your macOS version ($macos_ver)."
         fi
         # Need to see if there's a way of doing this that doesn't prompt the user on every start
