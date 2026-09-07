@@ -210,6 +210,14 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     if command -v brew &>/dev/null; then
 	    echo "Using Homebrew"
 	    darwin_package_manager=1
+        if [[ "$(printf '%s\n' "14.0" "$macos_ver" | sort -V | head -n1)" == "14.0" ]]; then
+            echo "Using Homebrew is not recommended on your macOS version ($macos_ver)."
+            if command -v port &>/dev/null; then
+                read -r -p "Use MacPorts instead? [y/n]" yn
+                if [[ $yn =~ ^[yY] ]]; then
+                    darwin_package_manager=2
+                fi
+            fi
     elif command -v port &>/dev/null; then
 	    echo "Using MacPorts"
 	    darwin_package_manager=2
