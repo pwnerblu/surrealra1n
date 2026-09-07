@@ -19,9 +19,8 @@ restorefiles_remake=""
 VERSION=""
 BUILD=""
 VERSION_LATEST=""
-outdated=""
-package_manager_darwin=0
 BREW_MIN="14.0"
+outdated=""
 
 set -euo pipefail
 
