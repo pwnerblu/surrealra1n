@@ -216,7 +216,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         fi
         # Need to see if there's a way of doing this that doesn't prompt the user on every start
         if command -v port &>/dev/null; then
-            read -r -p "Use MacPorts instead? [y/n]" yn
+            read -r -p "Use MacPorts instead? [y/n] " yn
             if [[ $yn =~ ^[yY] ]]; then
                 darwin_package_manager=2
             fi
