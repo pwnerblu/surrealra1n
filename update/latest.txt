@@ -1,5 +1,7 @@
-v2.1 beta 3 re-release
+v2.1 beta 4
 
 RELEASE NOTES:
 
-hm
+Potentially fix password protected Wi-Fi on iOS 7 seprmvr64 restores.
+Keep in mind, this fix does not fix SEP functionality, and it may take a few boot attempts for protected Wi-Fi to work (also, get to the Home Screen as well before doing the few boot attempts).
+And other changes. PR #165 is relevant to this release.
