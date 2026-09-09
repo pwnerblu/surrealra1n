@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 3 re-release"
+CURRENT_VERSION="v2.1 beta 4"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -186,10 +186,10 @@ if [[ $dist == 3 || $dist == 4 ]]; then
 fi
 
 if [[ $dist == 3 || $dist == 4 ]]; then
-    if [[ "$(printf '%s\n' "11.0" "$macos_ver" | sort -V | head -n1)" == "11.0" ]]; then
+    if [[ "$(printf '%s\n' "10.15" "$macos_ver" | sort -V | head -n1)" == "10.15" ]]; then
         echo "Your macOS version $macos_ver is supported."
     else
-        echo "surrealra1n only supports macOS 11 and later."
+        echo "surrealra1n only supports macOS 10.15 and later."
         exit 1
     fi
 fi
@@ -208,8 +208,8 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     # Check if either Homebrew or MacPorts is installed. brew is prioritized, might be worth changing this though.
    
     if command -v brew &>/dev/null; then
-	    echo "Using Homebrew"
-	    darwin_package_manager=1
+        echo "Using Homebrew"
+        darwin_package_manager=1
         if [[ "$(printf '%s\n' "$BREW_MIN" "$macos_ver" | sort -V | head -n1)" != "$BREW_MIN" ]]; then
             echo "Using Homebrew is not recommended on your macOS version ($macos_ver)."
         fi
@@ -221,14 +221,14 @@ if [[ $dist == 3 || $dist == 4 ]]; then
             fi
         fi
     elif command -v port &>/dev/null; then
-	    echo "Using MacPorts"
-	    darwin_package_manager=2
+        echo "Using MacPorts"
+        darwin_package_manager=2
     else
-	    echo "No package manager installed. Please install Homebrew or MacPorts."
-	    # These need to be updated once macOS 27 Golden Gate is released.
-	    echo "Homebrew is recommended on Macs running macOS 14 Sonoma or later: https://brew.sh"
-	    echo "MacPorts is recommended on Macs running macOS 13 Ventura or earlier: https://macports.org"
-	    exit 1
+        echo "No package manager installed. Please install Homebrew or MacPorts."
+        # These need to be updated once macOS 27 Golden Gate is released.
+        echo "Homebrew is recommended on Macs running macOS 14 Sonoma or later: https://brew.sh"
+        echo "MacPorts is recommended on Macs running macOS 13 Ventura or earlier: https://macports.org"
+        exit 1
     fi
 
     # Install dependencies using either brew or port. Both package managers conveniently use the same names for each package.
@@ -244,15 +244,15 @@ if [[ $dist == 3 || $dist == 4 ]]; then
        done
     else
        for dep in "${DEPS[@]}"; do
-	   if ! port installed | grep "$dep" &>/dev/null; then
- 		   echo "[$dep] is not installed. Installing..."
-	 	   sudo port -N install "$dep"
+       if ! port installed | grep "$dep" &>/dev/null; then
+           echo "[$dep] is not installed. Installing..."
+           sudo port -N install "$dep"
            else
-		   echo "[$dep] is installed."
+           echo "[$dep] is installed."
            fi
        done
     fi
-fi	
+fi  
 
 
 # Check for Rosetta 2 (Apple Silicon only)
@@ -4021,9 +4021,24 @@ if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
     fi
     curl -L -o tmp1/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
     curl -L -o tmp1/untether.tar $untether
+    curl -L -o tmp1/substrate.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/cydiasubstrate.tar
+    curl -L -o tmp1/tweak.zip https://github.com/DevTweaker/Tweak/raw/refs/heads/main/scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb.zip
+    unzip tmp1/tweak.zip -d tmp1/tweak
+    ( cd tmp1/tweak && ar -x scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb )
+    gzip -d tmp1/tweak/data.tar.gz
     gzip -d tmp1/freeze.tar.gz
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/freeze.tar
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/untether.tar
+    # remove patcyh
+    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.plist
+    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.dylib
+    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/substrate.tar
+    # add Wi-Fi fixes, thanks to DevTweaker
+    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/tweak/data.tar
+    # stop stashing
+    touch .cydia_no_stash
+    ./bin/hfsplus tmp1/rootfs.raw add .cydia_no_stash .cydia_no_stash
+    rm -rf .cydia_no_stash
 fi
 ./bin/dmg build tmp1/rootfs.raw $rootfslatest_dmg
 cd tmp2
@@ -4080,6 +4095,10 @@ fi
 ./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
 rm -rf "work"
 echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
+if [[ $VERSION == 7.* ]]; then
+    echo "Keep in mind, it may take a few boot attempts for the Wi-Fi jailbreak tweak to work"
+    echo "Do not expect password protected Wi-Fi to connect instantly on Setup screen. You may need to head to the Home Screen first (and potentially do a few reboots), for the Wi-Fi tweak to work."
+fi
 
 }
 
@@ -4328,7 +4347,12 @@ fi
 echo "Here is the following things that may happen on seprmvr64 restore:"
 echo "1. Touch ID will not work"
 echo "2. Passcode will not work"
-echo "3. Password protected Wi-Fi networks will not work"
+if [[ $VERSION == 7.* ]]; then
+    echo "3. Password protected Wi-Fi networks do not work by default, but since jailbreak is enabled on this restore, we will install a tweak that fixes Wi-Fi with passwords."
+    echo "Wi-Fi fix tweak used is from https://github.com/DevTweaker/Tweak (thanks to them for making the Wi-Fi fix)"
+else
+    echo "3. Password protected Wi-Fi networks will not work"
+fi
 echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
 echo "5. Potentially other broken features"
 if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
@@ -4430,13 +4454,8 @@ elif [[ $tether_options == 3 ]]; then
             echo "Jailbreak will not be installed."
             JAILBREAK=0
         elif [[ $VERSION == 7.* ]]; then
-            read -p "Would you like to jailbreak as part of this restore? (Y/n): " jailbreak_choice
-            if [[ $jailbreak_choice == Y || $jailbreak_choice == y ]]; then
-                echo "Jailbreak option enabled"
-                JAILBREAK=1
-            else
-                echo "Jailbreak option disabled"
-            fi
+            echo "Jailbreak option enabled"
+            JAILBREAK=1
         fi
         do_tethered_seprmvr64_restore
     else
