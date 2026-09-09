@@ -19,6 +19,7 @@ restorefiles_remake=""
 VERSION=""
 BUILD=""
 VERSION_LATEST=""
+BREW_MIN="14.0"
 outdated=""
 
 set -euo pipefail
@@ -204,25 +205,55 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         echo "Xcode Command Line Tools are installed."
     fi
 
-    # Check for Homebrew
-    if ! command -v brew &>/dev/null; then
-        echo "[!] Homebrew is not installed. You will need to install Homebrew from https://brew.sh"
-        exit 1
+    # Check if either Homebrew or MacPorts is installed. brew is prioritized, might be worth changing this though.
+   
+    if command -v brew &>/dev/null; then
+	    echo "Using Homebrew"
+	    darwin_package_manager=1
+        if [[ "$(printf '%s\n' "$BREW_MIN" "$macos_ver" | sort -V | head -n1)" != "$BREW_MIN" ]]; then
+            echo "Using Homebrew is not recommended on your macOS version ($macos_ver)."
+        fi
+        # Need to see if there's a way of doing this that doesn't prompt the user on every start
+        if command -v port &>/dev/null; then
+            read -r -p "Use MacPorts instead? [y/n] " yn
+            if [[ $yn =~ ^[yY] ]]; then
+                darwin_package_manager=2
+            fi
+        fi
+    elif command -v port &>/dev/null; then
+	    echo "Using MacPorts"
+	    darwin_package_manager=2
     else
-        echo "Homebrew is installed."
+	    echo "No package manager installed. Please install Homebrew or MacPorts."
+	    # These need to be updated once macOS 27 Golden Gate is released.
+	    echo "Homebrew is recommended on Macs running macOS 14 Sonoma or later: https://brew.sh"
+	    echo "MacPorts is recommended on Macs running macOS 13 Ventura or earlier: https://macports.org"
+	    exit 1
     fi
 
-    # Check for missing brew dependencies
-    BREW_DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
-    for dep in "${BREW_DEPS[@]}"; do
-        if ! brew list "$dep" &>/dev/null; then
-            echo "[$dep] is not installed. Installing..."
-            brew install "$dep"
-        else
-            echo "[$dep] is installed."
-        fi
-    done
-fi
+    # Install dependencies using either brew or port. Both package managers conveniently use the same names for each package.
+    DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
+    if [[ $darwin_package_manager -eq 1 ]]; then
+       for dep in "${DEPS[@]}"; do
+           if ! brew list "$dep" &>/dev/null; then
+               echo "[$dep] is not installed. Installing..."
+               brew install "$dep"
+           else
+               echo "[$dep] is installed."
+           fi
+       done
+    else
+       for dep in "${DEPS[@]}"; do
+	   if ! port installed | grep "$dep" &>/dev/null; then
+ 		   echo "[$dep] is not installed. Installing..."
+	 	   sudo port -N install "$dep"
+           else
+		   echo "[$dep] is installed."
+           fi
+       done
+    fi
+fi	
+
 
 # Check for Rosetta 2 (Apple Silicon only)
 if [[ $dist == 3 ]]; then
