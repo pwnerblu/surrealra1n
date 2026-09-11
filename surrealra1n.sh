@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 4 re-release"
+CURRENT_VERSION="v2.1 beta 4 re-release 2"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -3172,20 +3172,6 @@ elif [[ $IDENTIFIER == iPhone11,6 || $IDENTIFIER == iPad11,3 ]]; then
 elif [[ $IDENTIFIER == iPad11,4 ]]; then
     IDENTITY="3"
 fi
-sudo KERNEL2="$KERNEL2" IDENTITY="$IDENTITY" python3 <<'PY'
-import os
-import plistlib
-
-with open("tmp2/BuildManifest.plist", "rb") as f:
-    plist = plistlib.load(f)
-
-identity = int(os.environ["IDENTITY"])
-
-plist["BuildIdentities"][identity]["Manifest"]["KernelCache"]["Info"]["Path"] = os.environ["KERNEL2"]
-
-with open("tmp2/BuildManifest.plist", "wb") as f:
-    plistlib.dump(plist, f)
-PY
 cp -v tmp1/Firmware/AOP/$AOP14 tmp2/Firmware/AOP/$AOP
 cp -v tmp1/Firmware/agx/$GFX tmp2/Firmware/agx/$GFX
 cp -v tmp1/Firmware/ane/$ANE tmp2/Firmware/ane/$ANE
@@ -3208,13 +3194,7 @@ else
     cp -v tmp1/Firmware/$fs_dmg_name.root_hash tmp2/Firmware/$fs_dmg_18_name.root_hash 
     cp -v tmp1/Firmware/$fs_dmg_name.mtree tmp2/Firmware/$fs_dmg_18_name.mtree 
 fi
-if [[ $VERSION == 13.* ]] && [[ $IDENTIFIER == iPhone12* ]]; then
-    echo "Using latest MTFW"
-elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
-    echo "Using latest MTFW"
-else
-    cp -v tmp1/Firmware/$MTFW tmp2/Firmware/$MTFW # copy MTFW for target iOS
-fi
+cp -v tmp1/Firmware/$MTFW tmp2/Firmware/$MTFW # copy MTFW for target iOS
 if [[ ($IDENTIFIER == iPhone12*) &&
       $IDENTIFIER != iPhone12,8 ]]; then
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
@@ -3232,14 +3212,11 @@ if [[ $VERSION == 14.* ]]; then
 elif [[ $VERSION == 13.* ]]; then
     ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b13 -n # make booting take less time (added -b13 to hopefully fix haptics issue)
 else
-    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -e -o -r -we
+    ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we
 fi
 ./bin/kerneldiff work/kernel.raw work/kernelboot.patch work/kernelboot.diff
 rm -rf tmp2/$KERNEL
-./bin/img4 -i tmp1/$KERNEL -o tmp2/$KERNEL2 -T krnl -J -P work/kernelboot.diff || true
-./bin/KPlooshFinder work/kernel.raw work/kernel.patch
-./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
-./bin/img4 -i tmp1/$KERNEL -o tmp2/$KERNEL -T krnl -J -P work/kernel.diff || true
+./bin/img4 -i tmp1/$KERNEL -o tmp2/$KERNEL -T krnl -J -P work/kernelboot.diff || true
 ./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
 ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
 ./bin/asr64_patcher work/asr work/asr_patched
@@ -3290,13 +3267,15 @@ if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* ]] && [[ $IDENTIFIER 
     ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/$restored
     ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/$restored
 fi
-if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
+if [[ $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
     ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
     if [[ $IDENTIFIER != iPhone12,8 ]]; then
         ./bin/trustcache append work/trustcache.raw work/restored_patch
     fi
     ./bin/trustcache append work/trustcache.raw work/asr_patched
-    ./bin/trustcache append work/trustcache.raw work/libimg4.patch
+    if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
+        ./bin/trustcache append work/trustcache.raw work/libimg4.patch
+    fi
     ./bin/img4 -i work/trustcache.raw -o tmp2/Firmware/$ramdisk_dmg_name_18.trustcache -A -T rtsc
 fi
 # pack rdsk into im4p
