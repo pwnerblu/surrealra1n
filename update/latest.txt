@@ -1,5 +1,5 @@
-v2.1 beta 4 re-release
+v2.1 beta 4 re-release 2
 
 RELEASE NOTES:
 
-Bump up hardcoded latest iOS version for certain devices as iOS 26.6.2 released
+Some changes
