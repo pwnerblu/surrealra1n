@@ -1,5 +1,7 @@
-v2.1 beta 4 re-release 2
+v2.1 beta 5
 
 RELEASE NOTES:
 
-Some changes
+Implement experimental untether downgrades for iOS 8.0 - 8.2 on iPhone 5S (requires blobs). macOS only. THIS IS CURRENTLY UNTESTED, SO I DO NOT GUARANTEE THAT IT WORKS. If you have a 5S with iOS 8.0 - 8.2 blobs, please test this release
+Keep in mind that these downgrades still have the exact same amount of issues as a seprmvr64 downgrade.
+The additional issues of this are that more device features may be broken, and the device may freeze a lot and heat up.
