@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 4 re-release 2"
+CURRENT_VERSION="v2.1 beta 5"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -791,9 +791,12 @@ elif [[ $dist == 3 ]]; then
     # install additional restored_external patcher (iPhone X only)
     curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/arm64/ipx_restored_patcher
     # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
-    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/d7b2626fdbf53ef0a2d5bbbbb50c40719315161b/main.c
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/8455109c524a7d3b9172fa11e97c33b2b98cf1a8/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
+    git clone https://github.com/TheRealClarity/daibutsu
+    ( cd daibutsu/dyld/dsc_patch && gcc -DARM64 haxx.c export_stuff/export_stuff.c -Iexport_stuff/ -o ../../../bin/dyld_haxx )
+    rm -rf "daibutsu"
     # install asr patcher for tethered restores
     git clone https://github.com/iSuns9/asr64_patcher --recursive
     cd asr64_patcher
@@ -898,9 +901,12 @@ elif [[ $dist == 4 ]]; then
     # install additional restored_external patcher (iPhone X only)
     curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipx_restored_patcher
     # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
-    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/d7b2626fdbf53ef0a2d5bbbbb50c40719315161b/main.c
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/8455109c524a7d3b9172fa11e97c33b2b98cf1a8/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
+    git clone https://github.com/TheRealClarity/daibutsu
+    ( cd daibutsu/dyld/dsc_patch && gcc -DARM64 haxx.c export_stuff/export_stuff.c -Iexport_stuff/ -o ../../../bin/dyld_haxx )
+    rm -rf "daibutsu"
     # install asr patcher for tethered restores
     git clone https://github.com/iSuns9/asr64_patcher --recursive
     cd asr64_patcher
@@ -2002,7 +2008,19 @@ reset_restore_vars() {
 
 sep_checker(){
 
-if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.0* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
+if [[ $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 8.0* || $VERSION == 8.1* || $VERSION == 8.2* ]] && [[ $dist == 3 || $dist == 4 ]]; then
+    echo "SEP is incompatible"
+    echo "While this part is true, there is now an experimental untether downgrade implemented into this tool."
+    echo "Although this is not really for the end-users, and we will not provide full support for this."
+    echo "Issues that currently exist:"
+    echo "1. Touch ID will not work"
+    echo "2. Passcode will not work"
+    echo "3. Password protected Wi-Fi networks will not work"
+    echo "4. Battery life may not be good, device may heat up, and constantly freeze"
+    echo "5. Potentially other broken features"
+    echo "6. The device may take several minutes to boot for first boot"
+    read -p "Press enter to continue"
+elif [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.0* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
     echo "SEP is incompatible. Restore cannot continue"
     exit 1
 fi
@@ -2189,6 +2207,123 @@ fi
 
 pwn_device
 det_rsep_flag
+restoredir="noseprestore/$IDENTIFIER/$VERSION"
+ipsw_custom="custom_untethered.ipsw"
+if [[ $VERSION == 8.* ]] && [[ ! -f "$restoredir/$ipsw_custom" ]]; then
+    prepare_seprmvr64_ipsw_legacy_untethered
+fi
+if [[ $VERSION == 8.* ]]; then
+    GENERATOR=$(cat $SHSH_PATH | grep -A 1 "generator" | grep -o '0x[0-9a-f]*')
+    if [[ $GENERATOR == 0x* ]]; then
+        echo "Generator is $GENERATOR"
+    else
+        echo "Generator DOES not exist, this blob is useless!"
+        exit 1
+    fi
+    IBSS_KEY=$(grep "ibss-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+    IBEC_KEY=$(grep "ibec-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+    if [[ $IDENTIFIER == iPhone6* ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPhone7,2 ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02962-20170327-7584E8B4-0D86-11E7-B580-8CCE122AC769/iPhone_4.7_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02950-20170327-75843ACC-0D86-11E7-ACCC-80CE122AC769/iPhone_5.5_10.3_14E277_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad5* ]]; then
+        ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+    fi
+    mkdir -p work
+    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
+    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
+    ./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+    im4m="$IDENTIFIER-im4m"
+    ./bin/img4 -i work/$IBSS -o work/iBSS.dec -k $IBSS_KEY
+    ./bin/img4 -i work/$IBEC -o work/iBEC.dec -k $IBEC_KEY
+    ./bin/iBoot64Patcher work/iBSS.dec work/iBSS.patch
+    ./bin/iBoot64Patcher work/iBEC.dec work/iBEC.patch -n
+    ./bin/img4 -i work/iBSS.patch -o work/iBSS.img4 -A -T ibss -M $im4m
+    ./bin/img4 -i work/iBEC.patch -o work/iBEC.img4 -A -T ibec -M $im4m
+    dfu_helper
+    pwn_device
+    if [[ $IDENTIFIER == iPhone6* ]]; then
+        download_1033_ota_sep
+    else
+        download_tvos_sep
+    fi
+    det_rsep_flag
+    sleep 5
+    ./bin/irecovery -f work/iBSS.img4
+    sleep 5
+    ./bin/irecovery -f work/iBEC.img4
+    sleep 5
+    echo "Checking if device is in Recovery mode"
+    MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+    if [[ $MODE == Recovery ]]; then
+        echo "Device has been detected in Recovery mode."
+    else
+        echo "Device not detected in Recovery. Exiting"
+        exit 1
+    fi
+    APNONCE=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs)
+    echo "Setting nonce with generator: $GENERATOR"
+    ./bin/irecovery -c "setenv com.apple.System.boot-nonce $GENERATOR"
+    ./bin/irecovery -c "saveenv"
+    echo "Checking if nonce has changed"
+    ./bin/irecovery -f work/iBEC.img4
+    ./bin/irecovery -c "go"
+    sleep 4
+    APNONCE_2=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs)
+    if [[ $APNONCE_2 != $APNONCE ]]; then
+        echo "New APnonce is set: $APNONCE_2"
+    else
+        echo "APnonce is not set! File a radar!"
+        exit 1
+    fi
+    dfu_helper
+    pwn_device
+    sleep 5
+    ./bin/irecovery -f work/iBSS.img4
+    sleep 5
+    ./bin/irecovery -f work/iBEC.img4
+    sleep 5
+    echo "Checking if device is in Recovery mode"
+    MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+    if [[ $MODE == Recovery ]]; then
+        echo "Device has been detected in Recovery mode."
+    else
+        echo "Device not detected in Recovery. Exiting"
+        exit 1
+    fi
+    APNONCE_3=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs)
+    if [[ $APNONCE_3 == $APNONCE_2 ]]; then
+        echo "New APnonce is still set: $APNONCE_3"
+    else
+        echo "APnonce is not set anymore! File a radar!"
+        exit 1
+    fi
+    while true; do
+        set +e
+        sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+            ./futurerestore/futurerestore -t $SHSH_PATH \
+            --sep $sep_path --sep-manifest $manifest_path \
+            --custom-latest $LATEST_VERSION \
+            $updatebb_flag $rsep_flag $restoredir/$ipsw_custom
+        EXIT_CODE=$?
+        set -e
+        if [[ $EXIT_CODE -eq 139 ]]; then
+            echo "futurerestore segfaulted (exit 139), retrying..."
+            sleep 2
+        else
+            break
+        fi
+    done
+    if [[ $EXIT_CODE -eq 0 ]]; then
+        echo "Restore has completed! Read above if there are any errors"
+        exit 0
+    else
+        echo "futurerestore failed with exit code $EXIT_CODE"
+        exit 1
+    fi
+fi
 
 sleep 5
 
@@ -3871,6 +4006,151 @@ fi
 
 }
 
+prepare_seprmvr64_ipsw_legacy_untethered(){
+
+# this kind is not with seprmvr64 kernel patch, this is primarily userspace patches
+if [[ $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 8.0* || $VERSION == 8.1* || $VERSION == 8.2* ]]; then
+    echo ""
+else
+    echo "Unsupported"
+    exit 1
+fi
+ipsw_custom="custom_untethered.ipsw"
+if [[ $VERSION == 7.* ]]; then
+    IBSS_2="$IBSS7"
+    IBEC_2="$IBEC7"
+else
+    IBSS_2="$IBSS10"
+    IBEC_2="$IBEC10"
+fi
+if [[ $VERSION == 9.* ]]; then
+    ibootpatcher="kairos"
+else
+    ibootpatcher="ipatcher"
+fi
+if [[ $VERSION == 7.* ]]; then
+    grow_to="2500000000"
+elif [[ $VERSION == 8.* ]]; then
+    grow_to="3200000000"
+fi
+mkdir -p noseprestore/$IDENTIFIER/$VERSION
+IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+RDSK_KEY=$(grep "rdsk-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+ROOT_KEY=$(grep "fstm-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+unzip "$IPSW_PATH" -d tmp1
+mkdir -p work
+# ramdisk handling
+rootfs_dmg=$(find_dmg tmp1 largest)
+if [[ $VERSION == 7.0* ]]; then
+    smallest_dmg=$(find_dmg tmp1 largest 10370000)
+else
+    smallest_dmg=$(find_dmg tmp1 smallest)
+fi
+# ramdisk and restore hax First.
+./bin/img4 -i tmp1/Firmware/dfu/$IBSS_2 -o work/iBSS.raw -k $IBSS_KEY
+./bin/img4 -i tmp1/Firmware/dfu/$IBEC_2 -o work/iBEC.raw -k $IBEC_KEY
+./bin/$ibootpatcher work/iBSS.raw work/iBSS.patch
+./bin/$ibootpatcher work/iBEC.raw work/iBEC.patch -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
+./bin/img4 -i work/iBSS.patch -o tmp1/Firmware/dfu/$IBSS_2 -A -T ibss
+./bin/img4 -i work/iBEC.patch -o tmp1/Firmware/dfu/$IBEC_2 -A -T ibec
+./bin/img4 -i $smallest_dmg -o work/ramdisk.raw -k $RDSK_KEY
+./bin/hfsplus work/ramdisk.raw grow 40000000
+./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+./bin/asr64_patcher work/asr work/asr_patched
+if [[ $VERSION == 8.* || $VERSION == 9.* ]]; then
+    ./bin/ldid -e work/asr > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/asr_patched
+fi
+./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr
+./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+# restored_external patch
+./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_external work/restored_external
+./bin/restoredpatcher work/restored_external work/restored_patch -kb
+./bin/ldid -e work/restored_external > work/ents.plist
+./bin/ldid -Swork/ents.plist work/restored_patch
+./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+./bin/img4 -i work/ramdisk.raw -o $smallest_dmg -A -T rdsk
+#
+./bin/dmg extract $rootfs_dmg work/rootfs.raw -k $ROOT_KEY
+rm -rf $rootfs_dmg
+# dyld patches
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    if [[ $VERSION == 7.* ]]; then
+        dsc_patch_version="-7"
+    else
+        dsc_patch_version="-8"
+    fi
+    ./bin/hfsplus work/rootfs.raw extract System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
+    ./bin/dsc64patcher dyld.raw dyld.patch "$dsc_patch_version"
+    if [[ $VERSION == 8.* ]]; then
+        # additional patches is time.
+        rm -rf dyld.raw && mv -v dyld.patch dyld.raw
+        ./bin/dyld_haxx dyld.raw dyld.patch # patch codesigning
+    fi
+    ./bin/hfsplus work/rootfs.raw rm System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    ./bin/hfsplus work/rootfs.raw add dyld.patch System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    rm -rf dyld.*
+    ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+    ./bin/hfsplus work/rootfs.raw chown 0:0 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+fi
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    ./bin/hfsplus work/rootfs.raw grow $grow_to
+fi
+if [[ $VERSION == 8.* ]]; then
+    # root filesystem patches + untethered jailbreak. containermanagerd patch is especially relevant, as it actually makes it so that iOS will boot even with incompatible SEP without seprmvr64 kernel patches.
+    # Proof of concept. This is not a sane method at all, it is mostly a hack with several issues.
+    echo "Removing keybagd"
+    ./bin/hfsplus work/rootfs.raw rm usr/libexec/keybagd 
+    ./bin/hfsplus work/rootfs.raw rm System/Library/LaunchDaemons/com.apple.mobile.keybagd.plist
+    echo "Patching containermanagerd"
+    ./bin/hfsplus work/rootfs.raw extract System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd work/containermanagerd
+    ./bin/Kernel64Patcher3 work/containermanagerd work/containermanagerd.patch -ct
+    ./bin/hfsplus work/rootfs.raw rm System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
+    ./bin/hfsplus work/rootfs.raw add work/containermanagerd.patch System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
+    ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
+    echo "Removing DataClassMigrators"
+    ./bin/hfsplus work/rootfs.raw rmall System/Library/DataClassMigrators
+    echo "Adding jailbreak stuff"
+    curl -L -o work/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
+    curl -L -o work/wtfis.ipa https://github.com/TheRealClarity/wtfis/releases/download/1.0-b2/wtfis-1.0-b2.ipa
+    unzip work/wtfis.ipa -d work/wtfis
+    mv -v work/wtfis/Payload/wtfis.app/untether.tar work/untether.tar
+    gzip -d work/freeze.tar.gz
+    ./bin/hfsplus work/rootfs.raw untar work/freeze.tar
+    ./bin/hfsplus work/rootfs.raw untar work/untether.tar
+    touch .cydia_no_stash
+    ./bin/hfsplus work/rootfs.raw add .cydia_no_stash .cydia_no_stash
+    rm -rf .cydia_no_stash
+    ./bin/hfsplus work/rootfs.raw mv wtfis/loadruncmd usr/lib/loadruncmd
+    ./bin/hfsplus work/rootfs.raw mv usr/libexec/CrashHousekeeping usr/libexec/CrashHousekeeping_o
+    ./bin/hfsplus work/rootfs.raw mv wtfis/untether usr/libexec/CrashHousekeeping
+    # move some daemons
+    mv -v work/rootfs.raw work/rootfs.dmg
+    hdiutil attach work/rootfs.dmg -mountpoint rootfs
+    mv -v rootfs/System/Library/LaunchDaemons/* rootfs/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/bootps.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.CrashHousekeeping.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.jetsamproperties.*.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.mDNSResponder.plist rootfs/System/Library/LaunchDaemons/com.apple.mDNSResponder.plist_
+    mv -v rootfs/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist rootfs/System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist_
+    mv -v rootfs/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist rootfs/System/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist_
+    hdiutil detach rootfs
+    mv -v work/rootfs.dmg work/rootfs.raw
+fi
+./bin/dmg build work/rootfs.raw $rootfs_dmg
+cd tmp1
+zip -0 -r ../$restoredir/$ipsw_custom *
+cd ..
+rm -rf "tmp1"
+rm -rf "work"
+
+}
+
 prepare_seprmvr64_ipsw_legacy(){
 
 if [[ $VERSION == 7.* ]]; then
@@ -4240,6 +4520,7 @@ ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) 
 mkdir -p boot
 echo "$VERSION" > boot/$ECID.txt
 ./bin/irecovery -f work/iBSS.img4
+sleep 5
 ./bin/irecovery -f work/iBEC.img4
 sleep 5
 echo "Checking if device is in Recovery mode"
