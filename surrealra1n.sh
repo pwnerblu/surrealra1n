@@ -2018,6 +2018,7 @@ if [[ $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 8.0* || $VERSION == 8.1* || $
     echo "3. Password protected Wi-Fi networks will not work"
     echo "4. Battery life may not be good, device may heat up, and constantly freeze"
     echo "5. Potentially other broken features"
+    echo "6. The device may take several minutes to boot for first boot"
     read -p "Press enter to continue"
 elif [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.0* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
     echo "SEP is incompatible. Restore cannot continue"
