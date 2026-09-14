@@ -28,9 +28,9 @@ Mineek - iPhone X restored patcher, used for ipx restores 14.3-15.6.1 (my fork o
 
 Nathan (verygenericname) - SSHRD_Script
 
-[[kok3shidoll]](https://github.com/kok3shidoll) - [[daibutsu]](https://github.com/kok3shidoll/daibutsu)
+[kok3shidoll](https://github.com/kok3shidoll) - [daibutsu](https://github.com/kok3shidoll/daibutsu)
 
-[[Clarity]](https://github.com/TheRealClarity) - [[fork of daibutsu]](https://github.com/TheRealClarity/daibutsu), [[wtfis]](https://github.com/TheRealClarity/wtfis) which is used as part of jailbreaking iOS 8 downgrades
+[Clarity](https://github.com/TheRealClarity) - [fork of daibutsu](https://github.com/TheRealClarity/daibutsu), [wtfis](https://github.com/TheRealClarity/wtfis) which is used as part of jailbreaking iOS 8 downgrades
 
 
 
