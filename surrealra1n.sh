@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 5"
+CURRENT_VERSION="v2.1 beta 6"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -4221,6 +4221,11 @@ if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     fi
     ./bin/hfsplus tmp1/rootfs.raw extract System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 dyld.raw
     ./bin/dsc64patcher dyld.raw dyld.patch "$dsc_patch_version"
+    if [[ $VERSION == 8.* ]] && [[ $JAILBREAK == 1 ]]; then
+        # additional patches is time.
+        rm -rf dyld.raw && mv -v dyld.patch dyld.raw
+        ./bin/dyld_haxx dyld.raw dyld.patch # patch codesigning
+    fi
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus tmp1/rootfs.raw add dyld.patch System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     rm -rf dyld.*
@@ -4298,6 +4303,34 @@ if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
     touch .cydia_no_stash
     ./bin/hfsplus tmp1/rootfs.raw add .cydia_no_stash .cydia_no_stash
     rm -rf .cydia_no_stash
+elif [[ $VERSION == 8.* ]] && [[ $JAILBREAK == 1 ]]; then
+    echo "Adding jailbreak stuff"
+    curl -L -o tmp1/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
+    curl -L -o tmp1/wtfis.ipa https://github.com/TheRealClarity/wtfis/releases/download/1.0-b2/wtfis-1.0-b2.ipa
+    unzip tmp1/wtfis.ipa -d tmp1/wtfis
+    mv -v tmp1/wtfis/Payload/wtfis.app/untether.tar tmp1/untether.tar
+    gzip -d tmp1/freeze.tar.gz
+    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/freeze.tar
+    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/untether.tar
+    touch .cydia_no_stash
+    ./bin/hfsplus tmp1/rootfs.raw add .cydia_no_stash .cydia_no_stash
+    rm -rf .cydia_no_stash
+    ./bin/hfsplus tmp1/rootfs.raw mv wtfis/loadruncmd usr/lib/loadruncmd
+    ./bin/hfsplus tmp1/rootfs.raw mv usr/libexec/CrashHousekeeping usr/libexec/CrashHousekeeping_o
+    ./bin/hfsplus tmp1/rootfs.raw mv wtfis/untether usr/libexec/CrashHousekeeping
+    # move some daemons
+    mv -v tmp1/rootfs.raw tmp1/rootfs.dmg
+    hdiutil attach tmp1/rootfs.dmg -mountpoint rootfs
+    mv -v rootfs/System/Library/LaunchDaemons/* rootfs/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/bootps.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.CrashHousekeeping.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.MobileFileIntegrity.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.jetsamproperties.*.plist rootfs/System/Library/LaunchDaemons
+    mv -v rootfs/Library/LaunchDaemons/com.apple.mDNSResponder.plist rootfs/System/Library/LaunchDaemons/com.apple.mDNSResponder.plist_
+    mv -v rootfs/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist rootfs/System/Library/LaunchDaemons/com.apple.mobile.softwareupdated.plist_
+    mv -v rootfs/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist rootfs/System/Library/LaunchDaemons/com.apple.softwareupdateservicesd.plist_
+    hdiutil detach rootfs
+    mv -v tmp1/rootfs.dmg tmp1/rootfs.raw
 fi
 ./bin/dmg build tmp1/rootfs.raw $rootfslatest_dmg
 cd tmp2
@@ -4346,7 +4379,7 @@ unzip -j "$IPSW_PATH" "$KERNEL10" -d work
 if [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
-    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
+    ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 8 -e 8 -f 8 -m 8 -g
 else
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 9 -f 9 -k -v
 fi
@@ -4354,7 +4387,7 @@ fi
 ./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
 rm -rf "work"
 echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
     echo "Keep in mind, it may take a few boot attempts for the Wi-Fi jailbreak tweak to work"
     echo "Do not expect password protected Wi-Fi to connect instantly on Setup screen. You may need to head to the Home Screen first (and potentially do a few reboots), for the Wi-Fi tweak to work."
 fi
@@ -4578,7 +4611,6 @@ if [[ $VERSION == 8.* ]]; then
         echo "iOS 8 tethered restore is not supported on $IDENTIFIER."
         exit 1
     fi
-    JAILBREAK=0
 fi
 
 if [[ $VERSION == 8.3* || $VERSION == 8.4* ]]; then
@@ -4607,7 +4639,7 @@ fi
 echo "Here is the following things that may happen on seprmvr64 restore:"
 echo "1. Touch ID will not work"
 echo "2. Passcode will not work"
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
     echo "3. Password protected Wi-Fi networks do not work by default, but since jailbreak is enabled on this restore, we will install a tweak that fixes Wi-Fi with passwords."
     echo "Wi-Fi fix tweak used is from https://github.com/DevTweaker/Tweak (thanks to them for making the Wi-Fi fix)"
 else
@@ -4711,11 +4743,33 @@ elif [[ $tether_options == 3 ]]; then
                 exit 1
             fi
             echo "iOS 8 restore enabled for $NAME."
-            echo "Jailbreak will not be installed."
-            JAILBREAK=0
+            if [[ $dist == 3 || $dist == 4 ]]; then
+                read -p "Would you like to jailbreak as part of this restore? (y/N): " jailbreak_opts
+                if [[ $jailbreak_opts == y || $jailbreak_opts == Y ]]; then
+                    JAILBREAK=1
+                    echo "Jailbreak option is enabled"
+                    sleep 3
+                else
+                    JAILBREAK=0
+                    echo "Jailbreak option is disabled"
+                    sleep 3
+                fi
+            else
+                echo "Jailbreak option for iOS 8 is NOT SUPPORTED on Linux!"
+                sleep 4
+                JAILBREAK=0
+            fi
         elif [[ $VERSION == 7.* ]]; then
-            echo "Jailbreak option enabled"
-            JAILBREAK=1
+            read -p "Would you like to jailbreak as part of this restore? (y/N): " jailbreak_opts
+            if [[ $jailbreak_opts == y || $jailbreak_opts == Y ]]; then
+                JAILBREAK=1
+                echo "Jailbreak option is enabled"
+                sleep 3
+            else
+                JAILBREAK=0
+                echo "Jailbreak option is disabled"
+                sleep 3
+            fi
         fi
         do_tethered_seprmvr64_restore
     else
