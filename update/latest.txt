@@ -1,5 +1,5 @@
-v2.1 RC
+v2.1 RC 2
 
 RELEASE NOTES:
 
-Something
+fixed an issue for 8.0-8.2 downgrades untether when it makes ipsw
