@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 RC 2"
+CURRENT_VERSION="v2.1 RC 3"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -794,7 +794,7 @@ elif [[ $dist == 3 ]]; then
     # install additional restored_external patcher (iPhone X only)
     curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/arm64/ipx_restored_patcher
     # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
-    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/da265fe5f1eaa9218d83f28dce7ca1f8ceecb8ee/main.c
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/9c26c0c0edf306c69000c9d38d4a923c33a6a780/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
     git clone https://github.com/TheRealClarity/daibutsu
@@ -904,7 +904,7 @@ elif [[ $dist == 4 ]]; then
     # install additional restored_external patcher (iPhone X only)
     curl -L -o bin/ipx_restored_patcher https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipx_restored_patcher
     # restored patcher for seprmvr64 A8+ restores, my fork of mineek's restored patcher but repurposed
-    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/da265fe5f1eaa9218d83f28dce7ca1f8ceecb8ee/main.c
+    curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/9c26c0c0edf306c69000c9d38d4a923c33a6a780/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
     git clone https://github.com/TheRealClarity/daibutsu
@@ -4115,7 +4115,7 @@ if [[ $VERSION == 8.* ]]; then
     ./bin/hfsplus work/rootfs.raw rm System/Library/LaunchDaemons/com.apple.mobile.keybagd.plist
     echo "Patching containermanagerd"
     ./bin/hfsplus work/rootfs.raw extract System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd work/containermanagerd
-    ./bin/Kernel64Patcher3 work/containermanagerd work/containermanagerd.patch -ct
+    ./bin/restoredpatcher work/containermanagerd work/containermanagerd.patch -ct
     ./bin/hfsplus work/rootfs.raw rm System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
     ./bin/hfsplus work/rootfs.raw add work/containermanagerd.patch System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
     ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
