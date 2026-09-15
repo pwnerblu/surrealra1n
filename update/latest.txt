@@ -1,6 +1,5 @@
-v2.1 beta 6
+v2.1 RC
 
 RELEASE NOTES:
 
-Initial jailbreak support for iOS 8 seprmvr64 tether downgrades.
-macOS only!
+Something
