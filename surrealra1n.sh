@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 RC 3"
+CURRENT_VERSION="v2.1 RC 4"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2213,6 +2213,14 @@ det_rsep_flag
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
 ipsw_custom="custom_untethered.ipsw"
 if [[ $VERSION == 8.* ]] && [[ ! -f "$restoredir/$ipsw_custom" ]]; then
+    read -p "Would you like to make this restore valid for update blobs? (y/n): " update_blobs
+    if [[ $update_blobs == y || $update_blobs == Y ]]; then
+        update=1
+        update_blob_flag="-u"
+    else
+        update=0
+        update_blob_flag=""
+    fi
     prepare_seprmvr64_ipsw_legacy_untethered
 fi
 if [[ $VERSION == 8.* ]]; then
@@ -2308,7 +2316,7 @@ if [[ $VERSION == 8.* ]]; then
         sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
             ./futurerestore/futurerestore -t $SHSH_PATH \
             --sep $sep_path --sep-manifest $manifest_path \
-            --custom-latest $LATEST_VERSION \
+            --custom-latest $LATEST_VERSION $update_blob_flag \
             $updatebb_flag $rsep_flag $restoredir/$ipsw_custom
         EXIT_CODE=$?
         set -e
@@ -4022,6 +4030,11 @@ else
     echo "Unsupported"
     exit 1
 fi
+if [[ $update == 1 ]]; then
+    echo "Update blob support option enabled"
+    echo "This is not for update installs by the way."
+    sleep 5
+fi
 ipsw_custom="custom_untethered.ipsw"
 if [[ $VERSION == 7.* ]]; then
     IBSS_2="$IBSS7"
@@ -4080,6 +4093,9 @@ fi
 ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
 ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
 ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+if [[ $update == 1 ]]; then
+    smallest_dmg=$(find_dmg tmp1 largest 100000000)
+fi
 ./bin/img4 -i work/ramdisk.raw -o $smallest_dmg -A -T rdsk
 #
 ./bin/dmg extract $rootfs_dmg work/rootfs.raw -k $ROOT_KEY
