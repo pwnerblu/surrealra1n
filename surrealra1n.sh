@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 beta 6"
+CURRENT_VERSION="v2.1 RC"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -19,7 +19,7 @@ restorefiles_remake=""
 VERSION=""
 BUILD=""
 VERSION_LATEST=""
-BREW_MIN="14.0"
+BREW_MIN="15.0"
 outdated=""
 
 set -euo pipefail
@@ -225,9 +225,12 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         darwin_package_manager=2
     else
         echo "No package manager installed. Please install Homebrew or MacPorts."
-        # These need to be updated once macOS 27 Golden Gate is released.
-        echo "Homebrew is recommended on Macs running macOS 14 Sonoma or later: https://brew.sh"
-        echo "MacPorts is recommended on Macs running macOS 13 Ventura or earlier: https://macports.org"
+        if [[ $dist == 3 ]] && [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+            echo "Homebrew is recommended on this Mac: https://brew.sh"
+            echo "You can also use MacPorts: https://macports.org"
+        else
+            echo "MacPorts is recommended on this Mac: https://macports.org"
+        fi
         exit 1
     fi
 
@@ -1543,9 +1546,9 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.10"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="26.6.2"
+    LATEST_VERSION="27.0"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.6.2"
+    LATEST_VERSION="26.7"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -2902,12 +2905,14 @@ else
     restore_ramdisk_dmg=$(find_dmg tmp1 largest 148000000)
 fi
 cryptex_os=$(find_dmg tmp1 largest 3800000000)
-cryptex_os_18=$(find_dmg_arm64e tmp2 largest 2100000000)
+cryptex_os_18=$(find_dmg_arm64e tmp2 largest 2500000000)
 cryptex_app=$(find_dmg tmp1 smallest)
 cryptex_app_18=$(find_dmg tmp2 smallest)
 restored="restored_external"
 if [[ $LATEST_VERSION == 18.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
+elif [[ $LATEST_VERSION == 27.* ]]; then
+    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 244000000)
 elif [[ $LATEST_VERSION == 26.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 232784000)
 fi
@@ -3289,6 +3294,8 @@ else
 fi
 if [[ $LATEST_VERSION == 18.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
+elif [[ $LATEST_VERSION == 27.* ]]; then
+    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 244000000)
 elif [[ $LATEST_VERSION == 26.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 232784000)
 fi
@@ -4917,6 +4924,18 @@ fi
 
 }
 
+ios27(){
+
+if [[ $IDENTIFIER == iPhone12,1 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2026FallFCS/d47bac10-cddf-4f79-a014-411e2fea1fdb/iPhone12,1_27.0_24A437_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone12,5 ]]; then
+    ipsw_url="https://updates.cdn-apple.com/2026FallFCS/77ece52f-412a-4bc2-92aa-6f65edfa59d6/iPhone12,3,iPhone12,5_27.0_24A437_Restore.ipsw"
+else
+    ipsw_url="https://updates.cdn-apple.com/2026FallFCS/5418594c-44db-4dd7-b084-669adba4fc4e/iPhone12,8_27.0_24A437_Restore.ipsw"
+fi
+
+}
+
 ios184(){
 
 ramdisk_dmg="090-43874-358.dmg"
@@ -5063,8 +5082,12 @@ curl -L -o work/var.tar.xz https://github.com/khanhduytran0/khanhduytran0.github
 xz -d work/var.tar.xz
 ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs /dev/disk1s1 /mnt1 || true"
 current_ios=$(./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cat /mnt1/System/Library/CoreServices/SystemVersion.plist || true")
-ios184
-./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/newfs_apfs -A -D -o role=r -v DataX /dev/disk0s1 || true"
+if [[ $current_ios == *27.* ]]; then
+    echo "Unsupported!"
+    exit 1
+else
+    ios184
+fi
 if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,4 ]]; then
     preboot="/dev/disk1s6"
     data="/dev/disk1s9"
@@ -5072,6 +5095,8 @@ else
     preboot="/dev/disk1s5"
     data="/dev/disk1s8"
 fi
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/apfs_deletefs $data || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/newfs_apfs -A -D -o role=r -v DataX /dev/disk0s1 || true"
 ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
 ./bin/img4 -i work/$IBSS -o work/iBSS.raw
 ./bin/iBootPatch -v -b "-v" work/iBSS.raw work/iBSS.patch
