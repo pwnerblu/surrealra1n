@@ -1,5 +1,5 @@
-v2.1 RC 5
+v2.1 RC 6
 
 RELEASE NOTES:
 
-hm
+Improve the method for untether iOS 8 downgrade with blobs (untested!)
