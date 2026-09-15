@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 RC 5"
+CURRENT_VERSION="v2.1 RC 6"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -3980,16 +3980,14 @@ elif [[ $IDENTIFIER == iPhone7,1 ]]; then
 elif [[ $IDENTIFIER == iPad5,2 ]]; then
     ipsw_url="http://appldnld.apple.com/ios10.2.1/031-96827-20170112-6158A946-D81D-11E6-AE88-FD01D55B5B9D/iPad_64bit_TouchID_10.2.1_14D27_Restore.ipsw"
 elif [[ $IDENTIFIER == iPhone6* ]]; then
-    ipsw_url="http://appldnld.apple.com/ios10.2.1/031-96807-20170112-6155686C-D81D-11E6-BDB8-FB01D55B5B9D/iPhone_4.0_64bit_10.2.1_14D27_Restore.ipsw"
+    ipsw_url="http://appldnld.apple.com/ios10.0/031-76074-20160907-17028284-71FE-11E6-938C-0CB934D2D062/iPhone_4.0_64bit_10.0.1_14A403_Restore.ipsw"
 fi
-smallest_dmg="058-67088-028.dmg"
+smallest_dmg="058-50463-070.dmg"
 mkdir -p work
 ( cd work && sudo ../bin/pzb -g $smallest_dmg $ipsw_url )
 ( cd work && sudo ../bin/pzb -g Firmware/all_flash/$ALLFLASH/$DEVICETREE $ipsw_url )
 ( cd work && sudo ../bin/pzb -g $KERNEL10 $ipsw_url )
-./bin/img4 -i work/$DEVICETREE -o tmp1/DeviceTree.raw 
-perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
-./bin/img4 -i tmp1/DeviceTree.raw -o tmp1/Firmware/all_flash/DeviceTree.im4p -A -T rdtr
+cp -v work/$DEVICETREE tmp1/Firmware/all_flash/DeviceTree.im4p
 ./bin/img4 -i work/$smallest_dmg -o work/ramdisk.raw
 ./bin/hfsplus work/ramdisk.raw grow 60000000
 ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
@@ -4002,13 +4000,13 @@ fi
 ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
 ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
 # restored_external patch
-#./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_external work/restored_external
-#./bin/restoredpatcher work/restored_external work/restored_patch -kb
-#./bin/ldid -e work/restored_external > work/ents.plist
-#./bin/ldid -Swork/ents.plist work/restored_patch
-#./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
-#./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
-#./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_external work/restored_external
+./bin/restoredpatcher work/restored_external work/restored_patch -kb
+./bin/ldid -e work/restored_external > work/ents.plist
+./bin/ldid -Swork/ents.plist work/restored_patch
+./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
 ./bin/img4 -i work/ramdisk.raw -o $restoredir/ramdisk.im4p -A -T rdsk
 ./bin/img4 -i work/$KERNEL10 -o work/kernel.raw
 ./bin/KPlooshFinder work/kernel.raw work/kernel.patch
