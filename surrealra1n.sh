@@ -225,7 +225,7 @@ if [[ $dist == 3 || $dist == 4 ]]; then
         darwin_package_manager=2
     else
         echo "No package manager installed. Please install Homebrew or MacPorts."
-        if [[ $dist == 3 ]] && [[ $macos_ver == 15.* || $macos_ver == 26.* || $macos_ver == 27.* ]]; then
+        if [[ $dist == 3 ]] && [[ "$(printf '%s\n' "$BREW_MIN" "$macos_ver" | sort -V | head -n1)" != "$BREW_MIN" ]]; then
             echo "Homebrew is recommended on this Mac: https://brew.sh"
             echo "You can also use MacPorts: https://macports.org"
         else
