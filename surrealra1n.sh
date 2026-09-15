@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 RC 4"
+CURRENT_VERSION="v2.1 RC 5"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2211,16 +2211,17 @@ fi
 pwn_device
 det_rsep_flag
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
-ipsw_custom="custom_untethered.ipsw"
+read -p "Would you like to make this restore valid for update blobs? (y/n): " update_blobs
+if [[ $update_blobs == y || $update_blobs == Y ]]; then
+    update=1
+    update_blob_flag="-u"
+    ipsw_custom="custom_untethered_special.ipsw"
+else
+    update=0
+    update_blob_flag=""
+    ipsw_custom="custom_untethered.ipsw"
+fi
 if [[ $VERSION == 8.* ]] && [[ ! -f "$restoredir/$ipsw_custom" ]]; then
-    read -p "Would you like to make this restore valid for update blobs? (y/n): " update_blobs
-    if [[ $update_blobs == y || $update_blobs == Y ]]; then
-        update=1
-        update_blob_flag="-u"
-    else
-        update=0
-        update_blob_flag=""
-    fi
     prepare_seprmvr64_ipsw_legacy_untethered
 fi
 if [[ $VERSION == 8.* ]]; then
@@ -2286,8 +2287,8 @@ if [[ $VERSION == 8.* ]]; then
     if [[ $APNONCE_2 != $APNONCE ]]; then
         echo "New APnonce is set: $APNONCE_2"
     else
-        echo "APnonce is not set! File a radar!"
-        exit 1
+        echo "APnonce is not set! If this is not really set, File a radar!"
+        read -p "If the APnonce was set before, just press enter to continue"
     fi
     dfu_helper
     pwn_device
@@ -4034,8 +4035,10 @@ if [[ $update == 1 ]]; then
     echo "Update blob support option enabled"
     echo "This is not for update installs by the way."
     sleep 5
+    ipsw_custom="custom_untethered_special.ipsw"
+else
+    ipsw_custom="custom_untethered.ipsw"
 fi
-ipsw_custom="custom_untethered.ipsw"
 if [[ $VERSION == 7.* ]]; then
     IBSS_2="$IBSS7"
     IBEC_2="$IBEC7"
