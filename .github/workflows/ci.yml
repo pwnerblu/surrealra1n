@@ -34,6 +34,8 @@ jobs:
             TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}-rr"
           elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta\ ([0-9]+)$ ]]; then
             TAG="${BASH_REMATCH[1]}-beta${BASH_REMATCH[2]}"
+          elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ beta$ ]]; then
+            TAG="${BASH_REMATCH[1]}-beta"
           elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ RC\ ([0-9]+)$ ]]; then
             TAG="${BASH_REMATCH[1]}-rc${BASH_REMATCH[2]}"
           elif [[ "$VERSION_NO_V" =~ ^([0-9]+\.[0-9]+)\ RC$ ]]; then
@@ -64,9 +66,10 @@ jobs:
           release_name: ${{ steps.parse.outputs.version_raw }}
           body: ${{ steps.parse.outputs.notes }}
           draft: false
-          # prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') }}
+          prerelease: ${{ contains(steps.parse.outputs.version_raw, 'beta') || contains(steps.parse.outputs.version_raw, 'RC') }}
       
       - name: Mark as Latest Release
+        if: ${{ !contains(steps.parse.outputs.version_raw, 'beta') && !contains(steps.parse.outputs.version_raw, 'RC') }}
         run: |
           gh release edit ${{ steps.parse.outputs.tag }} --latest
         env:

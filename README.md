@@ -2,7 +2,7 @@
 
 A tethered downgrade tool for some A7/A8(X) devices, all A11 devices and A12/A13 iPhones.
 
-Supports macOS (11.0+) and Linux
+Supports macOS (10.15+) and Linux
 
 For surrealra1n support, join the [surrealra1n](https://discord.gg/kDXVHhTQs2) Discord Server
 
@@ -28,6 +28,9 @@ Mineek - iPhone X restored patcher, used for ipx restores 14.3-15.6.1 (my fork o
 
 Nathan (verygenericname) - SSHRD_Script
 
+[kok3shidoll](https://github.com/kok3shidoll) - [daibutsu](https://github.com/kok3shidoll/daibutsu)
+
+[Clarity](https://github.com/TheRealClarity) - [fork of daibutsu](https://github.com/TheRealClarity/daibutsu), [wtfis](https://github.com/TheRealClarity/wtfis) which is used as part of jailbreaking iOS 8 downgrades
 
 
 
