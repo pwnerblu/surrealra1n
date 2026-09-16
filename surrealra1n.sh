@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1 RC 6"
+CURRENT_VERSION="v2.1"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -678,7 +678,7 @@ ipsw_selector(){
 
 echo "Checking for updates..."
 rm -rf update/latest.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/update/latest.txt
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
@@ -693,7 +693,7 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
         rm -rf "updatefiles"
         mkdir updatefiles
         rm -rf "updatefiles/repo"
-        git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
+        git clone --branch main https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
         if [[ ! -d updatefiles/repo ]]; then
             echo "Failed to clone repository."
             exit 1
@@ -4816,14 +4816,14 @@ fi
 
 restore_utils(){
 
-if [[ $outdated == 1 ]]; then
-    echo "This surrealra1n beta has expired"
-    echo "A newer beta is available. Please update to continue."
-    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
-    sleep 10
-    main_menu
-    return
-fi
+#if [[ $outdated == 1 ]]; then
+#    echo "This surrealra1n beta has expired"
+#    echo "A newer beta is available. Please update to continue."
+#    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
+#    sleep 10
+#    main_menu
+#    return
+#fi
 
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
@@ -5181,7 +5181,7 @@ echo ""
 echo "1. Downgrade Options"
 echo "2. Misc Utilities"
 echo "3. surrealSSHRD (A12/A13)"
-echo "4. Switch to main branch"
+echo "4. Switch to development branch (not recommended)"
 echo "5. Exit"
 read -p "Please input an option (1-5): " option
 if [[ $option == 1 ]]; then
@@ -5191,7 +5191,7 @@ elif [[ $option == 2 ]]; then
 elif [[ $option == 3 ]]; then
     sshrd_a12
 elif [[ $option == 4 ]]; then
-    switch_to_main
+    switch_to_development
 elif [[ $option == 5 ]]; then
     echo "surrealra1n is exiting"
     exit 0
