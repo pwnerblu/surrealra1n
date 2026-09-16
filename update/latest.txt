@@ -1,5 +1,8 @@
-v2.1 RC 6
+v2.1
 
 RELEASE NOTES:
 
-Improve the method for untether iOS 8 downgrade with blobs (untested!)
+Add support for making iOS 17.5 ramdisks for A12/A13 devices in surrealSSHRD option and add support for creating FakeVar on A12/A13 running iOS 18 and 26 (developers only).
+Bring back iOS 8 seprmvr64 support (8.0-8.2 only), fix XS Max restores on Linux, add jailbreak support for iOS 8 tether downgrades (macOS only).
+
+Also fix baseband on A8 iOS 8/9 seprmvr64 tether downgrades (iPad Air 2 is not included). Implement untethered downgrades to iOS 8.0-8.2 with blobs for iPhone 5S, although entirely experimental (functionality is also broken) and not fully tested yet.
