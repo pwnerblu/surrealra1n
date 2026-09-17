@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1.1"
+CURRENT_VERSION="v2.1.2"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -3096,6 +3096,11 @@ else
         exit 1
     fi
     ./bin/restoredpatcher work/restored_external work/restored_patch -c # patch cryptex1 install validation
+    if [[ $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone12,5 ]]; then
+        # iOS 27 SEP/savage broke restores to iOS 16 on A13 faceID devices, so this patch is needed
+        mv -v work/restored_patch work/restored_patc
+        ./bin/ipx_restored_patcher work/restored_patc work/restored_patch
+    fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
     if [[ $ramdisk_fs == "APFS" ]]; then
