@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.1.3"
+CURRENT_VERSION="v2.2"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -4000,10 +4000,10 @@ mkdir -p work
 cp -v work/$DEVICETREE tmp1/Firmware/all_flash/DeviceTree.im4p
 ./bin/img4 -i work/$smallest_dmg -o work/ramdisk.raw
 ./bin/hfsplus work/ramdisk.raw grow 60000000
-./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
-./bin/asr64_patcher work/asr work/asr_patched
+#./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+./bin/asr64_patcher hax/asr work/asr_patched
 if [[ $VERSION == 8.* || $VERSION == 9.* ]]; then
-    ./bin/ldid -e work/asr > work/ents.plist
+    ./bin/ldid -e hax/asr > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/asr_patched
 fi
 ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr
@@ -4826,14 +4826,14 @@ fi
 
 restore_utils(){
 
-#if [[ $outdated == 1 ]]; then
-#    echo "This surrealra1n beta has expired"
-#    echo "A newer beta is available. Please update to continue."
-#    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
-#    sleep 10
-#    main_menu
-#    return
-#fi
+if [[ $outdated == 1 ]]; then
+    echo "This surrealra1n beta has expired"
+    echo "A newer beta is available. Please update to continue."
+    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
+    sleep 10
+    main_menu
+    return
+fi
 
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
