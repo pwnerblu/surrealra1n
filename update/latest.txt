@@ -1,5 +1,6 @@
-v2.2 beta
+v2.2
 
 RELEASE NOTES:
 
 Hopefully fix broken restores to iOS 8.0-8.2 untether downgrade with blobs (as in ASR fail, not general functionality after restore)
+Experimental and supports iPhone 5S only.
