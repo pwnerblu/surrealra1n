@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.2"
+CURRENT_VERSION="v2.2.1"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -4826,14 +4826,14 @@ fi
 
 restore_utils(){
 
-if [[ $outdated == 1 ]]; then
-    echo "This surrealra1n beta has expired"
-    echo "A newer beta is available. Please update to continue."
-    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
-    sleep 10
-    main_menu
-    return
-fi
+#if [[ $outdated == 1 ]]; then
+#    echo "This surrealra1n beta has expired"
+#    echo "A newer beta is available. Please update to continue."
+#    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
+#    sleep 10
+#    main_menu
+#    return
+#fi
 
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
