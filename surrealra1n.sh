@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.2.1"
+CURRENT_VERSION="v2.3 beta"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -678,7 +678,7 @@ ipsw_selector(){
 
 echo "Checking for updates..."
 rm -rf update/latest.txt
-curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/main/update/latest.txt
+curl -L -o update/latest.txt https://github.com/pwnerblu/surrealra1n/raw/refs/heads/development/update/latest.txt
 LATEST_VERSION=$(head -n 1 "update/latest.txt" | tr -d '\r\n')
 RELEASE_NOTES=$(awk '/^RELEASE NOTES:/{flag=1; next} flag' "update/latest.txt")
 
@@ -693,7 +693,7 @@ if [[ $LATEST_VERSION != $CURRENT_VERSION ]]; then
         rm -rf "updatefiles"
         mkdir updatefiles
         rm -rf "updatefiles/repo"
-        git clone --branch main https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
+        git clone --branch development https://github.com/pwnerblu/surrealra1n updatefiles/repo --recursive
         if [[ ! -d updatefiles/repo ]]; then
             echo "Failed to clone repository."
             exit 1
@@ -797,6 +797,11 @@ elif [[ $dist == 3 ]]; then
     curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/9c26c0c0edf306c69000c9d38d4a923c33a6a780/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
+    # new containermanagerd patcher belongs here
+    git clone https://github.com/pwnerblu/containermanagerdpatcher
+    gcc containermanagerdpatcher/containermanagerdpatcher.c -o bin/containermanagerdpatcher
+    rm -rf "containermanagerdpatcher"
+    #
     git clone https://github.com/TheRealClarity/daibutsu
     ( cd daibutsu/dyld/dsc_patch && gcc -DARM64 haxx.c export_stuff/export_stuff.c -Iexport_stuff/ -o ../../../bin/dyld_haxx )
     rm -rf "daibutsu"
@@ -907,6 +912,11 @@ elif [[ $dist == 4 ]]; then
     curl -L -o main.c https://gist.githubusercontent.com/pwnerblu/d2adc5adee74a679704577ddd64508bf/raw/9c26c0c0edf306c69000c9d38d4a923c33a6a780/main.c
     gcc main.c -o bin/restoredpatcher
     rm -rf main.c
+    # new containermanagerd patcher belongs here
+    git clone https://github.com/pwnerblu/containermanagerdpatcher
+    gcc containermanagerdpatcher/containermanagerdpatcher.c -o bin/containermanagerdpatcher
+    rm -rf "containermanagerdpatcher"
+    #
     git clone https://github.com/TheRealClarity/daibutsu
     ( cd daibutsu/dyld/dsc_patch && gcc -DARM64 haxx.c export_stuff/export_stuff.c -Iexport_stuff/ -o ../../../bin/dyld_haxx )
     rm -rf "daibutsu"
@@ -2213,6 +2223,11 @@ restoredir="noseprestore/$IDENTIFIER/$VERSION"
 ipsw_custom="custom_untethered.ipsw"
 if [[ $VERSION == 8.* ]] && [[ ! -f "$restoredir/$ipsw_custom" ]]; then
     prepare_seprmvr64_ipsw_legacy_untethered
+elif [[ $VERSION == 8.* ]] && [[ -f "$restoredir/$ipsw_custom" ]]; then
+    read -p "Would you like to re-create the custom IPSW? (y/n): " remake_custom_untethered
+    if [[ $remake_custom_untethered == y || $remake_custom_untethered == Y ]]; then
+        prepare_seprmvr64_ipsw_legacy_untethered
+    fi
 fi
 if [[ $VERSION == 8.* ]]; then
     dfu_helper
@@ -4056,7 +4071,7 @@ if [[ $VERSION == 8.* ]]; then
     ./bin/hfsplus work/rootfs.raw rm System/Library/LaunchDaemons/com.apple.mobile.keybagd.plist
     echo "Patching containermanagerd"
     ./bin/hfsplus work/rootfs.raw extract System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd work/containermanagerd
-    ./bin/restoredpatcher work/containermanagerd work/containermanagerd.patch -ct
+    ./bin/containermanagerdpatcher work/containermanagerd work/containermanagerd.patch
     ./bin/hfsplus work/rootfs.raw rm System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
     ./bin/hfsplus work/rootfs.raw add work/containermanagerd.patch System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
     ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
@@ -4826,14 +4841,14 @@ fi
 
 restore_utils(){
 
-#if [[ $outdated == 1 ]]; then
-#    echo "This surrealra1n beta has expired"
-#    echo "A newer beta is available. Please update to continue."
-#    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
-#    sleep 10
-#    main_menu
-#    return
-#fi
+if [[ $outdated == 1 ]]; then
+    echo "This surrealra1n beta has expired"
+    echo "A newer beta is available. Please update to continue."
+    echo "You will need to exit, re-run surrealra1n.sh, and when it prompts for an update, update surrealra1n."
+    sleep 10
+    main_menu
+    return
+fi
 
 if [[ $IDENTIFIER == NONE ]]; then
     main_menu
@@ -5191,7 +5206,7 @@ echo ""
 echo "1. Downgrade Options"
 echo "2. Misc Utilities"
 echo "3. surrealSSHRD (A12/A13)"
-echo "4. Switch to development branch (not recommended)"
+echo "4. Switch to main branch"
 echo "5. Exit"
 read -p "Please input an option (1-5): " option
 if [[ $option == 1 ]]; then
@@ -5201,7 +5216,7 @@ elif [[ $option == 2 ]]; then
 elif [[ $option == 3 ]]; then
     sshrd_a12
 elif [[ $option == 4 ]]; then
-    switch_to_development
+    switch_to_main
 elif [[ $option == 5 ]]; then
     echo "surrealra1n is exiting"
     exit 0
