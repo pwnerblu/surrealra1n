@@ -1,6 +1,6 @@
-v2.2.1
+v2.3 beta
 
 RELEASE NOTES:
 
-Hopefully fix broken restores to iOS 8.0-8.2 untether downgrade with blobs (as in ASR fail, not general functionality after restore)
-Experimental and supports iPhone 5S only.
+Hopefully fix some system app icons not showing up on iOS 8.0-8.2 untether downgrades on 5S
+Introduce the ability to re-create an already existing custom IPSW for iOS 8.0-8.2 untethered with blobs. Users that want to take advantage of this update will need to re-create their custom IPSW.
