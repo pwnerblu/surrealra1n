@@ -1,6 +1,6 @@
-v2.3 beta
+v2.3 beta 2
 
 RELEASE NOTES:
 
-Hopefully fix some system app icons not showing up on iOS 8.0-8.2 untether downgrades on 5S
-Introduce the ability to re-create an already existing custom IPSW for iOS 8.0-8.2 untethered with blobs. Users that want to take advantage of this update will need to re-create their custom IPSW.
+Fix keyboard freezes on iOS 8.0-8.2 untether downgrades with blobs on iPhone 5S (not 100% tested).
+Users that want to take advantage of this fix will need to re-create their custom IPSW.
