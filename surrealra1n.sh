@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta"
+CURRENT_VERSION="v2.3 beta 2"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -800,6 +800,8 @@ elif [[ $dist == 3 ]]; then
     # new containermanagerd patcher belongs here
     git clone https://github.com/pwnerblu/containermanagerdpatcher
     gcc containermanagerdpatcher/containermanagerdpatcher.c -o bin/containermanagerdpatcher
+    gcc containermanagerdpatcher/installdpatcher.c -o bin/installdpatcher
+    gcc containermanagerdpatcher/coredatadscpatcher.c -o bin/coredatadscpatcher
     rm -rf "containermanagerdpatcher"
     #
     git clone https://github.com/TheRealClarity/daibutsu
@@ -915,6 +917,8 @@ elif [[ $dist == 4 ]]; then
     # new containermanagerd patcher belongs here
     git clone https://github.com/pwnerblu/containermanagerdpatcher
     gcc containermanagerdpatcher/containermanagerdpatcher.c -o bin/containermanagerdpatcher
+    gcc containermanagerdpatcher/installdpatcher.c -o bin/installdpatcher
+    gcc containermanagerdpatcher/coredatadscpatcher.c -o bin/coredatadscpatcher
     rm -rf "containermanagerdpatcher"
     #
     git clone https://github.com/TheRealClarity/daibutsu
@@ -2029,7 +2033,7 @@ if [[ $IDENTIFIER == iPhone6* ]] && [[ $VERSION == 8.0* || $VERSION == 8.1* || $
     echo "1. Touch ID will not work"
     echo "2. Passcode will not work"
     echo "3. Password protected Wi-Fi networks will not work"
-    echo "4. Battery life may not be good, device may heat up, and constantly freeze"
+    echo "4. Battery life may be affected"
     echo "5. Potentially other broken features"
     read -p "Press enter to continue"
 elif [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPhone7* || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPod7* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,5 ]] && [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* || $VERSION == 10.0* || $VERSION == 11.0* || $VERSION == 11.1* || $VERSION == 11.2* ]]; then
@@ -4053,6 +4057,8 @@ if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
         # additional patches is time.
         rm -rf dyld.raw && mv -v dyld.patch dyld.raw
         ./bin/dyld_haxx dyld.raw dyld.patch # patch codesigning
+        rm -rf dyld.raw && mv -v dyld.patch dyld.raw
+        ./bin/coredatadscpatcher dyld.raw dyld.patch # patch CoreData.framework, should fix keyboard freezes
     fi
     ./bin/hfsplus work/rootfs.raw rm System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus work/rootfs.raw add dyld.patch System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
@@ -4075,6 +4081,14 @@ if [[ $VERSION == 8.* ]]; then
     ./bin/hfsplus work/rootfs.raw rm System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
     ./bin/hfsplus work/rootfs.raw add work/containermanagerd.patch System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
     ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/PrivateFrameworks/MobileContainerManager.framework/Support/containermanagerd
+    echo "Patching installd"
+    ./bin/hfsplus work/rootfs.raw extract usr/libexec/installd work/installd
+    ./bin/installdpatcher work/installd work/installd.patch
+    ./bin/ldid -e work/installd > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/installd.patch
+    ./bin/hfsplus work/rootfs.raw rm usr/libexec/installd
+    ./bin/hfsplus work/rootfs.raw add work/installd.patch usr/libexec/installd
+    ./bin/hfsplus work/rootfs.raw chmod 755 usr/libexec/installd
     echo "Removing DataClassMigrators"
     ./bin/hfsplus work/rootfs.raw rmall System/Library/DataClassMigrators
     echo "Removing coreduetd"
