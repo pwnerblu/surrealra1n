@@ -21,6 +21,7 @@ BUILD=""
 VERSION_LATEST=""
 BREW_MIN="15.0"
 outdated=""
+override_because_mini4_16="0"
 
 set -euo pipefail
 
@@ -520,6 +521,38 @@ fetch_firmware() {
         BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         return 0
+    elif [[ $override_because_mini4_16 == 1 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
+        mkdir -p firmware_downloads/$IDENTIFIER
+        IPSW_PATH="firmware_downloads/$IDENTIFIER/20A5303i.ipsw"
+
+        if [ -f "$IPSW_PATH" ]; then
+            echo "IPSW file already exists at $IPSW_PATH"
+            echo "Skipping download..."
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH" "BuildManifest.plist" -d work
+            BUILD=$(grep -A1 "ProductBuildVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
+            return 0
+        fi
+        url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-26209/175A6A7C-6E52-438A-8326-FC9DFEBB4E20/iPad_64bit_TouchID_ASTC_16.0_20A5303i_Restore.ipsw"
+
+        echo "Downloading firmware..."
+        echo "Source: $url"
+        echo "Downloading to $IPSW_PATH"
+
+        if command -v aria2c >/dev/null 2>&1; then
+            echo "Using aria2c with 16 connections for faster download..."
+            aria2c -x 16 -s 16 -o "$IPSW_PATH" $url || {
+                echo "Error: Download failed (aria2c)" >&2
+                return 1
+            }
+        else
+            echo "aria2c not found, using curl..."
+            curl -L -o "$IPSW_PATH" $url || {
+                echo "Error: Download failed (curl)" >&2
+                return 1
+            }
+        fi
     fi
     
     local version_request="$1"
@@ -655,7 +688,11 @@ ipsw_selector(){
             if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPhone10* ]]; then
                 echo "If you want to Download iOS14.0 beta4(18A5342e) IPSW, Please enter 18A5342e below"
             fi
-            read -p "Which version would you like to download: " download_version
+            if [[ $override_because_mini4_16 == 1 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
+                download_version="20A5303i"
+            else
+                read -p "Which version would you like to download: " download_version
+            fi
             fetch_firmware $download_version
             IPSW_PATH="firmware_downloads/$IDENTIFIER/${download_version}.ipsw"
             rm -rf work/BuildManifest.plist
@@ -773,6 +810,20 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
+    # kerneldiff modified
+    curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
+    gcc kerneldiff.c -o bin/kerneldiff2
+    rm -rf kerneldiff.c
+    curl -L -o pmupatcher.c https://gist.githubusercontent.com/pwnerblu/26db9c4dcdfa45b40df3fc5d4bd60d7b/raw/0967b447bf7cdbabc2c78c6da9f02a7951a7090b/pmuhax.c
+    gcc pmupatcher.c -o bin/pmupatcher
+    rm -rf pmupatcher.c
+    curl -L -o sandbox.c https://gist.githubusercontent.com/pwnerblu/e5f470b786f7da4a1d3abd45fa1da475/raw/bc5451dab2bac43b75a298ddad87240840236364/sandbox.c
+    gcc sandbox.c -o bin/sbxpatcher
+    rm -rf sandbox.c
+    curl -L -o mtpatcher.c https://gist.githubusercontent.com/pwnerblu/7d7e6553f6a9c6943fe128bef0e9f4fe/raw/36937c78761948bfa35c233534e89eb38541bdc6/touchfix.c
+    gcc mtpatcher.c -o bin/mtkextpatcher
+    rm -rf mtpatcher.c
+    #
     curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
@@ -850,6 +901,12 @@ elif [[ $dist == 3 ]]; then
         cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
+        git clone https://github.com/crystall1nedev/ipad6-ipados18 -b ssv-patch
+        cd ipad6-ipados18
+        make
+        cp iBootpatch2 ../bin/iBootpatch4
+        cd ..
+        rm -rf "ipad6-ipados18"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
@@ -890,6 +947,20 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/KPlooshFinder https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/KPlooshFinder
     curl -L -o bin/dsc64patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dsc64patcher
     curl -L -o bin/kerneldiff https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kerneldiff
+    # kerneldiff modified
+    curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
+    gcc kerneldiff.c -o bin/kerneldiff2
+    rm -rf kerneldiff.c
+    curl -L -o pmupatcher.c https://gist.githubusercontent.com/pwnerblu/26db9c4dcdfa45b40df3fc5d4bd60d7b/raw/0967b447bf7cdbabc2c78c6da9f02a7951a7090b/pmuhax.c
+    gcc pmupatcher.c -o bin/pmupatcher
+    rm -rf pmupatcher.c
+    curl -L -o sandbox.c https://gist.githubusercontent.com/pwnerblu/e5f470b786f7da4a1d3abd45fa1da475/raw/bc5451dab2bac43b75a298ddad87240840236364/sandbox.c
+    gcc sandbox.c -o bin/sbxpatcher
+    rm -rf sandbox.c
+    curl -L -o mtpatcher.c https://gist.githubusercontent.com/pwnerblu/7d7e6553f6a9c6943fe128bef0e9f4fe/raw/36937c78761948bfa35c233534e89eb38541bdc6/touchfix.c
+    gcc mtpatcher.c -o bin/mtkextpatcher
+    rm -rf mtpatcher.c
+    #
     curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
@@ -967,6 +1038,12 @@ elif [[ $dist == 4 ]]; then
         cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
+        git clone https://github.com/crystall1nedev/ipad6-ipados18 -b ssv-patch
+        cd ipad6-ipados18
+        make
+        cp iBootpatch2 ../bin/iBootpatch4
+        cd ..
+        rm -rf "ipad6-ipados18"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
@@ -1560,9 +1637,9 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.10"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="27.0"
+    LATEST_VERSION="27.0.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.7"
+    LATEST_VERSION="26.7.1"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -2021,6 +2098,7 @@ reset_restore_vars() {
     VERSION=""
     BUILD=""
     VERSION_LATEST=""
+    override_because_mini4_16="0"
 }
 
 sep_checker(){
@@ -3426,6 +3504,10 @@ fi
 sleep 5
 echo "Sending iBEC"
 ./bin/irecovery -f $bootdir/iBEC.img4
+if [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 16.* ]]; then
+    echo "Device should now boot"
+    exit 0
+fi
 sleep 5
 echo "Sending DeviceTree"
 ./bin/irecovery -f $bootdir/DeviceTree.img4
@@ -4693,6 +4775,273 @@ exit 0
 
 }
 
+ipados16_mini4_build_sshrd(){
+
+sshrd_path="SSHRD/$IDENTIFIER"
+mkdir -p $sshrd_path
+IBSS_KEY=$(grep "ibss-15.8:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-15.8:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+echo "Fetching shsh blobs for iOS $LATEST_VERSION"
+rm -rf "shsh"
+mkdir -p shsh
+mkdir -p boot
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+echo "$VERSION" > boot/$ECID.txt
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+im4m="$IDENTIFIER-im4m"
+rm -rf "work"
+mkdir -p "work"
+curl -L -o work/ssh.tar.gz https://github.com/verygenericname/sshtars/raw/refs/heads/main/ssh.tar.gz
+gzip -d work/ssh.tar.gz
+ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-76437/E826C2CC-D34C-405F-B582-3F877988C052/iPad_64bit_TouchID_15.8_19H370_Restore.ipsw"
+tvos_url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-30801/8496544E-3794-4361-AF13-F874BF7378AC/AppleTV5,3_16.0_20J5319h_Restore.ipsw"
+ramurl16="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-26209/175A6A7C-6E52-438A-8326-FC9DFEBB4E20/iPad_64bit_TouchID_ASTC_16.0_20A5303i_Restore.ipsw"
+sudo ./bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
+sudo ./bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
+sudo mv -v $IBSS work/
+sudo mv -v $IBEC work/
+./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
+./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched
+./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched -b "rd=md0 debug=0x2014e -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1"
+./bin/img4 -i work/iBSS.patched -o $sshrd_path/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patched -o $sshrd_path/iBEC.img4 -A -T ibec -M $im4m
+( cd work && sudo ../bin/pzb -g 078-13951-089.dmg $ramurl16 )
+( cd work && sudo ../bin/pzb -g Firmware/078-13951-089.dmg.trustcache $ramurl16 )
+( cd work && sudo ../bin/pzb -g Firmware/all_flash/$DEVICETREE $ipsw_url )
+( cd work && sudo ../bin/pzb -g kernelcache.release.j42d $tvos_url )
+./bin/img4 -i work/078-13951-089.dmg -o work/ramdisk.raw
+./bin/hfsplus work/ramdisk.raw grow 210000000
+./bin/hfsplus work/ramdisk.raw untar work/ssh.tar
+./bin/img4 -i work/ramdisk.raw -o $sshrd_path/ramdisk.img4 -M $im4m -A -T rdsk
+./bin/img4 -i work/078-13951-089.dmg.trustcache -o $sshrd_path/trustcache.img4 -M $im4m -T rtsc
+./bin/img4 -i work/$DEVICETREE -o $sshrd_path/DeviceTree.img4 -T rdtr -M $im4m
+# kernelcache prep, then done!
+./bin/img4 -i work/kernelcache.release.j42d -o work/kernel.raw
+./bin/pmupatcher work/kernel.raw work/kernel.patch
+./bin/KPlooshFinder work/kernel.patch work/kernel.patch2
+./bin/kerneldiff work/kernel.raw work/kernel.patch2 work/kernel.diff
+./bin/img4 -i work/kernelcache.release.j42d -o $sshrd_path/kernel.img4 -M $im4m -T rkrn -P work/kernel.diff
+rm -rf "work"
+
+}
+
+make_boot_files_ipados16_mini4(){
+
+disk="rd=disk1s6"
+#disk="rd=disk1s7"
+im4m="$IDENTIFIER-im4m"
+IBSS_KEY=$(grep "ibss-15.8:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-15.8:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+bootdir="boot/$IDENTIFIER/$VERSION"
+mkdir -p $bootdir
+rm -rf "work"
+mkdir -p "work"
+ipsw_url="https://updates.cdn-apple.com/2023FallFCS/fullrestores/042-76437/E826C2CC-D34C-405F-B582-3F877988C052/iPad_64bit_TouchID_15.8_19H370_Restore.ipsw"
+sudo ./bin/pzb -g Firmware/dfu/$IBSS $ipsw_url
+sudo ./bin/pzb -g Firmware/dfu/$IBEC $ipsw_url
+sudo mv -v $IBSS work/
+sudo mv -v $IBEC work/
+./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
+./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
+./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched
+./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched -b "-v wdt=-1 $disk" -l
+./bin/img4 -i work/iBSS.patched -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patched -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
+rm -rf "work"
+echo "Boot Files are now created! You can use Just Boot option to boot iPadOS 16. iPadOS 15 will no longer boot by default"
+
+}
+
+ipados16_mini4_restore_special(){
+
+if [[ $MODE != Normal ]]; then
+    echo "Device MUST be in Normal Mode before starting!"
+    exit 1
+fi
+if [[ $DEVICE_VERSION == 15.8* ]]; then
+    echo ""
+else
+    echo "The iPad must already be running iPadOS 15.8.x."
+    echo "Please update the device to iPadOS $LATEST_VERSION"
+    exit 1
+fi
+
+if [[ -z "$IPSW_PATH" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH"
+    exit 1
+fi
+
+echo "Here is the following known issues:"
+echo "1. Wi-Fi does not work"
+echo "2. Respring may happen constantly"
+echo "3. Graphics acceleration does NOT work"
+echo "4. Most wallpapers may not work"
+echo "5. Touch ID will NOT work"
+echo "6. Potentially other issues"
+read -p "Press enter to continue"
+dfu_helper
+pwn_device
+sshrd_path="SSHRD/$IDENTIFIER"
+if [[ ! -d $sshrd_path ]] || [[ ! -f $sshrd_path/iBSS.img4 ]] || [[ ! -f $sshrd_path/iBEC.img4 ]] || [[ ! -f $sshrd_path/ramdisk.img4 ]] || [[ ! -f $sshrd_path/trustcache.img4 ]] || [[ ! -f $sshrd_path/DeviceTree.img4 ]] || [[ ! -f $sshrd_path/kernel.img4 ]]; then
+    ipados16_mini4_build_sshrd
+else
+    echo ""
+fi
+echo "Booting SSHRD"
+./bin/irecovery -f $sshrd_path/iBSS.img4
+sleep 5
+./bin/irecovery -f $sshrd_path/iBEC.img4
+sleep 5
+./bin/irecovery -f $sshrd_path/DeviceTree.img4
+./bin/irecovery -c devicetree
+./bin/irecovery -f $sshrd_path/ramdisk.img4
+./bin/irecovery -c ramdisk
+./bin/irecovery -f $sshrd_path/trustcache.img4
+./bin/irecovery -c firmware
+./bin/irecovery -f $sshrd_path/kernel.img4
+./bin/irecovery -c bootx
+echo "SSHRD should now be booting!"
+sleep 15
+./bin/iproxy 2222 22 &>/dev/null &
+rm -rf "work"
+mkdir -p "work"
+unzip $IPSW_PATH -d tmp1
+cryptex_os=$(find_dmg tmp1 largest 3000000000)
+cryptex_app=$(find_dmg tmp1 smallest)
+fs_dmg=$(find_dmg tmp1 largest)
+if [[ $IDENTIFIER == iPad5,1 ]]; then
+    root_16="/dev/disk1s6"
+    preboot="/dev/disk1s4"
+elif [[ $IDENTIFIER == iPad5,2 ]]; then
+    root_16="/dev/disk1s7"
+    preboot="/dev/disk1s5"
+fi
+echo "Mounting iPadOS 15 root filesystem"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs /dev/disk1s1 /mnt1 || true"
+echo "Mounting preboot"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs $preboot /mnt6 || true"
+active=$(./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cat /mnt6/active || true")
+echo "Creating new volume for iPadOS 16"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/apfs_deletefs $root_16 || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/newfs_apfs -A -D -o role=r -v Xystem /dev/disk0s1 || true"
+echo "Mounting iPadOS 16 volume"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs $root_16 /mnt8 || true"
+echo "Sending iPadOS 16 FS to device (may take a bit)"
+./bin/sshpass -p "alpine" scp -P2222 $fs_dmg root@localhost:/mnt8/fs.dmg
+echo "Mounting iPadOS 16 FS dmg"
+mount="$(./bin/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost '/usr/sbin/hdik /mnt8/fs.dmg' | tail -n 1 | cut -d ' ' -f 1)"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs -o ro $mount /mnt2 || true"
+echo "Copying iPadOS 16 files to volume (may take a while)"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp -a /mnt2/* /mnt8 || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/fs.dmg || true"
+echo "Sending iPadOS 16 cryptexes to device (may take a bit)"
+./bin/sshpass -p "alpine" scp -P2222 $cryptex_os root@localhost:/mnt8/os.dmg
+./bin/sshpass -p "alpine" scp -P2222 $cryptex_app root@localhost:/mnt8/app.dmg
+echo "Mounting iPadOS 16 cryptex dmgs"
+mount_os="$(./bin/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost '/usr/sbin/hdik /mnt8/os.dmg' | tail -n 1 | cut -d ' ' -f 1)"
+mount_app="$(./bin/sshpass -p 'alpine' ssh -o StrictHostKeyChecking=no -p2222 root@localhost '/usr/sbin/hdik /mnt8/app.dmg' | tail -n 1 | cut -d ' ' -f 1)"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs -o ro $mount_os /mnt3 || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/mount_apfs -o ro /dev/disk10s1 /mnt4 || true"
+echo "Copying iPadOS 16 cryptex contents to cryptex dirs (may take a while)"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Cryptexes/OS || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Cryptexes/App || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt8/System/Cryptexes/OS || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mkdir -p /mnt8/System/Cryptexes/App || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp -a /mnt3/* /mnt8/System/Cryptexes/OS || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp -a /mnt4/* /mnt8/System/Cryptexes/App || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/os.dmg || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/app.dmg || true"
+echo "Moving dyld contents, adding mini 4 components, etc"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt8/System/Cryptexes/OS/System/Library/Caches/com.apple.dyld /mnt8/System/Library/Caches/com.apple.dyld || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "find /mnt1 -iregex '.*j9[6-7].*' -type f -exec /bin/sh -c 'path=\"\$1\"; dest=\"/mnt8\${path#/mnt1}\"; dir=\"\${dest%/*}\"; /bin/mkdir -p \"\$dir\"; /bin/cp -anv \"\$path\" \"\$dest\";' sh {} \; || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt8/usr/share/firmware/wifi{,.bak} || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp -av /mnt1/usr/share/firmware/wifi /mnt8/usr/share/firmware || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv /mnt8/Library/Audio/Plug-Ins{,.bak} || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "cp -a /mnt1/Library/Audio/Plug-Ins /mnt8/Library/Audio || true"
+echo "Attempting to make first boot quicker"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -v /mnt8/private/var/staged_system_apps/* /mnt8/Applications || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Library/DataClassMigrators/CoreLocationMigrator.migrator/ || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Library/DataClassMigrators/PassbookDataMigrator.migrator/ || true"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Library/DataClassMigrators/SystemAppMigrator.migrator/ || true"
+im4m="$IDENTIFIER-im4m"
+echo "Preparing kernelcaches"
+./bin/sshpass -p "alpine" scp -P2222 root@localhost:/mnt6/$active/System/Library/Caches/com.apple.kernelcaches/kernelcache work/kernelcache
+./bin/img4tool -e work/kernelcache -m $im4m
+tvos_url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-30801/8496544E-3794-4361-AF13-F874BF7378AC/AppleTV5,3_16.0_20J5319h_Restore.ipsw"
+( cd work && sudo ../bin/pzb -g kernelcache.release.j42d $tvos_url )
+# patch kernel so touch stuff works
+./bin/img4 -i work/kernelcache.release.j42d -o work/kernel.raw
+./bin/pmupatcher work/kernel.raw work/kernel.patch # patch PMU kext so PMU works with stock mini 4 DT, init touchscreen hardware
+./bin/mtkextpatcher work/kernel.patch work/kernel.patch2 # add J96 stuff to personality. fixing multitouch kernel driver
+./bin/sbxpatcher work/kernel.patch2 # patch Sandbox mac_policy_ops to not enforce sandbox.
+./bin/KPlooshFinder work/kernel.patch2 work/kernel.patch3
+./bin/kerneldiff2 work/kernel.raw work/kernel.patch3 work/kernel.diff
+./bin/img4 -i work/kernelcache.release.j42d -o work/kernelcache16 -M $im4m -T krnl -P work/kernel.diff
+echo "Backing up existing kernelcache"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "mv -v /mnt6/$active/System/Library/Caches/com.apple.kernelcaches/kernelcache{,.bak} || true"
+echo "Uploading patched tvOS 16 kernelcache"
+./bin/sshpass -p "alpine" scp -P2222 work/kernelcache16 root@localhost:/mnt6/$active/System/Library/Caches/com.apple.kernelcaches/kernelcache
+echo "Rebooting device. Device will enter recovery mode"
+./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "/sbin/reboot || true" || true
+sleep 5
+rm -rf "tmp1"
+rm -rf "work"
+make_boot_files_ipados16_mini4
+
+}
+
+opts_menu_mini4_ipados16(){
+
+if [[ $dist != 3 && $dist != 4 ]]; then
+    echo "Hax requires macOS!"
+    sleep 5
+    restore_utils
+    return
+fi
+clear
+echo "$INFO_TEXT"
+echo ""
+echo "iPad mini 4 iPadOS 16 is a tethered upgrade and has many broken device features."
+echo "Not recommended to do unless you know what you are doing!"
+echo "If you are just looking to boot the device, use the Just Boot option instead."
+echo "Device also MUST be on iPadOS 15.8.x already!"
+echo ""
+echo "Options:"
+echo ""
+echo "1. Select Target IPSW (16.0 beta 2)"
+echo "2. Install iPadOS 16"
+echo "3. Back"
+read -p "Please input an option (1-3): " mini4_opts_16
+if [[ $mini4_opts_16 == 1 ]]; then
+    override_because_mini4_16="1" # set this to 1.
+    ipsw_selector target
+    if [[ $BUILD != 20A5303i ]]; then
+        echo "Only iPadOS 16.0 beta 2 is supported."
+        exit 1
+    fi
+    opts_menu_mini4_ipados16
+elif [[ $mini4_opts_16 == 2 ]]; then
+    ipados16_mini4_restore_special
+elif [[ $mini4_opts_16 == 3 ]]; then
+    reset_restore_vars
+    restore_utils
+fi
+
+}
+
 restore_tethered_opts(){
 
 clear 
@@ -4878,8 +5227,15 @@ echo "1. Restore (with SHSH blobs)"
 echo "2. Restore (Tethered)"
 echo "3. Restore to 10.3.3 untethered (some A7 devices only)"
 echo "4. Just Boot"
-echo "5. Back"
-read -p "Please input an option (1-5): " restore_options
+if [[ $IDENTIFIER == iPad5,1 ]]; then
+    # add special option
+    echo "5. Hax (shh it's coming soon!)"
+    echo "6. Back"
+    read -p "Please input an option (1-6): " restore_options
+else
+    echo "5. Back"
+    read -p "Please input an option (1-5): " restore_options
+fi
 if [[ $restore_options == 1 ]]; then
     restore_untethered_opts
 elif [[ $restore_options == 2 ]]; then
@@ -4888,7 +5244,11 @@ elif [[ $restore_options == 3 ]]; then
     restore_a7_options
 elif [[ $restore_options == 4 ]]; then
     just_boot
-elif [[ $restore_options == 5 ]]; then
+elif [[ $restore_options == 5 ]] && [[ $IDENTIFIER != iPad5,1 ]]; then
+    main_menu
+elif [[ $restore_options == 5 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
+    opts_menu_mini4_ipados16
+elif [[ $restore_options == 6 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
     main_menu
 else
     echo "Invalid option. Exiting."
