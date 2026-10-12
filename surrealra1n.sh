@@ -901,12 +901,6 @@ elif [[ $dist == 3 ]]; then
         cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
-        git clone https://github.com/crystall1nedev/ipad6-ipados18 -b ssv-patch
-        cd ipad6-ipados18
-        make
-        cp iBootpatch2 ../bin/iBootpatch4
-        cd ..
-        rm -rf "ipad6-ipados18"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
@@ -1038,12 +1032,6 @@ elif [[ $dist == 4 ]]; then
         cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
-        git clone https://github.com/crystall1nedev/ipad6-ipados18 -b ssv-patch
-        cd ipad6-ipados18
-        make
-        cp iBootpatch2 ../bin/iBootpatch4
-        cd ..
-        rm -rf "ipad6-ipados18"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
