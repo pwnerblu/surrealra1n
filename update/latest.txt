@@ -1,6 +1,9 @@
-v2.3 beta 2
+v2.3 beta 3
 
 RELEASE NOTES:
 
-Fix keyboard freezes on iOS 8.0-8.2 untether downgrades with blobs on iPhone 5S (not 100% tested).
-Users that want to take advantage of this fix will need to re-create their custom IPSW.
+Add experimental tether upgrade support for iPadOS 16.0 beta 2 on iPad mini 4.
+Many broken device features are expected (Wi-Fi does not work either), including constant resprings.
+Source code for kernel patches is here: https://github.com/pwnerblu/ipadmini4-ipados16-patches
+
+If you'd like to contribute fixes for iPadOS 16 iPad mini 4, please open a PR after adding such fixes and I will most likely accept it
