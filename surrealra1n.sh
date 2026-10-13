@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 2"
+CURRENT_VERSION="v2.3 beta 3"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -5003,9 +5003,10 @@ clear
 echo "$INFO_TEXT"
 echo ""
 echo "iPad mini 4 iPadOS 16 is a tethered upgrade and has many broken device features."
-echo "Not recommended to do unless you know what you are doing!"
+echo "Not recommended to do unless you know what you are doing! Not for end-users!"
 echo "If you are just looking to boot the device, use the Just Boot option instead."
 echo "Device also MUST be on iPadOS 15.8.x already!"
+echo "After installing iPadOS 16, you may need to do a full restore back to iPadOS 15 if you want to use iPadOS 15 again."
 echo ""
 echo "Options:"
 echo ""
@@ -5217,7 +5218,7 @@ echo "3. Restore to 10.3.3 untethered (some A7 devices only)"
 echo "4. Just Boot"
 if [[ $IDENTIFIER == iPad5,1 ]]; then
     # add special option
-    echo "5. Hax (shh it's coming soon!)"
+    echo "5. Install iPadOS 16"
     echo "6. Back"
     read -p "Please input an option (1-6): " restore_options
 else
