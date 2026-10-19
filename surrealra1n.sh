@@ -4163,6 +4163,9 @@ else
 fi
 rm -rf $rootfslatest_dmg
 ./bin/dmg extract $rootfs_dmg tmp1/rootfs.raw -k $ROOT_KEY
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
+fi
 # dyld patches
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     if [[ $VERSION == 7.* ]]; then
@@ -4182,9 +4185,6 @@ if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     rm -rf dyld.*
     ./bin/hfsplus tmp1/rootfs.raw chmod 755 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus tmp1/rootfs.raw chown 0:0 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
-fi
-if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
-    ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
 fi
 if [[ $VERSION == 9.* ]]; then
     echo "Skipping removal of powerd"
