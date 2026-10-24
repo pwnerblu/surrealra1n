@@ -3615,7 +3615,7 @@ mkdir -p shsh
 mkdir -p boot
 ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 echo "$VERSION" > boot/$ECID.txt
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
@@ -3916,7 +3916,7 @@ fi
 echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4349,7 +4349,7 @@ do_regular_restore_seprmvr64(){
 
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4468,7 +4468,7 @@ do_special_restore_seprmvr64(){
 
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4518,7 +4518,7 @@ fi
 APNONCE=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs)
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4751,7 +4751,7 @@ pwn_device
 download_1033_ota_sep
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -i 10.3.3 -e $ECID -o -m tmp/BuildManifest-SEP.plist -s --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -i 10.3.3 -e $ECID -o -m tmp/BuildManifest-SEP.plist -s --save-path shsh -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4937,7 +4937,7 @@ rm -rf "shsh"
 mkdir -p shsh
 mkdir -p tarwork
 mkdir -p work
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh 
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
