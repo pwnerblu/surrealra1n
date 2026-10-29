@@ -1,5 +1,4 @@
-v2.2.3
+v2.2.4
 
 RELEASE NOTES:
-
-Fix issue #196, thanks to PR #197
+another update
