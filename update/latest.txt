@@ -1,9 +1,11 @@
-v2.3 beta 3
+v2.3 beta 4
 
 RELEASE NOTES:
 
-Add experimental tether upgrade support for iPadOS 16.0 beta 2 on iPad mini 4.
-Many broken device features are expected (Wi-Fi does not work either), including constant resprings.
-Source code for kernel patches is here: https://github.com/pwnerblu/ipadmini4-ipados16-patches
+Add experimental tether upgrade support for iOS 13.1 on iPod touch 6.
+Some device features may be broken.
+Source code for kernel/userland patches is here: https://github.com/pwnerblu/ipodtouch6-ios13
 
-If you'd like to contribute fixes for iPadOS 16 iPad mini 4, please open a PR after adding such fixes and I will most likely accept it
+Deprecate implementation of linux-apfs-rw for iOS 16.1+ A12/A13 restores on Linux in favor of libdmg-apfs.
+
+If you'd like to contribute more fixes for iOS 13 iPod touch 6, please open a PR after adding such fixes and I will most likely merge it
