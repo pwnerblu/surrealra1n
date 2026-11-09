@@ -5433,21 +5433,6 @@ sep_bridge_compile() {
     fi
 }
 
-# OK, I haven't tested on linux yet, but it should work. :)) M1 sequoia OK!
-sep_bridge_dmg_tool() {
-    if [[ ! -x "$SCRIPT_DIR/bin/sep-bridge-dmg" ]]; then
-        local source_dir="$bridge_dir/dmg-source"
-        if [[ ! -d "$source_dir/.git" ]]; then
-            git clone https://github.com/planetbeing/xpwn.git "$source_dir"
-        fi
-        git -C "$source_dir" checkout 20c32e5c12d1b22a9d55a59a0ff6267f539b77f4
-        cmake -S "$source_dir" -B "$source_dir/build" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-        cmake --build "$source_dir/build" --target dmg-bin -j2
-        cp "$source_dir/build/dmg/dmg" "$SCRIPT_DIR/bin/sep-bridge-dmg"
-        rm -rf "$source_dir"
-    fi
-}
-
 # I hate to repack ipsw I've done that different way, just downloaded need files
 sep_bridge_download_nor() {
     local base_url name member
@@ -5482,7 +5467,6 @@ sep_bridge_prepare() {
     rm -f "$bridge_dir"/*.patched "$bridge_dir"/*.diff "$bridge_dir/PowerdNoDeepSleep.dylib" "$bridge_dir/custom.ipsw"
     rm -rf "$bridge_dir/target"
     sep_bridge_download_nor
-    sep_bridge_dmg_tool
     local work="$bridge_dir/target" member destination profile
     mkdir -p "$work"
     unzip -o "$IPSW_PATH" -d "$work"
@@ -5547,7 +5531,7 @@ sep_bridge_prepare() {
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/PowerdNoDeepSleep.dylib" usr/lib/PowerdNoDeepSleep.dylib
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chmod 100755 usr/lib/PowerdNoDeepSleep.dylib
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chown 0:0 usr/lib/PowerdNoDeepSleep.dylib
-    "$SCRIPT_DIR/bin/sep-bridge-dmg" build "$bridge_dir/rootfs.raw" "$bridge_dir/rootfs.dmg"
+    "$SCRIPT_DIR/bin/dmg" build "$bridge_dir/rootfs.raw" "$bridge_dir/rootfs.dmg"
     if [[ $(uname -s) == Darwin ]]; then
         asr imagescan --source "$bridge_dir/rootfs.dmg"
     fi
