@@ -5459,8 +5459,39 @@ sep_bridge_kernel() {
         -T "$tag" -P "$bridge_dir/$profile.diff"
 }
 
+sep_bridge_add_activation_records() {
+    local rootfs="$1" records="$2" file destination permissions
+    "$SCRIPT_DIR/bin/hfsplus" "$rootfs" mkdir private/var/root/Library/Lockdown/activation_records || return 1
+    "$SCRIPT_DIR/bin/hfsplus" "$rootfs" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes || return 1
+    "$SCRIPT_DIR/bin/hfsplus" "$rootfs" mkdir private/var/wireless/Library/Preferences || return 1
+    while IFS='|' read -r file destination permissions; do
+        "$SCRIPT_DIR/bin/hfsplus" "$rootfs" add "$records/$file" "$destination" || return 1
+        "$SCRIPT_DIR/bin/hfsplus" "$rootfs" chmod "$permissions" "$destination" || return 1
+    done <<'RECORDS'
+activation_record.plist|private/var/root/Library/Lockdown/activation_records/activation_record.plist|666
+IC-Info.sisv|private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv|664
+com.apple.commcenter.device_specific_nobackup.plist|private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist|600
+RECORDS
+}
+
 sep_bridge_prepare() {
     sep_bridge_supported || return 1
+    local records_ecid records_dir file
+    records_ecid=$(printf '%d' "$ECID") || return 1
+    records_dir="$SCRIPT_DIR/activation_records/$records_ecid"
+    if [[ ! -d "$records_dir" ]]; then
+        records_dir="$SCRIPT_DIR/activation_records/$ECID"
+    fi
+    for file in activation_record.plist IC-Info.sisv com.apple.commcenter.device_specific_nobackup.plist; do
+        if [[ ! -s "$records_dir/$file" ]]; then
+            records_dir=""
+            break
+        fi
+    done
+    if [[ -z "$records_dir" ]]; then
+        echo "No complete activation records found. Building without them."
+        records_ecid=none
+    fi
     sep_bridge_compile
     bridge_dir="$SCRIPT_DIR/seprestore/$IDENTIFIER/7.0"
     mkdir -p "$bridge_dir"
@@ -5517,6 +5548,10 @@ sep_bridge_prepare() {
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/PowerdNoDeepSleep.dylib" usr/lib/PowerdNoDeepSleep.dylib
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chmod 100755 usr/lib/PowerdNoDeepSleep.dylib
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chown 0:0 usr/lib/PowerdNoDeepSleep.dylib
+    if [[ -n "$records_dir" ]]; then
+        echo "Adding saved activation records to the rootfs..."
+        sep_bridge_add_activation_records "$bridge_dir/rootfs.raw" "$records_dir" || return 1
+    fi
     "$SCRIPT_DIR/bin/dmg" build "$bridge_dir/rootfs.raw" "$bridge_dir/rootfs.dmg"
     if [[ $(uname -s) == Darwin ]]; then
         asr imagescan --source "$bridge_dir/rootfs.dmg"
@@ -5533,7 +5568,7 @@ sep_bridge_prepare() {
     "$SCRIPT_DIR/bin/img4tool" -n rlgo -o "$work/Firmware/sep-bridge/iBoot.rlgo.im4p" "$work/$iboot_member"
     "$bridge_bin" prepare-manifest "$work" "$bridge_dir/base"
     (cd "$work" && zip -0 -r "$bridge_dir/custom.ipsw" .)
-    printf 'iPhone6,1 / iOS 7.0 / 11A466\nActivation: stock\n' > "$bridge_dir/build-info.txt"
+    printf 'iPhone6,1 / iOS 7.0 / 11A466\nActivation: stock\nActivation records: %s\n' "$records_ecid" > "$bridge_dir/build-info.txt"
     unset SEP_BRIDGE_BANNER_SHOWN
 }
 
@@ -5655,7 +5690,9 @@ sep_bridge_cached_build() {
     done
     # Reuse only builds with stock activation.
     [[ -f "$bridge_dir/build-info.txt" ]] || return 1
-    grep -Fxq 'Activation: stock' "$bridge_dir/build-info.txt"
+    grep -Fxq 'Activation: stock' "$bridge_dir/build-info.txt" || return 1
+    grep -Fxq "Activation records: $(printf '%d' "$ECID")" "$bridge_dir/build-info.txt" ||
+        grep -Fxq 'Activation records: none' "$bridge_dir/build-info.txt"
 }
 
 sep_bridge_restore() {
