@@ -5505,27 +5505,13 @@ sep_bridge_prepare() {
     "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/ramdisk.raw" -o "$bridge_dir/ramdisk.im4p" -A -T rdsk
     "$SCRIPT_DIR/bin/dmg" extract "$work/$os_member" "$bridge_dir/rootfs.raw" -k "$(sep_bridge_key fstm)"
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" grow 2200000000
-    local bridge_hacktivate=0 answer
-    read -r -p "Hacktivate? [Y/n]: " answer
-    if [[ -z $answer || $answer == y || $answer == Y ]]; then
-        bridge_hacktivate=1
-    fi
-    for profile in powerd lockdown; do
-        if [[ $profile == lockdown && ${bridge_hacktivate:-0} != 1 ]]; then
-            continue
-        fi
-        if [[ $profile == powerd ]]; then
-            destination="System/Library/CoreServices/powerd.bundle/powerd"
-        else
-            destination="usr/libexec/lockdownd"
-        fi
-        "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" extract "$destination" "$bridge_dir/$profile.stock"
-        "$bridge_bin" patch "$profile" "$bridge_dir/$profile.stock" "$bridge_dir/$profile.patched"
-        "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" rm "$destination"
-        "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/$profile.patched" "$destination"
-        "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chmod 100755 "$destination"
-        "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chown 0:0 "$destination"
-    done
+    destination="System/Library/CoreServices/powerd.bundle/powerd"
+    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" extract "$destination" "$bridge_dir/powerd.stock"
+    "$bridge_bin" patch powerd "$bridge_dir/powerd.stock" "$bridge_dir/powerd.patched"
+    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" rm "$destination"
+    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/powerd.patched" "$destination"
+    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chmod 100755 "$destination"
+    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chown 0:0 "$destination"
     #I've just tool dylib from my own tweak, it works on 7.0-8.4.1
     "$bridge_bin" --extract-powerd-guard "$bridge_dir/PowerdNoDeepSleep.dylib"
     "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/PowerdNoDeepSleep.dylib" usr/lib/PowerdNoDeepSleep.dylib
@@ -5547,11 +5533,7 @@ sep_bridge_prepare() {
     "$SCRIPT_DIR/bin/img4tool" -n rlgo -o "$work/Firmware/sep-bridge/iBoot.rlgo.im4p" "$work/$iboot_member"
     "$bridge_bin" prepare-manifest "$work" "$bridge_dir/base"
     (cd "$work" && zip -0 -r "$bridge_dir/custom.ipsw" .)
-    if [[ $bridge_hacktivate == 1 ]]; then
-        printf 'iPhone6,1 / iOS 7.0 / 11A466\nHacktivate: Y\n' > "$bridge_dir/build-info.txt"
-    else
-        printf 'iPhone6,1 / iOS 7.0 / 11A466\nHacktivate: N\n' > "$bridge_dir/build-info.txt"
-    fi
+    printf 'iPhone6,1 / iOS 7.0 / 11A466\nActivation: stock\n' > "$bridge_dir/build-info.txt"
     unset SEP_BRIDGE_BANNER_SHOWN
 }
 
@@ -5671,6 +5653,9 @@ sep_bridge_cached_build() {
         AppleLogo.im4p kernel.im4p; do
         [[ -s "$bridge_dir/$file" ]] || return 1
     done
+    # Reuse only builds with stock activation.
+    [[ -f "$bridge_dir/build-info.txt" ]] || return 1
+    grep -Fxq 'Activation: stock' "$bridge_dir/build-info.txt"
 }
 
 sep_bridge_restore() {
@@ -5681,11 +5666,7 @@ sep_bridge_restore() {
     bridge_dir="$SCRIPT_DIR/seprestore/$IDENTIFIER/7.0"
     if sep_bridge_cached_build; then
         echo "Cached SEP bridge build: $bridge_dir/custom.ipsw"
-        if [[ -f "$bridge_dir/build-info.txt" ]]; then
-            cat "$bridge_dir/build-info.txt"
-        else
-            echo "The settings already saved in this IPSW will be reused."
-        fi
+        cat "$bridge_dir/build-info.txt"
         local use_cached
         while true; do
             read -r -p "Use cached build? [Y/n]: " use_cached

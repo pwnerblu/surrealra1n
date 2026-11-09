@@ -11526,23 +11526,6 @@ static void patch_asr(struct image *image) {
               sizeof(asr_hook_1));
 }
 
-/* Hacktivation: return true from the activation check. */
-static void patch_lockdown(struct image *image) {
-
-  static const unsigned char lockdown_hook_1[] = {
-      0x20, 0x00, 0x80, 0x52, 0xc0, 0x03, 0x5f, 0xd6,
-  };
-
-  static const unsigned char lockdown_match_1[] = {
-      0x01, 0x03, 0x00, 0xb0, 0x21, 0x40, 0x37, 0x91, 0xd7, 0xee, 0x00,
-      0x94, 0xf5, 0xff, 0xff, 0x17, 0xfd, 0x7b, 0xbf, 0xa9, 0xfd, 0x03,
-      0x00, 0x91, 0xf4, 0x4f, 0xbf, 0xa9, 0x93, 0x03, 0x00, 0xb0,
-  };
-
-  patch_found(image, lockdown_match_1, sizeof(lockdown_match_1), 16,
-              lockdown_hook_1, sizeof(lockdown_hook_1));
-}
-
 /*
  * Load the sleep guard into powerd to prevent the deep-sleep issue on 7.0.
  * Update the Mach-O load commands and signature for the added dylib. HAVE DESCRIBED THAT IN SH
@@ -17616,12 +17599,6 @@ static int apply_profile(const char* name, const char* input,
     image.output_size = 239424;
   }
 
-  else if (!strcmp(name, "lockdown")) {
-    if (image.input_size != 670272)
-      fail("wrong lockdown size for 11A466");
-    image.output_size = 670272;
-  }
-
   else if (!strcmp(name, "powerd")) {
     if (image.input_size != 142384)
       fail("wrong powerd size for 11A466");
@@ -17691,12 +17668,6 @@ static int apply_profile(const char* name, const char* input,
   else if (!strcmp(name, "asr")) {
 
     patch_asr(&image);
-
-  }
-
-  else if (!strcmp(name, "lockdown")) {
-
-    patch_lockdown(&image);
 
   }
 
@@ -18131,7 +18102,7 @@ int main(int argc, char** argv) {
     return 0;
   }
   if (argc == 2 && !strcmp(argv[1], "--profiles")) {
-    puts("kernel\nrestore-kernel\nasr\nlockdown\npowerd");
+    puts("kernel\nrestore-kernel\nasr\npowerd");
     return 0;
   }
   if (argc == 3 && !strcmp(argv[1], "--extract-powerd-guard"))
@@ -18147,7 +18118,7 @@ int main(int argc, char** argv) {
   if (argc == 5 && !strcmp(argv[1], "diff"))
     return diff_files(argv[2], argv[3], argv[4]);
   fprintf(stderr,
-          "Usage: %s patch {kernel|restore-kernel|asr|lockdown|powerd} INPUT "
+          "Usage: %s patch {kernel|restore-kernel|asr|powerd} INPUT "
           "OUTPUT\n"
           "       %s diff STOCK PATCHED OUTPUT\n"
           "       %s components {base|target} BuildManifest.plist\n"
