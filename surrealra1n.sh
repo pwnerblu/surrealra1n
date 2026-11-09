@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 4"
+CURRENT_VERSION="v2.3 beta 5"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -2226,6 +2226,23 @@ sudo mv -v sep-firmware.j42d.RELEASE.im4p $sep_path
 
 }
 
+download_tvos13_sep(){
+
+mkdir -p tmp
+sep_path="tmp/sep-firmware.j42d.RELEASE.im4p"
+manifest_path="tmp/BuildManifest-SEP.plist"
+sep_ipsw="https://updates.cdn-apple.com/2020SummerSeed/fullrestores/061-92142/5EB0BEFA-C8BC-4FF4-949A-D37D8776EEF1/AppleTV5,3_13.4.8_17M61_Restore.ipsw"
+curl -L -o tmp/BuildManifest-SEP.plist https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-$IDENTIFIER.plist
+sudo ./bin/pzb -g BuildManifest.plist $sep_ipsw
+sudo ./bin/pzb -g Firmware/all_flash/sep-firmware.j42d.RELEASE.im4p $sep_ipsw
+sudo mv -v sep-firmware.j42d.RELEASE.im4p $sep_path
+sudo mv -v BuildManifest.plist $manifest_path
+sudo plutil -replace BuildIdentities.0.Info.DeviceClass -string "$BOARDID" $manifest_path
+sudo plutil -replace BuildIdentities.1.Info.DeviceClass -string "$BOARDID" $manifest_path
+sudo plutil -replace BuildIdentities.2.Info.DeviceClass -string "$BOARDID" $manifest_path
+
+}
+
 download_iphone6_sep(){
 
 mkdir -p tmp
@@ -3606,7 +3623,7 @@ fi
 sleep 5
 echo "Sending iBEC"
 ./bin/irecovery -f $bootdir/iBEC.img4
-if [[ $IDENTIFIER == iPad5* && $VERSION == 16.* || $IDENTIFIER == iPod7* && $VERSION == 13.* ]]; then
+if [[ $IDENTIFIER == iPad5* && $VERSION == 16.* ]]; then
     echo "Device should now boot"
     exit 0
 fi
@@ -3676,10 +3693,10 @@ unzip -j "$IPSW_PATH" "$krnl" -d work
 if [[ $IDENTIFIER == iPhone10* ]]; then
     ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patch -l -b "-v"
 fi
-if [[ $IDENTIFIER == iPod7* && $VERSION == 13.* ]]; then
-    mv -v work/iBEC.patch work/iBEC.patc
-    ./bin/iBootpatch2 work/iBEC.patc work/iBEC.patch
-fi
+#if [[ $IDENTIFIER == iPod7* && $VERSION == 13.* ]]; then
+#    mv -v work/iBEC.patch work/iBEC.patc
+#    ./bin/iBootpatch2 work/iBEC.patc work/iBEC.patch
+#fi
 ./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
 ./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
 ./bin/img4 -i work/$DEVICETREE -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
@@ -4235,6 +4252,9 @@ fi
 rm -rf $rootfs_dmg
 # dyld patches
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    ./bin/hfsplus work/rootfs.raw grow $grow_to
+fi
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     if [[ $VERSION == 7.* ]]; then
         dsc_patch_version="-7"
     else
@@ -4254,9 +4274,6 @@ if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     rm -rf dyld.*
     ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus work/rootfs.raw chown 0:0 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
-fi
-if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
-    ./bin/hfsplus work/rootfs.raw grow $grow_to
 fi
 if [[ $VERSION == 8.* ]]; then
     # root filesystem patches + untethered jailbreak. containermanagerd patch is especially relevant, as it actually makes it so that iOS will boot even with incompatible SEP without seprmvr64 kernel patches.
@@ -5124,14 +5141,64 @@ rootfs_13_dmg=$(find_dmg tmp2 largest)
 rootfs_13_ipad_dmg=$(find_dmg tmp3 largest)
 rootfs_13_dmg_name=${rootfs_13_dmg##*/}
 rootfs_12_dmg_name=${rootfs_12_dmg##*/}
-( cd work && sudo ../bin/pzb -g kernelcache.release.n71 https://updates.cdn-apple.com/2019FallFCS/fullrestores/091-99496/DCDE77CC-D986-11E9-AC76-A120DCDBD6A3/iPhone_4.7_13.1_17A844_Restore.ipsw )
+if [[ $VERSION == 13.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/091-99496/DCDE77CC-D986-11E9-AC76-A120DCDBD6A3/iPhone_4.7_13.1_17A844_Restore.ipsw"
+elif [[ $VERSION == 13.1.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-18421/E8F8D60E-DED8-11E9-A685-B200DC34986D/iPhone_4.7_13.1.1_17A854_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.1.2 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-22597/37272F4C-E18B-11E9-9F72-B96496A9EC6E/iPhone_4.7_13.1.2_17A860_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.1.3 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-30582/2A093596-EB7A-11E9-9505-C810329334FA/iPhone_4.7_13.1.3_17A878_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.2 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/041-81237/FC3D299A-F4E5-11E9-8B5E-B8C134390AC5/iPhone_4.7_13.2_17B84_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.2.2 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-44764/8C70B8EE-FEB7-11E9-A907-8BA5C8948948/iPhone_4.7_13.2.2_17B102_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.2.3 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-49226/779BBAEC-0699-11EA-90BD-E7814E39EDC0/iPhone_4.7_13.2.3_17B111_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.3 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-61296/1EFCEDB4-179E-11EA-B3B3-D73E73E9483A/iPhone_4.7_13.3_17C54_Restore.ipsw"
+elif [[ $VERSION == 13.3.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/061-40755/14CBA7B2-A991-4576-A35D-DC6FD20AD078/iPhone_4.7_13.3.1_17D50_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.3.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.4 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42891/8A1E8275-50BE-4BE4-B6F0-B66E3B2DD32A/iPhone_4.7_13.4_17E255_Restore.ipsw"
+elif [[ $VERSION == 13.4.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/061-91200/C441212E-ED23-4C29-8154-7CA399789F04/iPhone_4.7_13.4.1_17E262_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.5 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SpringFCS/fullrestores/061-72111/8BEB34D4-5B1E-4965-A6F2-D379C0F06807/iPhone_4.7_13.5_17F75_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.5.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SpringFCS/fullrestores/001-09206/5B63483A-A082-11EA-884D-8CEDF1CFE6E8/iPhone_4.7_13.5.1_17F80_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.6 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerSeed/fullrestores/061-93030/3DCE8FA6-CA00-4B08-958D-5F60944CB8AE/iPhone_4.7_13.6_17G68_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.6.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-29260/77973A75-1135-447E-A73C-87DE328279C2/iPhone_4.7_13.6.1_17G80_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.7 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-42024/73041E63-F21C-4688-8BF2-3F8FD1C4A34E/iPhone_4.7_13.7_17H35_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+fi
+( cd work && sudo ../bin/pzb -g kernelcache.release.n71 $url_13kdonor )
 # DeviceTree
-./bin/img4 -i hax/DeviceTree.$BOARDID.$VERSION.im4p -o work/DeviceTree.raw
-perl -pi -e 's/content-protect/content-protecV/g' work/DeviceTree.raw # disable data volume encryption temporarily as we are using iOS 12 SEP
-./bin/img4 -i work/DeviceTree.raw -o tmp1/Firmware/all_flash/$DEVICETREE -A -T dtre
+if [[ $VERSION == 13.1* || $VERSION == 13.2* || $VERSION == 13.3* ]]; then
+    ./bin/img4 -i hax/DeviceTree.$BOARDID.$VERSION.im4p -o work/DeviceTree.raw
+    perl -pi -e 's/content-protect/content-protecV/g' work/DeviceTree.raw # disable data volume encryption temporarily as we are using iOS 12 SEP
+    ./bin/img4 -i work/DeviceTree.raw -o tmp1/Firmware/all_flash/$DEVICETREE -A -T dtre
+else
+    cp -v hax/DeviceTree.$BOARDID.$VERSION.im4p tmp1/Firmware/all_flash/$DEVICETREE
+fi
 #
 ./bin/apfs-dmg extract $rootfs_13_dmg work/rootfs13.dmg
-./bin/apfs-tool work/rootfs13.dmg grow 6000000000
+./bin/apfs-tool work/rootfs13.dmg grow 6400000000
 hdiutil attach $rootfs_12_dmg -mountpoint rootfs12
 hdiutil attach work/rootfs13.dmg -mountpoint rootfs13
 hdiutil attach $rootfs_13_ipad_dmg -mountpoint rootfs13ipad
@@ -5148,6 +5215,8 @@ cp -v rootfs12/usr/sbin/BlueTool rootfs13/usr/sbin
 ./bin/ldid -Swork/ents.plist work/bluetoothd.patch
 cp -v work/bluetoothd.patch rootfs13/usr/sbin/bluetoothd
 chmod 755 rootfs13/usr/sbin/bluetoothd
+# Partial camera fix. Fixes flashlight fully
+cp -av rootfs13ipad/System/Library/PrivateFrameworks/H6ISPServices.framework rootfs13/System/Library/PrivateFrameworks
 # Proper graphics acceleration fixup
 cp -av rootfs13ipad/System/Library/Extensions/AGXMetalA8.bundle rootfs13/System/Library/Extensions
 cp -v rootfs13ipad/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 rootfs13/System/Library/Caches/com.apple.dyld
@@ -5229,24 +5298,33 @@ if [[ ! -f "$IPSW_PATH_DONOR" ]]; then
     exit 1
 fi
 
-if [[ $BUILD != 17A844 ]]; then
-    echo "Only iOS 13.1 is supported at the moment!"
-    exit 1
-fi
-
 echo "What does not work:"
-echo "1. Flashlight and Camera"
-echo "2. Rotation"
-echo "3. Some other issues that may not be mentioned"
-echo "4. Jailbreaking"
+echo "1. Rotation"
+echo "2. Some other issues that may not be mentioned"
+echo "3. Jailbreaking"
 echo "What works:"
 echo "1. Native device activation via Apple's Servers"
-echo "2. Wi-Fi"
-echo "3. Audio"
-echo "4. Bluetooth (partially, but not confirmed to 100% work)"
-echo "5. Wallpaper, battery charge level status, maybe other things"
-echo "6. SEP functionality (not all of SEP is confirmed yet though)"
+echo "2. Flashlight, and partial camera functionality (rear camera capturing is broken, front capturing 100% works)"
+echo "3. Wi-Fi"
+echo "4. Audio"
+echo "5. Bluetooth (partially, but not confirmed to 100% work)"
+echo "6. Wallpaper, battery charge level status, maybe other things"
+echo "7. SEP functionality (not all of SEP is confirmed yet though)"
 read -p "Press enter to continue"
+
+restoredir="restorefiles/$IDENTIFIER/$VERSION"
+
+if [[ ! -f "$restoredir/custom.ipsw" ]] && [[ ! -f "$restoredir/ramdisk.im4p" ]] && [[ ! -f "$restoredir/kernel.im4p" ]]; then
+    echo "Restore files does not exist, making new ones"
+    create_custom_ios13_ipsw
+else
+    echo "Restore files already exist"
+    read -p "Would you like to make new ones? (y/n): " restorefiles_remake
+    if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
+        rm -rf "$restoredir"
+        create_custom_ios13_ipsw
+    fi
+fi
 
 dfu_helper
 pwn_device
@@ -5265,27 +5343,20 @@ if [[ -z "$SHSH_PATH" ]]; then
     exit 1
 fi
 
-restoredir="restorefiles/$IDENTIFIER/$VERSION"
-
-if [[ ! -f "$restoredir/custom.ipsw" ]] && [[ ! -f "$restoredir/ramdisk.im4p" ]] && [[ ! -f "$restoredir/kernel.im4p" ]]; then
-    echo "Restore files does not exist, making new ones"
-    create_custom_ios13_ipsw
-else
-    echo "Restore files already exist"
-    read -p "Would you like to make new ones? (y/n): " restorefiles_remake
-    if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
-        rm -rf "$restoredir"
-        create_custom_ios13_ipsw
-    fi
-fi
 det_rsep_flag
 prepatch_ibssibec_fr
+if [[ $VERSION == 13.1* || $VERSION == 13.2* || $VERSION == 13.3* ]]; then
+    sepflag="--latest-sep"
+else
+    download_tvos13_sep
+    sepflag="--sep $sep_path --sep-manifest $manifest_path"
+fi
 while true; do
     set +e
     sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
         ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu --skip-blob --rdsk $restoredir/ramdisk.im4p \
         --custom-latest $LATEST_VERSION \
-        --rkrn $restoredir/kernel.im4p --latest-sep \
+        --rkrn $restoredir/kernel.im4p $sepflag \
         $updatebb_flag $rsep_flag $restoredir/custom.ipsw
     EXIT_CODE=$?
     set -e
@@ -5319,9 +5390,9 @@ echo "After installing iOS 13, you must do a clean restore to head back to iOS 1
 echo ""
 echo "Options:"
 echo ""
-echo "1. Select Target IPSW (iPod touch 7, 13.1)"
+echo "1. Select Target IPSW (iPod touch 7, 13.x)"
 echo "2. Select Base IPSW (iPod touch 6, $LATEST_VERSION)"
-echo "3. Select Donor IPSW (iPad mini 4, 13.1)"
+echo "3. Select Donor IPSW (iPad mini 4, 13.x)"
 echo "4. Install iOS 13"
 echo "5. Back"
 read -p "Please input an option (1-4): " touch6_opts_select
