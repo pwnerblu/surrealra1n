@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 5"
+CURRENT_VERSION="v2.3 beta 6"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -866,6 +866,9 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
@@ -957,6 +960,7 @@ elif [[ $dist == 3 ]]; then
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/ipwnder https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipwnder
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_arm64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
@@ -1012,6 +1016,9 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
@@ -1103,6 +1110,7 @@ elif [[ $dist == 4 ]]; then
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/ipwnder https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipwnder
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
@@ -1144,6 +1152,12 @@ else
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery" "bin/irecovery" 1024
     download_with_retry "https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/iBoot64Patcher" "bin/iBoot64Patcher" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher" "bin/Kernel64Patcher2" 1024
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
+    gcc kerneldiff.c -o bin/kerneldiff2
+    rm -rf kerneldiff.c
+    #
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus" "bin/hfsplus" 1024
     # sshpass
     # iboot patcher oops
@@ -1699,11 +1713,11 @@ if [[ $IDENTIFIER == iPad5* ]]; then
 elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
-    LATEST_VERSION="18.7.11"
+    LATEST_VERSION="18.7.12"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="27.2"
+    LATEST_VERSION="27.2.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.7.2"
+    LATEST_VERSION="26.7.3"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -1918,7 +1932,11 @@ elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == i
     read -p "Press enter to continue once device is pwned successfully AND reconnected to the computer"
 else
     echo "Device is not pwned yet, attempting to pwn"
-    ./bin/gaster pwn 
+    if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $dist == 3 || $dist == 4 ]]; then
+        ./bin/ipwnder -p
+    else
+        ./bin/gaster pwn 
+    fi
     ./bin/gaster reset
     if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
         ./bin/irecovery -f surrealra1n.sh
@@ -4372,6 +4390,11 @@ else
     ECID_DEC="$ECID"
 fi
 
+if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
+    sep_bridge_use=1
+else
+    sep_bridge_use=0
+fi
 
 mkdir -p noseprestore/$IDENTIFIER/$VERSION
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -4402,7 +4425,7 @@ rm -rf $rootfslatest_dmg
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
 fi
-if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+if [[ $VERSION == 7.* || $VERSION == 8.* ]] && [[ $sep_bridge_use == 0 ]]; then
     if [[ $VERSION == 7.* ]]; then
         dsc_patch_version="-7"
     else
@@ -4428,7 +4451,7 @@ else
     echo "Removing powerd"
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/CoreServices/powerd.bundle/powerd
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.powerd.plist
-    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
+    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]] && [[ $sep_bridge_use == 0 ]]; then
         # fixes
         ./bin/hfsplus tmp1/rootfs.raw rm usr/libexec/biometrickitd
         ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.biometrickitd.plist
@@ -4471,20 +4494,9 @@ if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
     fi
     curl -L -o tmp1/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
     curl -L -o tmp1/untether.tar $untether
-    curl -L -o tmp1/substrate.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/cydiasubstrate.tar
-    curl -L -o tmp1/tweak.zip https://github.com/DevTweaker/Tweak/raw/refs/heads/main/scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb.zip
-    unzip tmp1/tweak.zip -d tmp1/tweak
-    ( cd tmp1/tweak && ar -x scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb )
-    gzip -d tmp1/tweak/data.tar.gz
     gzip -d tmp1/freeze.tar.gz
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/freeze.tar
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/untether.tar
-    # remove patcyh
-    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.plist
-    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.dylib
-    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/substrate.tar
-    # add Wi-Fi fixes, thanks to DevTweaker
-    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/tweak/data.tar
     # stop stashing
     touch .cydia_no_stash
     ./bin/hfsplus tmp1/rootfs.raw add .cydia_no_stash .cydia_no_stash
@@ -4562,21 +4574,23 @@ unzip -j "$IPSW_PATH" "$KERNEL10" -d work
 ./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
 ./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
 ./bin/img4 -i work/DeviceTree.im4p -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/sepbridge patch kernel work/kernel.raw work/kernel.patch
+elif [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 8 -e 8 -f 8 -m 8 -g
 else
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 9 -f 9 -k -v
 fi
-./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/kerneldiff2 work/kernel.raw work/kernel.patch work/kernel.diff
+else
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+fi
 ./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
 rm -rf "work"
 echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
-if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
-    echo "Keep in mind, it may take a few boot attempts for the Wi-Fi jailbreak tweak to work"
-    echo "Do not expect password protected Wi-Fi to connect instantly on Setup screen. You may need to head to the Home Screen first (and potentially do a few reboots), for the Wi-Fi tweak to work."
-fi
 
 }
 
@@ -4593,9 +4607,46 @@ if [[ -z "$SHSH_PATH" ]]; then
 fi
 ./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
 im4m="$IDENTIFIER-im4m"
-
+IBSS_KEY=$(grep "ibss-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+if [[ $IDENTIFIER == iPhone7,2 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02962-20170327-7584E8B4-0D86-11E7-B580-8CCE122AC769/iPhone_4.7_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02950-20170327-75843ACC-0D86-11E7-ACCC-80CE122AC769/iPhone_5.5_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad5* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad4* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02965-20170327-758BACE4-0D86-11E7-9129-8ECE122AC769/iPad_64bit_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone6* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw"
+fi
+mkdir -p work
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
+./bin/img4 -i work/$IBSS -o work/iBSS.dec -k $IBSS_KEY
+./bin/img4 -i work/$IBEC -o work/iBEC.dec -k $IBEC_KEY
+./bin/iBoot64Patcher work/iBSS.dec work/iBSS.patch
+./bin/iBoot64Patcher work/iBEC.dec work/iBEC.patch
+./bin/img4 -i work/iBSS.patch -o work/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patch -o work/iBEC.img4 -A -T ibec -M $im4m
 dfu_helper
 pwn_device
+sleep 5
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+mkdir -p boot
+echo "$VERSION" > boot/$ECID.txt
+./bin/irecovery -f work/iBSS.img4
+sleep 5
+./bin/irecovery -f work/iBEC.img4
+sleep 5
+echo "Checking if device is in Recovery mode"
+MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+if [[ $MODE == Recovery ]]; then
+    echo "Device has been detected in Recovery mode."
+else
+    echo "Device not detected in Recovery. Exiting"
+    exit 1
+fi
 sleep 5
 ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 mkdir -p boot
@@ -4662,11 +4713,18 @@ other_device(){
 ./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
 ./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 ./bin/img4 -i tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE -o tmp1/DeviceTree.raw -k $DTRE_KEY
-perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+if [[ $sep_bridge_use == 1 ]]; then
+    # No thank you.
+    echo "Content-protection patch? Not needed!"
+else
+    perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+fi
 ./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
 ./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.raw -k $KRNL_KEY
 ./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.im4p -k $KRNL_KEY -D
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/sepbridge patch restore-kernel tmp1/kernel.raw tmp1/kernel.patch
+elif [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
     ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
@@ -4822,21 +4880,21 @@ if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
     exit 1
 fi
 
-echo "Here is the following things that may happen on seprmvr64 restore:"
-echo "1. Touch ID will not work"
-echo "2. Passcode will not work"
-if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
-    echo "3. Password protected Wi-Fi networks do not work by default, but since jailbreak is enabled on this restore, we will install a tweak that fixes Wi-Fi with passwords."
-    echo "Wi-Fi fix tweak used is from https://github.com/DevTweaker/Tweak (thanks to them for making the Wi-Fi fix)"
+if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
+    echo "Everything SEP-related should work as we use SEP bridge here."
+    echo "Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
 else
+    echo "Here is the following things that may happen on seprmvr64 restore:"
+    echo "1. Touch ID will not work"
+    echo "2. Passcode will not work"
     echo "3. Password protected Wi-Fi networks will not work"
+    echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
+    echo "5. Potentially other broken features"
+    if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
+        echo "6. Baseband will not work."
+    fi
+    read -p "Press enter to continue"
 fi
-echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
-echo "5. Potentially other broken features"
-if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
-    echo "6. Baseband will not work."
-fi
-read -p "Press enter to continue"
 
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
 stitch_activation=0
@@ -5508,7 +5566,7 @@ elif [[ $tether_options == 3 ]]; then
                 sleep 4
                 JAILBREAK=0
             fi
-        elif [[ $VERSION == 7.* ]]; then
+        elif [[ $VERSION == 7.* && $VERSION != 7.0 ]]; then
             read -p "Would you like to jailbreak as part of this restore? (y/N): " jailbreak_opts
             if [[ $jailbreak_opts == y || $jailbreak_opts == Y ]]; then
                 JAILBREAK=1
