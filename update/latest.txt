@@ -1,8 +1,8 @@
-v2.3 beta 5
+v2.3 beta 6
 
 RELEASE NOTES:
 
-Support iOS 13.1-13.7 for iOS 13 tether upgrades on iPod touch 6
-Source code for kernel/userland patches is here: https://github.com/pwnerblu/ipodtouch6-ios13
+Fix SEP on iOS 7.0 tether downgrade on iPhone 5S (GSM, iPhone6,1).
+Huge thanks to @dethr1der for SEP Bridge!
 
-If you'd like to contribute more fixes for iOS 13 iPod touch 6, please open a PR after adding such fixes and I will most likely merge it
+iOS 7.0.1 and later are not supported, only 7.0. iPhone6,2 is not supported for SEPBridge yet either.
