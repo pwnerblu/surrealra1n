@@ -4882,6 +4882,7 @@ fi
 
 if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
     echo "Everything SEP-related should work as we use SEP bridge here."
+    echo "Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
 else
     echo "Here is the following things that may happen on seprmvr64 restore:"
     echo "1. Touch ID will not work"
