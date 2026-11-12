@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 5"
+CURRENT_VERSION="v2.3 beta 6"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -267,20 +267,9 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     # Install dependencies using either brew or port. Both package managers conveniently use the same names for each package.
     DEPS=("libimobiledevice" "libirecovery" "binutils" "libusb" "jq" "aria2")
     if [[ $darwin_package_manager -eq 1 ]]; then
-       #I've done that because resolving a named formula can fetch Homebrew API data and fail even when that formula is installed.
-       if ! brew_installed_formulae=$(HOMEBREW_NO_AUTO_UPDATE=1 brew list --formula -1); then
-           echo "Could not read Homebrew's installed formulae."
-           exit 1
-       fi
        for dep in "${DEPS[@]}"; do
-           if ! grep -Fx "$dep" <<< "$brew_installed_formulae" >/dev/null; then
+           if ! brew list "$dep" &>/dev/null; then
                echo "[$dep] is not installed. Installing..."
-               brew_prefix=$(brew --prefix)
-               if [[ ! -w "$brew_prefix" ]]; then
-                   echo "Cannot install $dep: $brew_prefix is not writable by $(id -un)."
-                   echo "Install it using the Homebrew owner's account, then re-run surrealra1n."
-                   exit 1
-               fi
                brew install "$dep"
            else
                echo "[$dep] is installed."
@@ -877,6 +866,9 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
@@ -968,6 +960,7 @@ elif [[ $dist == 3 ]]; then
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/ipwnder https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipwnder
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_arm64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
@@ -1023,6 +1016,9 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
@@ -1114,6 +1110,7 @@ elif [[ $dist == 4 ]]; then
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/ipwnder https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipwnder
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
@@ -1155,6 +1152,12 @@ else
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery" "bin/irecovery" 1024
     download_with_retry "https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/iBoot64Patcher" "bin/iBoot64Patcher" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher" "bin/Kernel64Patcher2" 1024
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
+    gcc kerneldiff.c -o bin/kerneldiff2
+    rm -rf kerneldiff.c
+    #
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus" "bin/hfsplus" 1024
     # sshpass
     # iboot patcher oops
@@ -1710,11 +1713,11 @@ if [[ $IDENTIFIER == iPad5* ]]; then
 elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
-    LATEST_VERSION="18.7.11"
+    LATEST_VERSION="18.7.12"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="27.2"
+    LATEST_VERSION="27.2.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.7.2"
+    LATEST_VERSION="26.7.3"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -1929,7 +1932,11 @@ elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == i
     read -p "Press enter to continue once device is pwned successfully AND reconnected to the computer"
 else
     echo "Device is not pwned yet, attempting to pwn"
-    ./bin/gaster pwn 
+    if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $dist == 3 || $dist == 4 ]]; then
+        ./bin/ipwnder -p
+    else
+        ./bin/gaster pwn 
+    fi
     ./bin/gaster reset
     if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
         ./bin/irecovery -f surrealra1n.sh
@@ -3599,10 +3606,6 @@ else
     VERSION=$(cat boot/$ECID.txt) 
 fi
 bootdir="boot/$IDENTIFIER/$VERSION"
-if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 && -f "$bootdir/sep-bridge" ]]; then
-    sep_bridge_boot
-    return
-fi
 if [[ ! -d $bootdir ]]; then
     echo "Please do a tethered restore to iOS $VERSION, then try tether boot again."
     exit 1
@@ -4387,6 +4390,11 @@ else
     ECID_DEC="$ECID"
 fi
 
+if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
+    sep_bridge_use=1
+else
+    sep_bridge_use=0
+fi
 
 mkdir -p noseprestore/$IDENTIFIER/$VERSION
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -4417,7 +4425,7 @@ rm -rf $rootfslatest_dmg
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
 fi
-if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+if [[ $VERSION == 7.* || $VERSION == 8.* ]] && [[ $sep_bridge_use == 0 ]]; then
     if [[ $VERSION == 7.* ]]; then
         dsc_patch_version="-7"
     else
@@ -4443,7 +4451,7 @@ else
     echo "Removing powerd"
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/CoreServices/powerd.bundle/powerd
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.powerd.plist
-    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
+    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]] && [[ $sep_bridge_use == 0 ]]; then
         # fixes
         ./bin/hfsplus tmp1/rootfs.raw rm usr/libexec/biometrickitd
         ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.biometrickitd.plist
@@ -4486,20 +4494,9 @@ if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
     fi
     curl -L -o tmp1/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
     curl -L -o tmp1/untether.tar $untether
-    curl -L -o tmp1/substrate.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/cydiasubstrate.tar
-    curl -L -o tmp1/tweak.zip https://github.com/DevTweaker/Tweak/raw/refs/heads/main/scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb.zip
-    unzip tmp1/tweak.zip -d tmp1/tweak
-    ( cd tmp1/tweak && ar -x scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb )
-    gzip -d tmp1/tweak/data.tar.gz
     gzip -d tmp1/freeze.tar.gz
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/freeze.tar
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/untether.tar
-    # remove patcyh
-    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.plist
-    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.dylib
-    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/substrate.tar
-    # add Wi-Fi fixes, thanks to DevTweaker
-    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/tweak/data.tar
     # stop stashing
     touch .cydia_no_stash
     ./bin/hfsplus tmp1/rootfs.raw add .cydia_no_stash .cydia_no_stash
@@ -4577,21 +4574,23 @@ unzip -j "$IPSW_PATH" "$KERNEL10" -d work
 ./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
 ./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
 ./bin/img4 -i work/DeviceTree.im4p -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/sepbridge patch kernel work/kernel.raw work/kernel.patch
+elif [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 8 -e 8 -f 8 -m 8 -g
 else
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 9 -f 9 -k -v
 fi
-./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/kerneldiff2 work/kernel.raw work/kernel.patch work/kernel.diff
+else
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+fi
 ./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
 rm -rf "work"
 echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
-if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
-    echo "Keep in mind, it may take a few boot attempts for the Wi-Fi jailbreak tweak to work"
-    echo "Do not expect password protected Wi-Fi to connect instantly on Setup screen. You may need to head to the Home Screen first (and potentially do a few reboots), for the Wi-Fi tweak to work."
-fi
 
 }
 
@@ -4608,9 +4607,46 @@ if [[ -z "$SHSH_PATH" ]]; then
 fi
 ./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
 im4m="$IDENTIFIER-im4m"
-
+IBSS_KEY=$(grep "ibss-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+if [[ $IDENTIFIER == iPhone7,2 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02962-20170327-7584E8B4-0D86-11E7-B580-8CCE122AC769/iPhone_4.7_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02950-20170327-75843ACC-0D86-11E7-ACCC-80CE122AC769/iPhone_5.5_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad5* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad4* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02965-20170327-758BACE4-0D86-11E7-9129-8ECE122AC769/iPad_64bit_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone6* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw"
+fi
+mkdir -p work
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
+./bin/img4 -i work/$IBSS -o work/iBSS.dec -k $IBSS_KEY
+./bin/img4 -i work/$IBEC -o work/iBEC.dec -k $IBEC_KEY
+./bin/iBoot64Patcher work/iBSS.dec work/iBSS.patch
+./bin/iBoot64Patcher work/iBEC.dec work/iBEC.patch
+./bin/img4 -i work/iBSS.patch -o work/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patch -o work/iBEC.img4 -A -T ibec -M $im4m
 dfu_helper
 pwn_device
+sleep 5
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+mkdir -p boot
+echo "$VERSION" > boot/$ECID.txt
+./bin/irecovery -f work/iBSS.img4
+sleep 5
+./bin/irecovery -f work/iBEC.img4
+sleep 5
+echo "Checking if device is in Recovery mode"
+MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+if [[ $MODE == Recovery ]]; then
+    echo "Device has been detected in Recovery mode."
+else
+    echo "Device not detected in Recovery. Exiting"
+    exit 1
+fi
 sleep 5
 ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 mkdir -p boot
@@ -4677,11 +4713,18 @@ other_device(){
 ./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
 ./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 ./bin/img4 -i tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE -o tmp1/DeviceTree.raw -k $DTRE_KEY
-perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+if [[ $sep_bridge_use == 1 ]]; then
+    # No thank you.
+    echo "Content-protection patch? Not needed!"
+else
+    perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+fi
 ./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
 ./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.raw -k $KRNL_KEY
 ./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.im4p -k $KRNL_KEY -D
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/sepbridge patch restore-kernel tmp1/kernel.raw tmp1/kernel.patch
+elif [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
     ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
@@ -4837,21 +4880,20 @@ if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
     exit 1
 fi
 
-echo "Here is the following things that may happen on seprmvr64 restore:"
-echo "1. Touch ID will not work"
-echo "2. Passcode will not work"
-if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
-    echo "3. Password protected Wi-Fi networks do not work by default, but since jailbreak is enabled on this restore, we will install a tweak that fixes Wi-Fi with passwords."
-    echo "Wi-Fi fix tweak used is from https://github.com/DevTweaker/Tweak (thanks to them for making the Wi-Fi fix)"
+if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
+    echo "Everything SEP-related should work as we use SEP bridge here."
 else
+    echo "Here is the following things that may happen on seprmvr64 restore:"
+    echo "1. Touch ID will not work"
+    echo "2. Passcode will not work"
     echo "3. Password protected Wi-Fi networks will not work"
+    echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
+    echo "5. Potentially other broken features"
+    if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
+        echo "6. Baseband will not work."
+    fi
+    read -p "Press enter to continue"
 fi
-echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
-echo "5. Potentially other broken features"
-if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
-    echo "6. Baseband will not work."
-fi
-read -p "Press enter to continue"
 
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
 stitch_activation=0
@@ -5477,331 +5519,6 @@ fi
 
 }
 
-# SEP bridge beta1
-sep_bridge_supported() {
-    if [[ $IDENTIFIER != iPhone6,1 ]]; then
-        echo "SEP bridge beta1 supports iPhone 5s n51ap (iPhone6,1) only."
-        echo "Connected device: $IDENTIFIER"
-        return 1
-    fi
-    if [[ $VERSION != 7.0 || $BUILD != 11A466 ]]; then
-        echo "Select the stock iPhone6,1 iOS 7.0 (11A466) target IPSW."
-        echo "Selected target: ${VERSION:-none} / ${BUILD:-none}"
-        return 1
-    fi
-}
-
-sep_bridge_key() {
-    sed -n "s/^$1-7\.0: *//p" "$SCRIPT_DIR/keys/$IDENTIFIER.txt"
-}
-
-sep_bridge_compile() {
-    make -C "$SCRIPT_DIR/sep-bridge"
-    if [[ $(uname -s) == Darwin ]]; then
-        bridge_bin="$SCRIPT_DIR/sep-bridge/build/macos-universal/sep-bridge"
-    else
-        bridge_bin="$SCRIPT_DIR/sep-bridge/build/linux-x86_64/sep-bridge"
-    fi
-}
-
-# I hate to repack ipsw I've done that different way, just downloaded need files
-sep_bridge_download_nor() {
-    local base_url name member
-    base_url="https://updates.cdn-apple.com/2026WinterFCS/fullrestores/047-28551/FB7714DB-6E9C-4750-8012-082B09341569/iPhone_4.0_64bit_12.5.8_16H88_Restore.ipsw"
-    mkdir -p "$bridge_dir/base"
-    if [[ ! -f "$bridge_dir/base/BuildManifest.plist" ]]; then
-        (cd "$bridge_dir/base" && "$SCRIPT_DIR/bin/pzb" -g BuildManifest.plist "$base_url")
-    fi
-    "$bridge_bin" components base "$bridge_dir/base/BuildManifest.plist" > "$bridge_dir/base/components.txt"
-    while IFS='|' read -r name member; do
-        if [[ ! -f "$bridge_dir/base/$name.im4p" ]]; then
-            (cd "$bridge_dir/base" && "$SCRIPT_DIR/bin/pzb" -g "$member" "$base_url")
-            mv "$bridge_dir/base/${member##*/}" "$bridge_dir/base/$name.im4p"
-        fi
-    done < "$bridge_dir/base/components.txt"
-}
-
-# Generate IMG4 byte-patch text with the bridge itself.
-sep_bridge_kernel() {
-    local profile="$1" tag="$2" output="$3"
-    "$bridge_bin" patch "$profile" "$bridge_dir/kernel.raw" "$bridge_dir/$profile.patched"
-    "$bridge_bin" diff "$bridge_dir/kernel.raw" "$bridge_dir/$profile.patched" "$bridge_dir/$profile.diff"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/kernel.clear.im4p" -o "$output" \
-        -T "$tag" -P "$bridge_dir/$profile.diff"
-}
-
-sep_bridge_add_activation_records() {
-    local rootfs="$1" records="$2" file destination permissions
-    "$SCRIPT_DIR/bin/hfsplus" "$rootfs" mkdir private/var/root/Library/Lockdown/activation_records || return 1
-    "$SCRIPT_DIR/bin/hfsplus" "$rootfs" mkdir private/var/mobile/Library/FairPlay/iTunes_Control/iTunes || return 1
-    "$SCRIPT_DIR/bin/hfsplus" "$rootfs" mkdir private/var/wireless/Library/Preferences || return 1
-    while IFS='|' read -r file destination permissions; do
-        "$SCRIPT_DIR/bin/hfsplus" "$rootfs" add "$records/$file" "$destination" || return 1
-        "$SCRIPT_DIR/bin/hfsplus" "$rootfs" chmod "$permissions" "$destination" || return 1
-    done <<'RECORDS'
-activation_record.plist|private/var/root/Library/Lockdown/activation_records/activation_record.plist|666
-IC-Info.sisv|private/var/mobile/Library/FairPlay/iTunes_Control/iTunes/IC-Info.sisv|664
-com.apple.commcenter.device_specific_nobackup.plist|private/var/wireless/Library/Preferences/com.apple.commcenter.device_specific_nobackup.plist|600
-RECORDS
-}
-
-sep_bridge_prepare() {
-    sep_bridge_supported || return 1
-    local records_ecid records_dir file
-    records_ecid=$(printf '%d' "$ECID") || return 1
-    records_dir="$SCRIPT_DIR/activation_records/$records_ecid"
-    if [[ ! -d "$records_dir" ]]; then
-        records_dir="$SCRIPT_DIR/activation_records/$ECID"
-    fi
-    for file in activation_record.plist IC-Info.sisv com.apple.commcenter.device_specific_nobackup.plist; do
-        if [[ ! -s "$records_dir/$file" ]]; then
-            records_dir=""
-            break
-        fi
-    done
-    if [[ -z "$records_dir" ]]; then
-        echo "No complete activation records found. Building without them."
-        records_ecid=none
-    fi
-    sep_bridge_compile
-    bridge_dir="$SCRIPT_DIR/seprestore/$IDENTIFIER/7.0"
-    mkdir -p "$bridge_dir"
-    rm -f "$bridge_dir"/*.patched "$bridge_dir"/*.diff "$bridge_dir/PowerdNoDeepSleep.dylib" "$bridge_dir/custom.ipsw"
-    rm -rf "$bridge_dir/target"
-    sep_bridge_download_nor
-    local work="$bridge_dir/target" member destination profile
-    mkdir -p "$work"
-    unzip -o "$IPSW_PATH" -d "$work"
-    # Read named components from the target instead of guessing DMG sizes.
-    "$bridge_bin" components target "$work/BuildManifest.plist" > "$bridge_dir/target-components.txt"
-    # These locals keep the old restore/menu globals out of this path.
-    local kernel_member ramdisk_member os_member dtre_member logo_member iboot_member
-    while IFS='|' read -r profile member; do
-        case "$profile" in
-            KernelCache) kernel_member="$member";;
-            RestoreRamDisk) ramdisk_member="$member";;
-            OS) os_member="$member";;
-            DeviceTree) dtre_member="$member";;
-            AppleLogo) logo_member="$member";;
-            iBoot) iboot_member="$member";;
-        esac
-    done < "$bridge_dir/target-components.txt"
-    "$SCRIPT_DIR/bin/img4" -i "$work/$kernel_member" -o "$bridge_dir/kernel.raw" -k "$(sep_bridge_key krnl)"
-    "$SCRIPT_DIR/bin/img4" -i "$work/$kernel_member" -o "$bridge_dir/kernel.clear.im4p" -k "$(sep_bridge_key krnl)" -D
-    #I know that it could be done once for the kernel, but I'm too lazy to do that. So, I've just transfered the way how that worked to me. SORRY :))
-    "$bridge_bin" --banner
-    export SEP_BRIDGE_BANNER_SHOWN=1
-    sep_bridge_kernel kernel krnl "$bridge_dir/kernel.im4p"
-    sep_bridge_kernel restore-kernel rkrn "$bridge_dir/restore-kernel.im4p"
-    "$SCRIPT_DIR/bin/img4" -i "$work/$ramdisk_member" -o "$bridge_dir/ramdisk.raw" -k "$(sep_bridge_key rdsk)"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" grow 16000000
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" extract usr/sbin/asr "$bridge_dir/asr.stock"
-    "$bridge_bin" patch asr "$bridge_dir/asr.stock" "$bridge_dir/asr.patched"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" rm usr/sbin/asr
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" add "$bridge_dir/asr.patched" usr/sbin/asr
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" chmod 100755 usr/sbin/asr
-    # Same system partition layout as the successful clean restore.
-    "$bridge_bin" restore-options "$bridge_dir/options.n51.plist"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" rm usr/local/share/restore/options.n51.plist
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/ramdisk.raw" add "$bridge_dir/options.n51.plist" usr/local/share/restore/options.n51.plist
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/ramdisk.raw" -o "$bridge_dir/ramdisk.im4p" -A -T rdsk
-    "$SCRIPT_DIR/bin/dmg" extract "$work/$os_member" "$bridge_dir/rootfs.raw" -k "$(sep_bridge_key fstm)"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" grow 2200000000
-    destination="System/Library/CoreServices/powerd.bundle/powerd"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" extract "$destination" "$bridge_dir/powerd.stock"
-    "$bridge_bin" patch powerd "$bridge_dir/powerd.stock" "$bridge_dir/powerd.patched"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" rm "$destination"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/powerd.patched" "$destination"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chmod 100755 "$destination"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chown 0:0 "$destination"
-    #I've just tool dylib from my own tweak, it works on 7.0-8.4.1
-    "$bridge_bin" --extract-powerd-guard "$bridge_dir/PowerdNoDeepSleep.dylib"
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" add "$bridge_dir/PowerdNoDeepSleep.dylib" usr/lib/PowerdNoDeepSleep.dylib
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chmod 100755 usr/lib/PowerdNoDeepSleep.dylib
-    "$SCRIPT_DIR/bin/hfsplus" "$bridge_dir/rootfs.raw" chown 0:0 usr/lib/PowerdNoDeepSleep.dylib
-    if [[ -n "$records_dir" ]]; then
-        echo "Adding saved activation records to the rootfs..."
-        sep_bridge_add_activation_records "$bridge_dir/rootfs.raw" "$records_dir" || return 1
-    fi
-    "$SCRIPT_DIR/bin/dmg" build "$bridge_dir/rootfs.raw" "$bridge_dir/rootfs.dmg"
-    if [[ $(uname -s) == Darwin ]]; then
-        asr imagescan --source "$bridge_dir/rootfs.dmg"
-    fi
-    cp "$bridge_dir/rootfs.dmg" "$work/$os_member"
-    cp "$bridge_dir/kernel.im4p" "$work/$kernel_member"
-    cp "$bridge_dir/ramdisk.im4p" "$work/$ramdisk_member"
-    mkdir -p "$work/Firmware/sep-bridge"
-    cp "$bridge_dir/restore-kernel.im4p" "$work/Firmware/sep-bridge/restore-kernel.im4p"
-    "$SCRIPT_DIR/bin/img4" -i "$work/$dtre_member" -o "$bridge_dir/DeviceTree.im4p" -k "$(sep_bridge_key dtre)" -D
-    "$SCRIPT_DIR/bin/img4" -i "$work/$logo_member" -o "$bridge_dir/AppleLogo.im4p" -k "$(sep_bridge_key logo)" -D
-    cp "$bridge_dir/DeviceTree.im4p" "$work/$dtre_member"
-    # The target iBoot is a separate rlgo stage, after native signed iBoot.
-    "$SCRIPT_DIR/bin/img4tool" -n rlgo -o "$work/Firmware/sep-bridge/iBoot.rlgo.im4p" "$work/$iboot_member"
-    "$bridge_bin" prepare-manifest "$work" "$bridge_dir/base"
-    (cd "$work" && zip -0 -r "$bridge_dir/custom.ipsw" .)
-    printf 'iPhone6,1 / iOS 7.0 / 11A466\nActivation: stock\nActivation records: %s\n' "$records_ecid" > "$bridge_dir/build-info.txt"
-    unset SEP_BRIDGE_BANNER_SHOWN
-}
-
-sep_bridge_prepare_bootloaders() {
-    unzip -p "$bridge_dir/custom.ipsw" Firmware/dfu/iBSS.n51ap.RELEASE.im4p > "$bridge_dir/iBSS.im4p" || return 1
-    unzip -p "$bridge_dir/custom.ipsw" Firmware/dfu/iBEC.n51ap.RELEASE.im4p > "$bridge_dir/iBEC.im4p" || return 1
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/iBSS.im4p" -o "$bridge_dir/iBSS.raw" -k "$(sep_bridge_key ibss)" || return 1
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/iBEC.im4p" -o "$bridge_dir/iBEC.raw" -k "$(sep_bridge_key ibec)" || return 1
-    "$SCRIPT_DIR/bin/ipatcher" "$bridge_dir/iBSS.raw" "$bridge_dir/iBSS.patched" || return 1
-    "$SCRIPT_DIR/bin/ipatcher" "$bridge_dir/iBEC.raw" "$bridge_dir/iBEC-restore.patched" -b "rd=md0 debug=0x2014e serial=0 -v wdt=-1 nand-enable-reformat=1 -restore amfi=0xff cs_enforcement_disable=1" || return 1
-    "$SCRIPT_DIR/bin/ipatcher" "$bridge_dir/iBEC.raw" "$bridge_dir/iBEC-boot.patched" -b "debug=0x20146 serial=0 -v wdt=-1 amfi=0xff cs_enforcement_disable=1" || return 1
-}
-
-sep_bridge_ticket() {
-    local name="$1-$(date +%s)" query apnonce sepnonce
-    local tss_args=(-d "$IDENTIFIER" -B n51ap -e "$ECID" -m "$bridge_dir/base/BuildManifest.plist")
-    # Entry ticket's nonces are wrong once you're on pwned iBEC, so ask tss again. It's just a workaround.
-    if [[ $1 != entry-tss ]]; then
-        query=$("$SCRIPT_DIR/bin/irecovery" -q)
-        apnonce=$(printf '%s\n' "$query" | sed -n 's/^NONC: //p')
-        sepnonce=$(printf '%s\n' "$query" | sed -n 's/^SNON: //p')
-        [[ $apnonce =~ ^[0-9a-fA-F]+$ && $sepnonce =~ ^[0-9a-fA-F]+$ ]] || { echo "Cannot read live nonces"; return 1; }
-        tss_args+=(--apnonce "$apnonce" --sepnonce "$sepnonce")
-    fi
-    mkdir -p "$bridge_dir/$name"
-    "$SCRIPT_DIR/bin/tsschecker" "${tss_args[@]}" \
-        -s -b --save-path "$bridge_dir/$name"
-    bridge_ticket=$(find "$bridge_dir/$name" -name '*.shsh2' -type f | head -n 1)
-    [[ -n $bridge_ticket ]] || return 1
-    "$SCRIPT_DIR/bin/img4tool" -s "$bridge_ticket" -e -m "$bridge_dir/$name.im4m"
-    bridge_im4m="$bridge_dir/$name.im4m"
-}
-
-sep_bridge_send_bootloaders() {
-    local ibec="$1"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/iBSS.patched" -o "$bridge_dir/iBSS.img4" -A -T ibss -M "$bridge_im4m"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/$ibec.patched" -o "$bridge_dir/iBEC.img4" -A -T ibec -M "$bridge_im4m"
-    sleep 2
-    "$SCRIPT_DIR/bin/irecovery" -f "$bridge_dir/iBSS.img4"
-    sleep 6
-    "$SCRIPT_DIR/bin/irecovery" -f "$bridge_dir/iBEC.img4"
-    sleep 6
-    "$SCRIPT_DIR/bin/irecovery" -q | grep -q '^MODE: Recovery' || return 1
-}
-
-sep_bridge_save_boot() {
-    local bootdir="$SCRIPT_DIR/boot/$IDENTIFIER/7.0" im4m="$1"
-    mkdir -p "$bootdir"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/iBSS.patched" -o "$bootdir/iBSS.img4" -A -T ibss -M "$im4m"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/iBEC-boot.patched" -o "$bootdir/iBEC.img4" -A -T ibec -M "$im4m"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/DeviceTree.im4p" -o "$bootdir/DeviceTree.img4" -T rdtr -M "$im4m"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/AppleLogo.im4p" -o "$bootdir/AppleLogo.img4" -T logo -M "$im4m"
-    "$SCRIPT_DIR/bin/img4" -i "$bridge_dir/kernel.im4p" -o "$bootdir/Kernelcache.img4" -T rkrn -M "$im4m"
-    printf 'v0.0.1-beta1\n' > "$bootdir/sep-bridge"
-    printf '7.0\n' > "$SCRIPT_DIR/boot/$ECID.txt"
-}
-
-sep_bridge_connected() {
-    local device
-    device=$("$SCRIPT_DIR/bin/irecovery" -q)
-    if [[ $device != *"PRODUCT: iPhone6,1"* || $device != *"MODEL: n51ap"* ]]; then
-        echo "SEP bridge beta1 requires the connected iPhone 5s n51ap."
-        return 1
-    fi
-    ECID=$(printf '%s\n' "$device" | sed -n 's/^ECID: //p')
-}
-
-sep_bridge_boot() {
-    local bootdir="$SCRIPT_DIR/boot/$IDENTIFIER/7.0"
-    dfu_helper
-    sep_bridge_connected
-    pwn_device
-    sleep 2
-    "$SCRIPT_DIR/bin/irecovery" -f "$bootdir/iBSS.img4"
-    sleep 6
-    "$SCRIPT_DIR/bin/irecovery" -f "$bootdir/iBEC.img4"
-    sleep 6
-    "$SCRIPT_DIR/bin/irecovery" -q | grep -q '^MODE: Recovery' || return 1
-    "$SCRIPT_DIR/bin/irecovery" -f "$bootdir/DeviceTree.img4"
-    "$SCRIPT_DIR/bin/irecovery" -c devicetree
-    "$SCRIPT_DIR/bin/irecovery" -f "$bootdir/AppleLogo.img4"
-    "$SCRIPT_DIR/bin/irecovery" -c "setpicture 4"
-    "$SCRIPT_DIR/bin/irecovery" -f "$bootdir/Kernelcache.img4"
-    "$SCRIPT_DIR/bin/irecovery" -c bootx
-    echo "Your device should boot, enjoy Bridge :)))"
-}
-
-sep_bridge_flash() {
-    local boot_im4m
-    sep_bridge_prepare_bootloaders || return 1
-    dfu_helper
-    sep_bridge_connected
-    pwn_device
-    sep_bridge_ticket entry-tss
-    boot_im4m="$bridge_im4m"
-    sep_bridge_send_bootloaders iBEC-restore
-    sep_bridge_ticket restore-tss
-    if env FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
-        LD_LIBRARY_PATH="$SCRIPT_DIR/lib" "$SCRIPT_DIR/futurerestore/futurerestore" \
-        --skip-blob2 -t "$bridge_ticket" --latest-sep --no-rsep --latest-baseband \
-        "$bridge_dir/custom.ipsw" 2>&1 | tee "$bridge_dir/restore.log"; then
-        if ! grep -q 'Done: restoring succeeded!' "$bridge_dir/restore.log"; then
-            echo "Restore did not report success. See $bridge_dir/restore.log"; return 1
-        fi
-    else
-        echo "Restore failed. See $bridge_dir/restore.log"; return 1
-    fi
-    sep_bridge_save_boot "$boot_im4m"
-    echo "Restore complete. Put the iPhone in DFU for its first tethered boot."
-    sep_bridge_boot
-}
-
-
-sep_bridge_cached_build() {
-    local file
-    for file in custom.ipsw base/BuildManifest.plist DeviceTree.im4p \
-        AppleLogo.im4p kernel.im4p; do
-        [[ -s "$bridge_dir/$file" ]] || return 1
-    done
-    # Reuse only builds with stock activation.
-    [[ -f "$bridge_dir/build-info.txt" ]] || return 1
-    grep -Fxq 'Activation: stock' "$bridge_dir/build-info.txt" || return 1
-    grep -Fxq "Activation records: $(printf '%d' "$ECID")" "$bridge_dir/build-info.txt" ||
-        grep -Fxq 'Activation records: none' "$bridge_dir/build-info.txt"
-}
-
-sep_bridge_restore() {
-    if [[ $IDENTIFIER != iPhone6,1 ]]; then
-        sep_bridge_supported
-        return 1
-    fi
-    bridge_dir="$SCRIPT_DIR/seprestore/$IDENTIFIER/7.0"
-    if sep_bridge_cached_build; then
-        echo "Cached SEP bridge build: $bridge_dir/custom.ipsw"
-        cat "$bridge_dir/build-info.txt"
-        local use_cached
-        while true; do
-            read -r -p "Use cached build? [Y/n]: " use_cached
-            case "$use_cached" in
-                ""|y|Y)
-                    VERSION=7.0
-                    BUILD=11A466
-                    echo "Using cached build. The restore erases the connected iPhone."
-                    sep_bridge_flash
-                    return
-                    ;;
-                n|N) break ;;
-                *) echo "Please enter Y or N." ;;
-            esac
-        done
-    fi
-    if [[ ! -f ${IPSW_PATH:-} ]]; then
-        echo "Select the iOS 7.0 (11A466) target IPSW for SEP bridge."
-        ipsw_selector target
-    fi
-    sep_bridge_supported || return 1
-    [[ -f $IPSW_PATH ]] || { echo "Target IPSW does not exist: $IPSW_PATH"; return 1; }
-    echo "Preparing iOS 7.0 with SEP bridge. The restore erases the connected iPhone."
-    sep_bridge_prepare
-    sep_bridge_flash
-}
-
 restore_tethered_opts(){
 
 clear 
@@ -5812,9 +5529,8 @@ echo ""
 echo "1. Select Target IPSW"
 echo "2. Select Base IPSW"
 echo "3. Start Restore"
-echo "4. Restore with SEP bridge (iPhone 5s / iOS 7.0)"
-echo "5. Back"
-read -p "Please input an option (1-5): " tether_options
+echo "4. Back"
+read -p "Please input an option (1-4): " tether_options
 if [[ $tether_options == 1 ]]; then
     ipsw_selector target
     restore_tethered_opts
@@ -5849,7 +5565,7 @@ elif [[ $tether_options == 3 ]]; then
                 sleep 4
                 JAILBREAK=0
             fi
-        elif [[ $VERSION == 7.* ]]; then
+        elif [[ $VERSION == 7.* && $VERSION != 7.0 ]]; then
             read -p "Would you like to jailbreak as part of this restore? (y/N): " jailbreak_opts
             if [[ $jailbreak_opts == y || $jailbreak_opts == Y ]]; then
                 JAILBREAK=1
@@ -5866,8 +5582,6 @@ elif [[ $tether_options == 3 ]]; then
         do_tethered_restore
     fi
 elif [[ $tether_options == 4 ]]; then
-    sep_bridge_restore
-elif [[ $tether_options == 5 ]]; then
     reset_restore_vars
     restore_utils
 else
