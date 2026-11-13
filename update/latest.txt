@@ -1,8 +1,9 @@
-v2.3 beta 6
+v2.3 beta 7
 
 RELEASE NOTES:
 
-Fix SEP on iOS 7.0 tether downgrade on iPhone 5S (GSM, iPhone6,1).
-Huge thanks to @dethr1der for SEP Bridge!
+Add experimental iOS 14.0 beta 2 tether upgrade support for iPod touch 6
+Direct download link to mini 4 14.0b2 IPSW: https://updates.cdn-apple.com/2020SummerSeed/fullrestores/001-24371/5CD1D08C-F585-4B69-A70D-C5B990DBDF61/iPad_64bit_TouchID_14.0_18A5319i_Restore.ipsw
+Direct download link to touch 7 14.0b2 IPSW: https://updates.cdn-apple.com/2020SummerSeed/fullrestores/001-24255/5D0E66DC-8E5C-46BE-9573-091E76F3A115/iPodtouch_7_14.0_18A5319i_Restore.ipsw
 
-iOS 7.0.1 and later are not supported, only 7.0. iPhone6,2 is not supported for SEPBridge yet either.
+Not all of iOS 14 is supported yet. Will come eventually.

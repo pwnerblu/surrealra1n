@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 6"
+CURRENT_VERSION="v2.3 beta 7"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -956,6 +956,13 @@ elif [[ $dist == 3 ]]; then
         gcc ipodtouch6-ios13/mthax.c -o bin/mthaxipod
         gcc ipodtouch6-ios13/bluetoothdhax.c -o bin/bluetoothdpatcher
         gcc ipodtouch6-ios13/wifihax.c -o bin/wifihax
+        # ios 14 beta 2
+        gcc ipodtouch6-ios13/pmuhax-iOS14.c -o bin/pmuipodhax-14
+        gcc ipodtouch6-ios13/kextport-iOS14.c -o bin/kextport-14
+        gcc ipodtouch6-ios13/mthax-iOS14.c -o bin/mthaxipod-14
+        gcc ipodtouch6-ios13/bluetoothdhax-iOS14.c -o bin/bluetoothdpatcher-14
+        gcc ipodtouch6-ios13/wifihax-iOS14.c -o bin/wifihax-14
+        gcc ipodtouch6-ios13/restoredpatcher-iOS14.c -o bin/skipssv
         rm -rf "ipodtouch6-ios13"
     fi
     # done!
@@ -1106,6 +1113,13 @@ elif [[ $dist == 4 ]]; then
         gcc ipodtouch6-ios13/mthax.c -o bin/mthaxipod
         gcc ipodtouch6-ios13/bluetoothdhax.c -o bin/bluetoothdpatcher
         gcc ipodtouch6-ios13/wifihax.c -o bin/wifihax
+        # ios 14 beta 2
+        gcc ipodtouch6-ios13/pmuhax-iOS14.c -o bin/pmuipodhax-14
+        gcc ipodtouch6-ios13/kextport-iOS14.c -o bin/kextport-14
+        gcc ipodtouch6-ios13/mthax-iOS14.c -o bin/mthaxipod-14
+        gcc ipodtouch6-ios13/bluetoothdhax-iOS14.c -o bin/bluetoothdpatcher-14
+        gcc ipodtouch6-ios13/wifihax-iOS14.c -o bin/wifihax-14
+        gcc ipodtouch6-ios13/restoredpatcher-iOS14.c -o bin/skipssv
         rm -rf "ipodtouch6-ios13"
     fi
     # done!
@@ -2249,7 +2263,7 @@ download_tvos13_sep(){
 mkdir -p tmp
 sep_path="tmp/sep-firmware.j42d.RELEASE.im4p"
 manifest_path="tmp/BuildManifest-SEP.plist"
-sep_ipsw="https://updates.cdn-apple.com/2020SummerSeed/fullrestores/061-92142/5EB0BEFA-C8BC-4FF4-949A-D37D8776EEF1/AppleTV5,3_13.4.8_17M61_Restore.ipsw"
+sep_ipsw="https://updates.cdn-apple.com/2026SummerFCS/fullrestores/142-23175/686B5890-EE38-4DFD-9A0D-6848A994D337/AppleTV5,3_26.6.1_23L781_Restore.ipsw"
 curl -L -o tmp/BuildManifest-SEP.plist https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-$IDENTIFIER.plist
 sudo ./bin/pzb -g BuildManifest.plist $sep_ipsw
 sudo ./bin/pzb -g Firmware/all_flash/sep-firmware.j42d.RELEASE.im4p $sep_ipsw
@@ -2295,7 +2309,7 @@ prepatch_ibssibec_fr(){
 sudo mkdir -p /tmp/futurerestore
 mkdir -p work
 ./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
-if [[ $IDENTIFIER == iPod7* && $VERSION == 13.* ]]; then
+if [[ $IDENTIFIER == iPod7* && $VERSION == 13.* || $VERSION == 14.* ]]; then
     IPSW_PATH="$restoredir/custom.ipsw"
     BUILD="16H88"   
 fi
@@ -3703,7 +3717,7 @@ mkdir -p boot/$IDENTIFIER/$VERSION
 if [[ $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
     unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d work
     trustcache_use=$(ls -S work/*.trustcache 2>/dev/null | head -n 1)
-    ./bin/img4 -i $trustcache_use -o $bootdir/Trustcache.img4
+    ./bin/img4 -i $trustcache_use -o $bootdir/Trustcache.img4 -T rtsc -M $im4m
 fi
 unzip -j "$IPSW_PATH" "$krnl" -d work
 ./bin/$ibootpatcher work/iBSS.raw work/iBSS.patch
@@ -5244,6 +5258,8 @@ elif [[ $VERSION == 13.6.1 ]]; then
 elif [[ $VERSION == 13.7 ]]; then
     url_13kdonor="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-42024/73041E63-F21C-4688-8BF2-3F8FD1C4A34E/iPhone_4.7_13.7_17H35_Restore.ipsw"
     cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 14.0 && $BUILD == 18A5319i ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerSeed/fullrestores/001-24195/0BBDF968-D415-4F92-B58B-E604A9FAACE6/iPhone_4.7_14.0_18A5319i_Restore.ipsw"
 fi
 ( cd work && sudo ../bin/pzb -g kernelcache.release.n71 $url_13kdonor )
 # DeviceTree
@@ -5256,7 +5272,13 @@ else
 fi
 #
 ./bin/apfs-dmg extract $rootfs_13_dmg work/rootfs13.dmg
-./bin/apfs-tool work/rootfs13.dmg grow 6400000000
+if [[ $VERSION == 14.* ]]; then
+    grow_to="6600000000"
+    #cp -v tmp2/Firmware/$rootfs_13_dmg_name.trustcache tmp1/Firmware/$rootfs_12_dmg_name.trustcache
+else
+    grow_to="6400000000"
+fi
+./bin/apfs-tool work/rootfs13.dmg grow $grow_to
 hdiutil attach $rootfs_12_dmg -mountpoint rootfs12
 hdiutil attach work/rootfs13.dmg -mountpoint rootfs13
 hdiutil attach $rootfs_13_ipad_dmg -mountpoint rootfs13ipad
@@ -5266,9 +5288,16 @@ find rootfs12/System/Library/Extensions/AGXMetalA8.bundle > work/list2.txt
 find rootfs12/usr/share/firmware/wifi > work/list3.txt
 find rootfs12 -iregex '.*n102.*' -type f -exec /bin/sh -c 'dirname="$(echo "{}" | sed -E '\''s|^rootfs12(/.+)/.+$|\1|'\'')"; filename="$(echo "{}" | sed -E '\''s|rootfs12/.+/(.+)$|\1|'\'')"; mkdir -p "rootfs13/${dirname}"; cp -anv "{}" "rootfs13/${dirname}/${filename}";' \;
 cp -av rootfs12/usr/share/firmware/wifi rootfs13/usr/share/firmware
+if [[ $VERSION == 14.* ]]; then
+    # PlatformConfig stuff.
+    cp -v rootfs13/usr/share/firmware/wifi/baccus-2-PlatformConfig.plist rootfs13/usr/share/firmware/wifi/bacchus-PlatformConfig.plist
+    addition="-14"
+else
+    addition=""
+fi
 # bluetoothd fixup
 cp -v rootfs12/usr/sbin/BlueTool rootfs13/usr/sbin
-./bin/bluetoothdpatcher rootfs13/usr/sbin/bluetoothd work/bluetoothd.patch
+./bin/bluetoothdpatcher$addition rootfs13/usr/sbin/bluetoothd work/bluetoothd.patch
 ./bin/ldid -e rootfs13/usr/sbin/bluetoothd > work/ents.plist
 ./bin/ldid -Swork/ents.plist work/bluetoothd.patch
 cp -v work/bluetoothd.patch rootfs13/usr/sbin/bluetoothd
@@ -5290,10 +5319,10 @@ cp -v rootfs13ipad/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 
 # Patch kernels!
 ./bin/img4 -i tmp3/kernelcache.release.ipad5 -o work/kernel.raw
 ./bin/img4 -i work/kernelcache.release.n71 -o work/kernel-6s.raw
-./bin/kextport work/kernel.raw work/kernel-6s.raw work/kernel-chestnut.raw
-./bin/pmuipodhax work/kernel-chestnut.raw work/kernel.patch
-./bin/mthaxipod work/kernel.patch work/kernel.patch2
-./bin/wifihax work/kernel.patch2 work/kernel.patch3 rootfs12/usr/share/firmware/wifi
+./bin/kextport$addition work/kernel.raw work/kernel-6s.raw work/kernel-chestnut.raw
+./bin/pmuipodhax$addition work/kernel-chestnut.raw work/kernel.patch
+./bin/mthaxipod$addition work/kernel.patch work/kernel.patch2
+./bin/wifihax$addition work/kernel.patch2 work/kernel.patch3 rootfs12/usr/share/firmware/wifi
 ./bin/KPlooshFinder work/kernel.patch3 work/kernel.patch4
 ./bin/kerneldiff2 work/kernel.raw work/kernel.patch4 work/kernel.diff
 #./bin/kerneldiff2 work/kernel.raw work/kernel.patch3 work/kernel-boot.diff
@@ -5321,6 +5350,15 @@ mv -v custom.ipsw $restoredir/custom.ipsw
 ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
 ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
 ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+if [[ $VERSION == 14.* ]]; then 
+    ./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_external work/restored_external
+    ./bin/skipssv work/restored_external work/restored_patch
+    ./bin/ldid -e work/restored_external > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/restored_patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+fi
 # pack rdsk into im4p
 ./bin/img4 -i work/ramdisk.raw -o $restoredir/ramdisk.im4p -A -T rdsk
 # Wrap up
@@ -5360,9 +5398,16 @@ echo "What does not work:"
 echo "1. Rotation"
 echo "2. Some other issues that may not be mentioned"
 echo "3. Jailbreaking"
+if [[ $VERSION == 14.* ]]; then
+    echo "4. Camera"
+fi
 echo "What works:"
 echo "1. Native device activation via Apple's Servers"
-echo "2. Flashlight, and partial camera functionality (rear camera capturing is broken, front capturing 100% works)"
+if [[ $VERSION == 14.* ]]; then
+    echo "2. Flashlight"
+else
+    echo "2. Flashlight, and partial camera functionality (rear camera capturing is broken, front capturing 100% works)"
+fi
 echo "3. Wi-Fi"
 echo "4. Audio"
 echo "5. Bluetooth (partially, but not confirmed to 100% work)"
@@ -5448,16 +5493,18 @@ echo "After installing iOS 13, you must do a clean restore to head back to iOS 1
 echo ""
 echo "Options:"
 echo ""
-echo "1. Select Target IPSW (iPod touch 7, 13.x)"
+echo "1. Select Target IPSW (iPod touch 7, 13.x/14.0 beta 2)"
 echo "2. Select Base IPSW (iPod touch 6, $LATEST_VERSION)"
-echo "3. Select Donor IPSW (iPad mini 4, 13.x)"
-echo "4. Install iOS 13"
+echo "3. Select Donor IPSW (iPad mini 4, 13.x/14.0 beta 2)"
+echo "4. Install iOS 13 / 14.0 beta 2"
 echo "5. Back"
 read -p "Please input an option (1-4): " touch6_opts_select
 if [[ $touch6_opts_select == 1 ]]; then
     ipsw_selector target
-    if [[ $VERSION != 13.* ]]; then
-        echo "Only iOS 13 IPSW is allowed!"
+    if [[ $VERSION == 14.0 && $BUILD == 18A5319i ]]; then
+        echo "iOS 14.0b2 experimental support"
+    elif [[ $VERSION != 13.* ]]; then
+        echo "Only iOS 13 or 14.0 beta 2 IPSW is allowed!"
         exit 1
     fi
     opts_menu_ipodtouch6_ios13
@@ -5712,7 +5759,7 @@ if [[ $IDENTIFIER == iPad5,1 ]]; then
     read -p "Please input an option (1-6): " restore_options
 elif [[ $IDENTIFIER == iPod7,1 ]]; then
     # add special option
-    echo "5. Install iOS 13"
+    echo "5. Install iOS 13 / 14.0 beta 2"
     echo "6. Back"
     read -p "Please input an option (1-6): " restore_options
 else
