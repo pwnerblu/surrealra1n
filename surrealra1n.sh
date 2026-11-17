@@ -552,7 +552,7 @@ fetch_firmware() {
         return 0
     elif [[ $override_because_mini4_16 == 1 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
         mkdir -p firmware_downloads/$IDENTIFIER
-        IPSW_PATH="firmware_downloads/$IDENTIFIER/20A5303i.ipsw"
+        IPSW_PATH="firmware_downloads/$IDENTIFIER/$download_version.ipsw"
 
         if [ -f "$IPSW_PATH" ]; then
             echo "IPSW file already exists at $IPSW_PATH"
@@ -563,7 +563,13 @@ fetch_firmware() {
             VERSION=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
             return 0
         fi
-        url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-26209/175A6A7C-6E52-438A-8326-FC9DFEBB4E20/iPad_64bit_TouchID_ASTC_16.0_20A5303i_Restore.ipsw"
+        if [[ $download_version == 16.0b2 ]]; then
+            url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-26209/175A6A7C-6E52-438A-8326-FC9DFEBB4E20/iPad_64bit_TouchID_ASTC_16.0_20A5303i_Restore.ipsw"
+        elif [[ $download_version == 16.1 ]]; then
+            url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-93170/0E98AA01-052C-470B-9A14-7D610C1A97C6/iPad_64bit_TouchID_ASTC_16.1_20B82_Restore.ipsw"
+        elif [[ $download_version == 16.1.1 ]]; then
+            url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-96729/5F958E1B-4510-4755-B4C0-8AC5ED286F73/iPad_64bit_TouchID_ASTC_16.1.1_20B101_Restore.ipsw"
+        fi
 
         echo "Downloading firmware..."
         echo "Source: $url"
@@ -727,7 +733,12 @@ ipsw_selector(){
                 echo "If you want to Download iOS14.0 beta4(18A5342e) IPSW, Please enter 18A5342e below"
             fi
             if [[ $override_because_mini4_16 == 1 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
-                download_version="20A5303i"
+                read -p "Which 16.x version would you like to download: " download_version
+                if [[ $download_version != 16.* ]]; then
+                    echo "Version inputted is not 16.x!"
+                    echo "Not continuing!"
+                    exit 1
+                fi
             else
                 read -p "Which version would you like to download: " download_version
             fi
@@ -852,15 +863,11 @@ elif [[ $dist == 3 ]]; then
     curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
     gcc kerneldiff.c -o bin/kerneldiff2
     rm -rf kerneldiff.c
-    curl -L -o pmupatcher.c https://gist.githubusercontent.com/pwnerblu/26db9c4dcdfa45b40df3fc5d4bd60d7b/raw/0967b447bf7cdbabc2c78c6da9f02a7951a7090b/pmuhax.c
-    gcc pmupatcher.c -o bin/pmupatcher
-    rm -rf pmupatcher.c
-    curl -L -o sandbox.c https://gist.githubusercontent.com/pwnerblu/e5f470b786f7da4a1d3abd45fa1da475/raw/bc5451dab2bac43b75a298ddad87240840236364/sandbox.c
-    gcc sandbox.c -o bin/sbxpatcher
-    rm -rf sandbox.c
-    curl -L -o mtpatcher.c https://gist.githubusercontent.com/pwnerblu/7d7e6553f6a9c6943fe128bef0e9f4fe/raw/36937c78761948bfa35c233534e89eb38541bdc6/touchfix.c
-    gcc mtpatcher.c -o bin/mtkextpatcher
-    rm -rf mtpatcher.c
+    git clone https://github.com/pwnerblu/ipadmini4-ipados16-patches
+    gcc ipadmini4-ipados16-patches/pmuhax.c -o bin/pmupatcher
+    gcc ipadmini4-ipados16-patches/sandboxpatcher.c -o bin/sbxpatcher
+    gcc ipadmini4-ipados16-patches/touch-kextfix.c -o bin/mtkextpatcher
+    rm -rf "ipadmini4-ipados16-patches"
     #
     curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
@@ -1009,15 +1016,11 @@ elif [[ $dist == 4 ]]; then
     curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
     gcc kerneldiff.c -o bin/kerneldiff2
     rm -rf kerneldiff.c
-    curl -L -o pmupatcher.c https://gist.githubusercontent.com/pwnerblu/26db9c4dcdfa45b40df3fc5d4bd60d7b/raw/0967b447bf7cdbabc2c78c6da9f02a7951a7090b/pmuhax.c
-    gcc pmupatcher.c -o bin/pmupatcher
-    rm -rf pmupatcher.c
-    curl -L -o sandbox.c https://gist.githubusercontent.com/pwnerblu/e5f470b786f7da4a1d3abd45fa1da475/raw/bc5451dab2bac43b75a298ddad87240840236364/sandbox.c
-    gcc sandbox.c -o bin/sbxpatcher
-    rm -rf sandbox.c
-    curl -L -o mtpatcher.c https://gist.githubusercontent.com/pwnerblu/7d7e6553f6a9c6943fe128bef0e9f4fe/raw/36937c78761948bfa35c233534e89eb38541bdc6/touchfix.c
-    gcc mtpatcher.c -o bin/mtkextpatcher
-    rm -rf mtpatcher.c
+    git clone https://github.com/pwnerblu/ipadmini4-ipados16-patches
+    gcc ipadmini4-ipados16-patches/pmuhax.c -o bin/pmupatcher
+    gcc ipadmini4-ipados16-patches/sandboxpatcher.c -o bin/sbxpatcher
+    gcc ipadmini4-ipados16-patches/touch-kextfix.c -o bin/mtkextpatcher
+    rm -rf "ipadmini4-ipados16-patches"
     #
     curl -L -o bin/dtree_patcher https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/dtree_patcher
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
@@ -5027,6 +5030,7 @@ sudo mv -v $IBEC work/
 ./bin/kerneldiff work/kernel.raw work/kernel.patch2 work/kernel.diff
 ./bin/img4 -i work/kernelcache.release.j42d -o $sshrd_path/kernel.img4 -M $im4m -T rkrn -P work/kernel.diff
 rm -rf "work"
+echo "$VERSION" > boot/$ECID.txt
 
 }
 
@@ -5049,7 +5053,7 @@ sudo mv -v $IBEC work/
 ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
 ./bin/img4 -i work/$IBEC -o work/iBEC.raw -k $IBEC_KEY
 ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patched
-./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched -b "-v wdt=-1 $disk" -l
+./bin/iBoot64Patcher work/iBEC.raw work/iBEC.patched -b "wdt=-1 $disk" -l
 ./bin/img4 -i work/iBSS.patched -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
 ./bin/img4 -i work/iBEC.patched -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
 rm -rf "work"
@@ -5173,10 +5177,14 @@ echo "Attempting to make first boot quicker"
 ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Library/DataClassMigrators/PassbookDataMigrator.migrator/ || true"
 ./bin/sshpass -p "alpine" ssh root@127.0.0.1 -p2222 -o StrictHostKeyChecking=no "rm -rf /mnt8/System/Library/DataClassMigrators/SystemAppMigrator.migrator/ || true"
 im4m="$IDENTIFIER-im4m"
-echo "Preparing kernelcaches"
+echo "Preparing kernelcache and DeviceTree"
 ./bin/sshpass -p "alpine" scp -P2222 root@localhost:/mnt6/$active/System/Library/Caches/com.apple.kernelcaches/kernelcache work/kernelcache
 ./bin/img4tool -e work/kernelcache -m $im4m
-tvos_url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-30801/8496544E-3794-4361-AF13-F874BF7378AC/AppleTV5,3_16.0_20J5319h_Restore.ipsw"
+if [[ $BUILD == 20A5303i ]]; then
+    tvos_url="https://updates.cdn-apple.com/2022SummerSeed/fullrestores/012-30801/8496544E-3794-4361-AF13-F874BF7378AC/AppleTV5,3_16.0_20J5319h_Restore.ipsw"
+elif [[ $VERSION == 16.1* ]]; then
+    tvos_url="https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-37047/221EE266-BE62-456A-9A17-4C89A98A7E97/AppleTV5,3_16.1_20K71_Restore.ipsw"
+fi
 ( cd work && sudo ../bin/pzb -g kernelcache.release.j42d $tvos_url )
 # patch kernel so touch stuff works
 ./bin/img4 -i work/kernelcache.release.j42d -o work/kernel.raw
@@ -5553,8 +5561,12 @@ read -p "Please input an option (1-3): " mini4_opts_16
 if [[ $mini4_opts_16 == 1 ]]; then
     override_because_mini4_16="1" # set this to 1.
     ipsw_selector target
-    if [[ $BUILD != 20A5303i ]]; then
+    if [[ $VERSION == 16.0* && $BUILD != 20A5303i ]]; then
         echo "Only iPadOS 16.0 beta 2 is supported."
+        exit 1
+    fi
+    if [[ $VERSION != 16.* ]]; then
+        echo "iPadOS 16 IPSW is required"
         exit 1
     fi
     opts_menu_mini4_ipados16
