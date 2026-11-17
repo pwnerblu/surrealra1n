@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 7"
+CURRENT_VERSION="v2.3 beta 7 re-release"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -3475,7 +3475,7 @@ fi
 if [[ $LATEST_VERSION == 18.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
 elif [[ $LATEST_VERSION == 27.* ]]; then
-    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 244000000)
+    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 246000000)
 elif [[ $LATEST_VERSION == 26.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 232784000)
 fi
