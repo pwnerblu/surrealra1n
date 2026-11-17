@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 3"
+CURRENT_VERSION="v2.3 beta 7"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -22,6 +22,20 @@ VERSION_LATEST=""
 BREW_MIN="15.0"
 outdated=""
 override_because_mini4_16="0"
+do_not_use_libdmg_apfs="0" # 0 = libdmg-apfs (apfs-tool, default), 1 = DEPRECATED linux-apfs-rw
+
+# Command line flags
+for arg in "$@"; do
+    case "$arg" in
+        --legacy-apfs-handling)
+            # DEPRECATED: use the linux-apfs-rw kernel module instead of libdmg-apfs
+            do_not_use_libdmg_apfs="1"
+            ;;
+        *)
+            echo "[!] Unknown option: $arg (ignored)"
+            ;;
+    esac
+done
 
 set -euo pipefail
 
@@ -113,6 +127,7 @@ sudo -v || exit 1
 sudo rm -rf "tmp"
 sudo rm -rf "tmp1"
 sudo rm -rf "tmp2"
+sudo rm -rf "tmp3"
 sudo rm -rf "work"
 sudo rm -rf "tarwork"
 
@@ -170,6 +185,20 @@ elif [[ -r /etc/os-release ]]; then
         dist=5
         echo "Unrecognized distro; treating as Fedora-based (zypper detected, using dnf flow)."
         read -n 1 -s -r -p "Press any key to continue"
+    fi
+fi
+
+if [[ $do_not_use_libdmg_apfs == 1 ]]; then
+    if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
+        echo ""
+        echo "WARNING: --legacy-apfs-handling was passed, linux-apfs-rw will be used instead of libdmg-apfs."
+        echo "WARNING: Linux-apfs-rw implementation is DEPRECATED and will no longer get support."
+        echo "WARNING: It is scheduled to be removed eventually."
+        echo "         Relaunch surrealra1n without --legacy-apfs-handling to use libdmg-apfs instead."
+        echo ""
+        read -p "Press enter to continue"
+    elif [[ $dist == 3 || $dist == 4 ]]; then
+        echo "NOTE: --legacy-apfs-handling has no effect on macOS (hdiutil is always used)."
     fi
 fi
 
@@ -688,6 +717,15 @@ ipsw_selector(){
                 echo "Invalid IPSW. You must select IPSW for iOS $LATEST_VERSION, not iOS $VERSION_LATEST"
                 exit 1
             fi
+        elif [[ $1 == "donor" ]]; then
+            IPSW_PATH_DONOR=$(pick_file "Select an IPSW file")
+            if [[ -z "$IPSW_PATH_DONOR" ]]; then
+                echo "No IPSW selected. Aborting."
+                exit 1
+            fi
+            rm -rf work/BuildManifest.plist
+            unzip -j "$IPSW_PATH_DONOR" "BuildManifest.plist" -d work
+            VERSION_DONOR=$(grep -A1 "ProductVersion" work/BuildManifest.plist | grep -o '<string>[^<]*</string>' | head -1 | sed 's/<[^>]*>//g')
         fi
     elif [[ $fw_select_opts == 2 ]]; then
         if [[ $1 == "target" ]]; then
@@ -835,6 +873,9 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
@@ -908,9 +949,32 @@ elif [[ $dist == 3 ]]; then
         cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
+        # compile libdmg-apfs from source
+        git clone https://github.com/LukeZGD/libdmg-apfs
+        cd libdmg-apfs
+        make
+        cp -v build/apfs-tool ../bin/apfs-tool
+        cp -v build/dmg ../bin/apfs-dmg
+        cd ..
+        rm -rf "libdmg-apfs"
+        git clone https://github.com/pwnerblu/ipodtouch6-ios13
+        gcc ipodtouch6-ios13/pmuhax.c -o bin/pmuipodhax
+        gcc ipodtouch6-ios13/kextport.c -o bin/kextport
+        gcc ipodtouch6-ios13/mthax.c -o bin/mthaxipod
+        gcc ipodtouch6-ios13/bluetoothdhax.c -o bin/bluetoothdpatcher
+        gcc ipodtouch6-ios13/wifihax.c -o bin/wifihax
+        # ios 14 beta 2
+        gcc ipodtouch6-ios13/pmuhax-iOS14.c -o bin/pmuipodhax-14
+        gcc ipodtouch6-ios13/kextport-iOS14.c -o bin/kextport-14
+        gcc ipodtouch6-ios13/mthax-iOS14.c -o bin/mthaxipod-14
+        gcc ipodtouch6-ios13/bluetoothdhax-iOS14.c -o bin/bluetoothdpatcher-14
+        gcc ipodtouch6-ios13/wifihax-iOS14.c -o bin/wifihax-14
+        gcc ipodtouch6-ios13/restoredpatcher-iOS14.c -o bin/skipssv
+        rm -rf "ipodtouch6-ios13"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/ipwnder https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipwnder
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_arm64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
@@ -962,6 +1026,9 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/irecovery https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/irecovery
     curl -L -o bin/iBoot64Patcher https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Darwin/iBoot64Patcher
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
@@ -1035,9 +1102,32 @@ elif [[ $dist == 4 ]]; then
         cp iBootpatch2 ../bin/iBootpatch3
         cd ..
         rm -rf "iBootpatch2"
+        # compile libdmg-apfs from source
+        git clone https://github.com/LukeZGD/libdmg-apfs
+        cd libdmg-apfs
+        make
+        cp -v build/apfs-tool ../bin/apfs-tool
+        cp -v build/dmg ../bin/apfs-dmg
+        cd ..
+        rm -rf "libdmg-apfs"
+        git clone https://github.com/pwnerblu/ipodtouch6-ios13
+        gcc ipodtouch6-ios13/pmuhax.c -o bin/pmuipodhax
+        gcc ipodtouch6-ios13/kextport.c -o bin/kextport
+        gcc ipodtouch6-ios13/mthax.c -o bin/mthaxipod
+        gcc ipodtouch6-ios13/bluetoothdhax.c -o bin/bluetoothdpatcher
+        gcc ipodtouch6-ios13/wifihax.c -o bin/wifihax
+        # ios 14 beta 2
+        gcc ipodtouch6-ios13/pmuhax-iOS14.c -o bin/pmuipodhax-14
+        gcc ipodtouch6-ios13/kextport-iOS14.c -o bin/kextport-14
+        gcc ipodtouch6-ios13/mthax-iOS14.c -o bin/mthaxipod-14
+        gcc ipodtouch6-ios13/bluetoothdhax-iOS14.c -o bin/bluetoothdpatcher-14
+        gcc ipodtouch6-ios13/wifihax-iOS14.c -o bin/wifihax-14
+        gcc ipodtouch6-ios13/restoredpatcher-iOS14.c -o bin/skipssv
+        rm -rf "ipodtouch6-ios13"
     fi
     # done!
     curl -L -o bin/gaster https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/gaster
+    curl -L -o bin/ipwnder https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/ipwnder
     curl -L -o bin/tsschecker https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/tsschecker
     curl -L -o bin/ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
     curl -L -o bin/kairos https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/kairos
@@ -1079,6 +1169,12 @@ else
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/irecovery" "bin/irecovery" 1024
     download_with_retry "https://github.com/edwin170/downr1n/raw/refs/heads/main/binaries/Linux/iBoot64Patcher" "bin/iBoot64Patcher" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher" "bin/Kernel64Patcher2" 1024
+    # compile sep-bridge by dethr1der
+    gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
+    gcc kerneldiff.c -o bin/kerneldiff2
+    rm -rf kerneldiff.c
+    #
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus" "bin/hfsplus" 1024
     # sshpass
     # iboot patcher oops
@@ -1099,6 +1195,14 @@ else
     cp iBootpatch2 ../bin/iBootpatch2
     cd ..
     rm -rf "iBootpatch2"
+    # compile libdmg-apfs from source
+    git clone https://github.com/LukeZGD/libdmg-apfs
+    cd libdmg-apfs
+    make
+    cp -v build/apfs-tool ../bin/apfs-tool
+    cp -v build/dmg ../bin/apfs-dmg
+    cd ..
+    rm -rf "libdmg-apfs"
     download_with_retry "https://github.com/appleiPodTouch4/spironolactone/raw/refs/heads/main/Linux/x86_64/iBoot64patcher_cryptic" "bin/iBoot64Patcher2" 1024
     download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/linux/x86_64/sshpass" "bin/sshpass" 1024
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/iproxy" "bin/iproxy" 1024
@@ -1626,11 +1730,11 @@ if [[ $IDENTIFIER == iPad5* ]]; then
 elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
-    LATEST_VERSION="18.7.10"
+    LATEST_VERSION="18.7.12"
 elif [[ $IDENTIFIER == iPhone12* ]]; then
-    LATEST_VERSION="27.0.1"
+    LATEST_VERSION="27.2.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
-    LATEST_VERSION="26.7.1"
+    LATEST_VERSION="26.7.3"
 else
     LATEST_VERSION="12.5.8"
 fi
@@ -1845,7 +1949,11 @@ elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == i
     read -p "Press enter to continue once device is pwned successfully AND reconnected to the computer"
 else
     echo "Device is not pwned yet, attempting to pwn"
-    ./bin/gaster pwn 
+    if [[ $IDENTIFIER == iPhone6* || $IDENTIFIER == iPad4* ]] && [[ $dist == 3 || $dist == 4 ]]; then
+        ./bin/ipwnder -p
+    else
+        ./bin/gaster pwn 
+    fi
     ./bin/gaster reset
     if [[ $IDENTIFIER == iPhone10,3 || $IDENTIFIER == iPhone10,6 ]]; then
         ./bin/irecovery -f surrealra1n.sh
@@ -2153,19 +2261,20 @@ sudo mv -v sep-firmware.j42d.RELEASE.im4p $sep_path
 
 }
 
-download_tvos26_sep(){
+download_tvos13_sep(){
 
 mkdir -p tmp
 sep_path="tmp/sep-firmware.j42d.RELEASE.im4p"
 manifest_path="tmp/BuildManifest-SEP.plist"
-sep_ipsw="https://updates.cdn-apple.com/2026SummerFCS/fullrestores/140-67287/F525C1FF-B49B-40AB-A5F4-A6F4A4847407/AppleTV5,3_26.6_23L773_Restore.ipsw"
+sep_ipsw="https://updates.cdn-apple.com/2026SummerFCS/fullrestores/142-23175/686B5890-EE38-4DFD-9A0D-6848A994D337/AppleTV5,3_26.6.1_23L781_Restore.ipsw"
+curl -L -o tmp/BuildManifest-SEP.plist https://github.com/pwnerblu/cursed-sep-resources/raw/refs/heads/main/BuildManifest-$IDENTIFIER.plist
 sudo ./bin/pzb -g BuildManifest.plist $sep_ipsw
 sudo ./bin/pzb -g Firmware/all_flash/sep-firmware.j42d.RELEASE.im4p $sep_ipsw
 sudo mv -v sep-firmware.j42d.RELEASE.im4p $sep_path
-sudo mv -v BuildManifest.plist $sep_path/BuildManifest-SEP.plist
-sudo plutil -replace BuildIdentities.0.Info.DeviceClass -string $BOARDID $manifest_path
-sudo plutil -replace BuildIdentities.1.Info.DeviceClass -string $BOARDID $manifest_path
-sudo plutil -replace BuildIdentities.2.Info.DeviceClass -string $BOARDID $manifest_path
+sudo mv -v BuildManifest.plist $manifest_path
+sudo plutil -replace BuildIdentities.0.Info.DeviceClass -string "$BOARDID" $manifest_path
+sudo plutil -replace BuildIdentities.1.Info.DeviceClass -string "$BOARDID" $manifest_path
+sudo plutil -replace BuildIdentities.2.Info.DeviceClass -string "$BOARDID" $manifest_path
 
 }
 
@@ -2203,6 +2312,10 @@ prepatch_ibssibec_fr(){
 sudo mkdir -p /tmp/futurerestore
 mkdir -p work
 ./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
+if [[ $IDENTIFIER == iPod7* && $VERSION == 13.* || $VERSION == 14.* ]]; then
+    IPSW_PATH="$restoredir/custom.ipsw"
+    BUILD="16H88"   
+fi
 im4m="$IDENTIFIER-im4m"
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
 IBEC_KEY=$(grep "ibec-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -2698,7 +2811,21 @@ rm -rf "work"
 
 }
 
-# ---- Linux APFS helpers (EXPERIMENTAL) ----
+# THIS IS DEPRECATED IN FAVOR OF LIBDMG-APFS INSTEAD!
+# Only reachable when running surrealra1n like this: ./surrealra1n.sh --legacy-apfs-handling
+# (which sets do_not_use_libdmg_apfs=1). Every entry point below refuses to run otherwise.
+# But it is a LOT better to just not use linux-apfs-rw, it has issues on some setups, and isn't worth the hassle.
+# Linux-apfs-rw implementation will no longer get support and is scheduled to be removed eventually.
+#
+# require_legacy_apfs - abort unless the legacy override flag was given.
+require_legacy_apfs() {
+    if [[ $do_not_use_libdmg_apfs != 1 ]]; then
+        echo "[!] linux-apfs-rw is deprecated and only available with --legacy-apfs-handling."
+        exit 1
+    fi
+}
+#
+# ---- Linux APFS helpers (DEPRECATED, EXPERIMENTAL) ----
 # iOS 16.1+ restore ramdisks are raw APFS containers, which the Linux hfsplus
 # CLI cannot open (it only handles the HFS+ ramdisks used up to iOS 16.0.x).
 # On Linux these ramdisks are patched by mounting them through the
@@ -2756,6 +2883,7 @@ setup_apfs_module() {
     if [[ $dist == 3 || $dist == 4 ]]; then
         return
     fi
+    require_legacy_apfs
     mkdir -p apfs
     if [[ -f apfs/apfs.ko && -f apfs/apfs.kernel ]] && [[ "$(cat apfs/apfs.kernel 2>/dev/null)" == "$(uname -r)" ]]; then
         echo "Found APFS kernel module built for kernel $(uname -r)."
@@ -2815,6 +2943,7 @@ setup_apfs_module() {
 # loop device using the apfs kernel module. The loop device and mountpoint are
 # recorded in $APFS_TRACK_FILE so cleanup_apfs can undo them.
 apfs_mount() {
+    require_legacy_apfs
     local img="$1" mnt="$2" mode="${3:-ro}"
     local opts="ro"
     if [[ $mode == "rw" ]]; then
@@ -2864,29 +2993,9 @@ make_custom_ipsw_a12_ios16(){
 
 # iOS 16.0.x is supported on both macOS and Linux (the restore ramdisk is HFS+)
 # iOS 16.1+ restore ramdisks use APFS, which the Linux hfsplus CLI cannot handle.
-# On Linux we patch APFS ramdisks through the experimental linux-apfs-rw kernel
-# module, so iOS 16.1+ restores on Linux are EXTREMELY EXPERIMENTAL.
-if [[ $dist == 3 || $dist == 4 ]]; then
-    echo ""
-elif [[ $VERSION == 16.0* ]]; then
-    echo "iOS 16.0.x A12/A13 downgrade on Linux"
-else
-    echo ""
-    echo "WARNING: iOS 16.1+ restores on Linux are experimental. Proceed with caution."
-    echo ""
-    echo "This functionality is brand new and has NOT received the same level of testing as the"
-    echo "macOS implementation. It patches the APFS restore ramdisk by building and loading the"
-    echo "experimental linux-apfs-rw kernel module, whose write support can potentially corrupt"
-    echo "the ramdisk. A failed or interrupted restore may leave your device requiring recovery"
-    echo "or a full restore, and this experimental Linux support is NOT equivalent in reliability"
-    echo "to the established macOS implementation."
-    echo ""
-    read -p "Type YES to continue, anything else to abort: " apfs_consent
-    if [[ $apfs_consent != YES ]]; then
-        echo "Aborting."
-        exit 1
-    fi
-fi
+# On Linux, libdmg-apfs (bin/apfs-tool) is used for patching restore ramdisk!
+# LINUX-APFS-RW functionality is entirely deprecated, and only used when
+# do_not_use_libdmg_apfs=1 (--legacy-apfs-handling).
 
 if [[ $VERSION == 17.* ]] && [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
     echo "iOS 17 downgrade is not supported on Linux at the moment."
@@ -2938,7 +3047,7 @@ restored="restored_external"
 if [[ $LATEST_VERSION == 18.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
 elif [[ $LATEST_VERSION == 27.* ]]; then
-    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 244000000)
+    restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 246000000)
 elif [[ $LATEST_VERSION == 26.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 232784000)
 fi
@@ -3122,28 +3231,47 @@ if [[ $dist == 3 || $dist == 4 ]]; then
     # pack rdsk into im4p
     ./bin/img4 -i work/ramdisk.dmg -o $restore_ramdisk_dmg_18 -A -T rdsk
 else
-    # Linux: use the hfsplus CLI for HFS+ ramdisks (iOS 16.0.x), or mount APFS
-    # ramdisks (iOS 16.1+) through the linux-apfs-rw kernel module, mirroring the
-    # hdiutil attach flow used on macOS. The filesystem type is detected
-    # automatically from the ramdisk contents.
+    # Linux: use the hfsplus CLI for HFS+ ramdisks (iOS 16.0.x), and libdmg-apfs
+    # (bin/apfs-tool, same command set as hfsplus) for APFS ramdisks (iOS 16.1+).
+    # The DEPRECATED linux-apfs-rw kernel module path is only used when
+    # do_not_use_libdmg_apfs=1 (--legacy-apfs-handling). The filesystem type is
+    # detected automatically from the ramdisk contents.
     ./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
     ramdisk_fs=$(detect_fs_type work/ramdisk.raw)
+    # rd_tool: userspace tool used for this ramdisk ("" = legacy linux-apfs-rw mount)
+    # rd_mode: chmod mode syntax (hfsplus wants the full st_mode, apfs-tool wants permission bits)
+    rd_tool=""
+    rd_mode=""
     if [[ $ramdisk_fs == "HFS" ]]; then
-        ./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+        rd_tool="./bin/hfsplus"
+        rd_mode="100755"
+    elif [[ $ramdisk_fs == "APFS" ]] && [[ $do_not_use_libdmg_apfs != 1 ]]; then
+        if [[ ! -x ./bin/apfs-tool ]]; then
+            echo "[!] bin/apfs-tool (libdmg-apfs) is missing. Re-run surrealra1n so dependencies are rebuilt."
+            exit 1
+        fi
+        echo "Patching APFS restore ramdisk with libdmg-apfs (apfs-tool)..."
+        rd_tool="./bin/apfs-tool"
+        rd_mode="755"
+    fi
+    if [[ -n $rd_tool ]]; then
+        $rd_tool work/ramdisk.raw extract usr/sbin/asr work/asr
         ./bin/asr64_patcher work/asr work/asr_patched
         ./bin/ldid -e work/asr > work/ents.plist
         ./bin/ldid -Swork/ents.plist work/asr_patched
-        ./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr
-        ./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
-        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+        $rd_tool work/ramdisk.raw rm usr/sbin/asr
+        $rd_tool work/ramdisk.raw add work/asr_patched usr/sbin/asr
+        $rd_tool work/ramdisk.raw chmod $rd_mode usr/sbin/asr
         #
-        ./bin/hfsplus work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
+        $rd_tool work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4.dylib
         ./bin/libimg4_patcher work/libimg4.dylib work/libimg4.patch
         ./bin/ldid -Swork/ents.plist work/libimg4.patch
-        ./bin/hfsplus work/ramdisk.raw rm usr/lib/libimg4.dylib
-        ./bin/hfsplus work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
-        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/lib/libimg4.dylib
+        $rd_tool work/ramdisk.raw rm usr/lib/libimg4.dylib
+        $rd_tool work/ramdisk.raw add work/libimg4.patch usr/lib/libimg4.dylib
+        $rd_tool work/ramdisk.raw chmod $rd_mode usr/lib/libimg4.dylib
     elif [[ $ramdisk_fs == "APFS" ]]; then
+        # DEPRECATED: linux-apfs-rw (only with --legacy-apfs-handling)
+        echo "WARNING: Using DEPRECATED linux-apfs-rw to patch the restore ramdisk."
         setup_apfs_module
         mkdir -p work/rdmnt
         apfs_mount work/ramdisk.raw work/rdmnt rw
@@ -3187,7 +3315,10 @@ else
     ( cd work && sudo ../bin/pzb -g $ramdisk_dmg $ramdisk_ipsw_url )
     ./bin/img4 -i work/$ramdisk_dmg -o work/ramdisk2.raw
     ramdisk2_fs=$(detect_fs_type work/ramdisk2.raw)
-    if [[ $ramdisk2_fs == "APFS" ]]; then
+    if [[ $ramdisk2_fs == "APFS" ]] && [[ $do_not_use_libdmg_apfs != 1 ]]; then
+        ./bin/apfs-tool work/ramdisk2.raw extract usr/local/bin/restored_external work/restored_external
+    elif [[ $ramdisk2_fs == "APFS" ]]; then
+        # DEPRECATED: linux-apfs-rw (only with --legacy-apfs-handling)
         mkdir -p work/rdmnt2
         apfs_mount work/ramdisk2.raw work/rdmnt2 ro
         cp -v work/rdmnt2/usr/local/bin/restored_external work/restored_external
@@ -3207,7 +3338,27 @@ else
     fi
     ./bin/ldid -e work/restored_external > work/ents.plist
     ./bin/ldid -Swork/ents.plist work/restored_patch
-    if [[ $ramdisk_fs == "APFS" ]]; then
+    if [[ -n $rd_tool ]]; then
+        $rd_tool work/ramdisk.raw rm usr/local/bin/restored_external
+        $rd_tool work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+        $rd_tool work/ramdisk.raw chmod $rd_mode usr/local/bin/restored_external
+        if [[ $ramdisk_fs == "APFS" ]]; then
+            # read the patched files back out of the image and make sure they
+            # match before packing the ramdisk
+            $rd_tool work/ramdisk.raw extract usr/sbin/asr work/asr_verify
+            $rd_tool work/ramdisk.raw extract usr/lib/libimg4.dylib work/libimg4_verify
+            $rd_tool work/ramdisk.raw extract usr/local/bin/restored_external work/restored_verify
+            if ! cmp -s work/asr_verify work/asr_patched || \
+               ! cmp -s work/libimg4_verify work/libimg4.patch || \
+               ! cmp -s work/restored_verify work/restored_patch; then
+                echo "[!] APFS ramdisk verification failed after write (libdmg-apfs)."
+                echo "    The ramdisk was NOT packed. Please report this with a full log."
+                exit 1
+            fi
+            echo "APFS ramdisk write verified OK."
+        fi
+    elif [[ $ramdisk_fs == "APFS" ]]; then
+        # DEPRECATED: linux-apfs-rw (only with --legacy-apfs-handling)
         rm -rf work/rdmnt/usr/local/bin/restored_external
         cp -v work/restored_patch work/rdmnt/usr/local/bin/restored_external
         chmod 755 work/rdmnt/usr/local/bin/restored_external
@@ -3230,10 +3381,6 @@ else
             exit 1
         fi
         echo "APFS ramdisk write verified OK."
-    else
-        ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
-        ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
-        ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
     fi
     # restored end
     ./bin/img4 -i tmp1/Firmware/$ramdisk_dmg_name.trustcache -o work/trustcache.raw
@@ -3251,9 +3398,9 @@ rm -rf "tmp1"
 rm -rf "tmp2"
 mv -v custom.ipsw $restoredir/custom.ipsw
 rm -rf "work"
-if [[ $dist == 1 || $dist == 2 || $dist == 5 ]] && [[ $VERSION != 16.0* ]]; then
-    # only needed on linux
-    sudo rmmod apfs
+if [[ $dist == 1 || $dist == 2 || $dist == 5 ]] && [[ $do_not_use_libdmg_apfs == 1 ]] && lsmod 2>/dev/null | grep -q "^apfs "; then
+    # only needed on linux when the DEPRECATED linux-apfs-rw module was loaded
+    sudo rmmod apfs || true
 fi
 
 }
@@ -3511,7 +3658,7 @@ fi
 sleep 5
 echo "Sending iBEC"
 ./bin/irecovery -f $bootdir/iBEC.img4
-if [[ $IDENTIFIER == iPad5* ]] && [[ $VERSION == 16.* ]]; then
+if [[ $IDENTIFIER == iPad5* && $VERSION == 16.* ]]; then
     echo "Device should now boot"
     exit 0
 fi
@@ -3573,7 +3720,7 @@ mkdir -p boot/$IDENTIFIER/$VERSION
 if [[ $VERSION == 12.* || $VERSION == 13.* || $VERSION == 14.* || $VERSION == 15.* ]]; then
     unzip -j "$IPSW_PATH" "Firmware/*.dmg.trustcache" -d work
     trustcache_use=$(ls -S work/*.trustcache 2>/dev/null | head -n 1)
-    ./bin/img4 -i $trustcache_use -o $bootdir/Trustcache.img4
+    ./bin/img4 -i $trustcache_use -o $bootdir/Trustcache.img4 -T rtsc -M $im4m
 fi
 unzip -j "$IPSW_PATH" "$krnl" -d work
 ./bin/$ibootpatcher work/iBSS.raw work/iBSS.patch
@@ -3581,6 +3728,10 @@ unzip -j "$IPSW_PATH" "$krnl" -d work
 if [[ $IDENTIFIER == iPhone10* ]]; then
     ./bin/iBoot64Patcher work/iBSS.raw work/iBSS.patch -l -b "-v"
 fi
+#if [[ $IDENTIFIER == iPod7* && $VERSION == 13.* ]]; then
+#    mv -v work/iBEC.patch work/iBEC.patc
+#    ./bin/iBootpatch2 work/iBEC.patc work/iBEC.patch
+#fi
 ./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
 ./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
 ./bin/img4 -i work/$DEVICETREE -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
@@ -3723,7 +3874,7 @@ mkdir -p shsh
 mkdir -p boot
 ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 echo "$VERSION" > boot/$ECID.txt
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
@@ -3916,12 +4067,13 @@ elif [[ $VERSION == 16.* ]]; then
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
     echo "Since iOS 16 should activate normally, there is so need to head to iOS 13.x or iOS 14.0 beta 4."
     echo "Developer mode will also be enabled with this restore automatically, you do not need to manually enable it."
-    if [[ $dist != 3 && $dist != 4 ]] && [[ $VERSION != 16.0* ]]; then
+    if [[ $dist != 3 && $dist != 4 ]] && [[ $VERSION != 16.0* ]] && [[ $do_not_use_libdmg_apfs == 1 ]]; then
         echo ""
         echo "WARNING: iOS 16.1+ restores on Linux are experimental. Proceed with caution."
-        echo "This build patches the APFS restore ramdisk with the experimental linux-apfs-rw kernel"
-        echo "module. It has not received the same level of testing as the macOS implementation, and"
-        echo "a failed or interrupted restore may leave the device requiring recovery or restore."
+        echo "You launched with --legacy-apfs-handling, so this build patches the APFS restore ramdisk"
+        echo "with the DEPRECATED linux-apfs-rw kernel module instead of libdmg-apfs."
+        echo "Linux-apfs-rw implementation is DEPRECATED and will no longer get support. It is scheduled to be removed eventually."
+        echo "A failed or interrupted restore may leave the device requiring recovery or restore."
         echo ""
         read -p "Type YES to continue, anything else to abort: " apfs_consent
         if [[ $apfs_consent != YES ]]; then
@@ -4024,7 +4176,7 @@ fi
 echo "Fetching shsh blobs for iOS $LATEST_VERSION"
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4135,6 +4287,9 @@ fi
 rm -rf $rootfs_dmg
 # dyld patches
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    ./bin/hfsplus work/rootfs.raw grow $grow_to
+fi
+if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     if [[ $VERSION == 7.* ]]; then
         dsc_patch_version="-7"
     else
@@ -4154,9 +4309,6 @@ if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     rm -rf dyld.*
     ./bin/hfsplus work/rootfs.raw chmod 755 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus work/rootfs.raw chown 0:0 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
-fi
-if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
-    ./bin/hfsplus work/rootfs.raw grow $grow_to
 fi
 if [[ $VERSION == 8.* ]]; then
     # root filesystem patches + untethered jailbreak. containermanagerd patch is especially relevant, as it actually makes it so that iOS will boot even with incompatible SEP without seprmvr64 kernel patches.
@@ -4255,6 +4407,11 @@ else
     ECID_DEC="$ECID"
 fi
 
+if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
+    sep_bridge_use=1
+else
+    sep_bridge_use=0
+fi
 
 mkdir -p noseprestore/$IDENTIFIER/$VERSION
 IBSS_KEY=$(grep "ibss-$VERSION:" "$KEY_FILE" | cut -d':' -f2 | xargs)
@@ -4283,6 +4440,9 @@ rm -rf $rootfslatest_dmg
 ./bin/dmg extract $rootfs_dmg tmp1/rootfs.raw -k $ROOT_KEY
 # dyld patches
 if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
+    ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
+fi
+if [[ $VERSION == 7.* || $VERSION == 8.* ]] && [[ $sep_bridge_use == 0 ]]; then
     if [[ $VERSION == 7.* ]]; then
         dsc_patch_version="-7"
     else
@@ -4301,9 +4461,6 @@ if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
     ./bin/hfsplus tmp1/rootfs.raw chmod 755 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
     ./bin/hfsplus tmp1/rootfs.raw chown 0:0 System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
 fi
-if [[ $VERSION == 7.* || $VERSION == 8.* ]]; then
-    ./bin/hfsplus tmp1/rootfs.raw grow $grow_to
-fi
 if [[ $VERSION == 9.* ]]; then
     echo "Skipping removal of powerd"
 else
@@ -4311,7 +4468,7 @@ else
     echo "Removing powerd"
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/CoreServices/powerd.bundle/powerd
     ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.powerd.plist
-    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]]; then
+    if [[ $VERSION == 7.0* ]] && [[ $IDENTIFIER == iPhone6* ]] && [[ $sep_bridge_use == 0 ]]; then
         # fixes
         ./bin/hfsplus tmp1/rootfs.raw rm usr/libexec/biometrickitd
         ./bin/hfsplus tmp1/rootfs.raw rm System/Library/LaunchDaemons/com.apple.biometrickitd.plist
@@ -4354,20 +4511,9 @@ if [[ $JAILBREAK == 1 ]] && [[ $VERSION == 7.* ]]; then
     fi
     curl -L -o tmp1/freeze.tar.gz https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/freeze.tar.gz
     curl -L -o tmp1/untether.tar $untether
-    curl -L -o tmp1/substrate.tar https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/resources/jailbreak/cydiasubstrate.tar
-    curl -L -o tmp1/tweak.zip https://github.com/DevTweaker/Tweak/raw/refs/heads/main/scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb.zip
-    unzip tmp1/tweak.zip -d tmp1/tweak
-    ( cd tmp1/tweak && ar -x scs-wifi-fix-ios7_1.0.1_iphoneos-arm.deb )
-    gzip -d tmp1/tweak/data.tar.gz
     gzip -d tmp1/freeze.tar.gz
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/freeze.tar
     ./bin/hfsplus tmp1/rootfs.raw untar tmp1/untether.tar
-    # remove patcyh
-    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.plist
-    ./bin/hfsplus tmp1/rootfs.raw rm Library/MobileSubstrate/DynamicLibraries/patcyh.dylib
-    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/substrate.tar
-    # add Wi-Fi fixes, thanks to DevTweaker
-    ./bin/hfsplus tmp1/rootfs.raw untar tmp1/tweak/data.tar
     # stop stashing
     touch .cydia_no_stash
     ./bin/hfsplus tmp1/rootfs.raw add .cydia_no_stash .cydia_no_stash
@@ -4445,21 +4591,23 @@ unzip -j "$IPSW_PATH" "$KERNEL10" -d work
 ./bin/img4 -i work/iBSS.patch -o $bootdir/iBSS.img4 -A -T ibss -M $im4m
 ./bin/img4 -i work/iBEC.patch -o $bootdir/iBEC.img4 -A -T ibec -M $im4m
 ./bin/img4 -i work/DeviceTree.im4p -o $bootdir/DeviceTree.img4 -T rdtr -M $im4m
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/sepbridge patch kernel work/kernel.raw work/kernel.patch
+elif [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 8 -e 8 -f 8 -m 8 -g
 else
     ./bin/Kernel64Patcher2 work/kernel.raw work/kernel.patch -u 9 -f 9 -k -v
 fi
-./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/kerneldiff2 work/kernel.raw work/kernel.patch work/kernel.diff
+else
+    ./bin/kerneldiff work/kernel.raw work/kernel.patch work/kernel.diff
+fi
 ./bin/img4 -i work/kernel.im4p -o $bootdir/Kernelcache.img4 -T rkrn -P work/kernel.diff -J -M $im4m || true
 rm -rf "work"
 echo "Boot files have been created successfully! You may now boot, assuming the restore has succeeded."
-if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
-    echo "Keep in mind, it may take a few boot attempts for the Wi-Fi jailbreak tweak to work"
-    echo "Do not expect password protected Wi-Fi to connect instantly on Setup screen. You may need to head to the Home Screen first (and potentially do a few reboots), for the Wi-Fi tweak to work."
-fi
 
 }
 
@@ -4467,7 +4615,7 @@ do_regular_restore_seprmvr64(){
 
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4476,9 +4624,46 @@ if [[ -z "$SHSH_PATH" ]]; then
 fi
 ./bin/img4tool -s "$SHSH_PATH" -e -m "$IDENTIFIER-im4m"
 im4m="$IDENTIFIER-im4m"
-
+IBSS_KEY=$(grep "ibss-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+IBEC_KEY=$(grep "ibec-10.3:" "$KEY_FILE" | cut -d':' -f2 | xargs)
+if [[ $IDENTIFIER == iPhone7,2 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02962-20170327-7584E8B4-0D86-11E7-B580-8CCE122AC769/iPhone_4.7_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone7,1 ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02950-20170327-75843ACC-0D86-11E7-ACCC-80CE122AC769/iPhone_5.5_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad5* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02967-20170327-758827FE-0D86-11E7-9B30-90CE122AC769/iPad_64bit_TouchID_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPad4* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02965-20170327-758BACE4-0D86-11E7-9129-8ECE122AC769/iPad_64bit_10.3_14E277_Restore.ipsw"
+elif [[ $IDENTIFIER == iPhone6* ]]; then
+    ipsw_url="http://appldnld.apple.com/ios10.3/091-02949-20170327-7584B286-0D86-11E7-A4FA-7ECE122AC769/iPhone_4.0_64bit_10.3_14E277_Restore.ipsw"
+fi
+mkdir -p work
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
+( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBEC $ipsw_url )
+./bin/img4 -i work/$IBSS -o work/iBSS.dec -k $IBSS_KEY
+./bin/img4 -i work/$IBEC -o work/iBEC.dec -k $IBEC_KEY
+./bin/iBoot64Patcher work/iBSS.dec work/iBSS.patch
+./bin/iBoot64Patcher work/iBEC.dec work/iBEC.patch
+./bin/img4 -i work/iBSS.patch -o work/iBSS.img4 -A -T ibss -M $im4m
+./bin/img4 -i work/iBEC.patch -o work/iBEC.img4 -A -T ibec -M $im4m
 dfu_helper
 pwn_device
+sleep 5
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+mkdir -p boot
+echo "$VERSION" > boot/$ECID.txt
+./bin/irecovery -f work/iBSS.img4
+sleep 5
+./bin/irecovery -f work/iBEC.img4
+sleep 5
+echo "Checking if device is in Recovery mode"
+MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
+if [[ $MODE == Recovery ]]; then
+    echo "Device has been detected in Recovery mode."
+else
+    echo "Device not detected in Recovery. Exiting"
+    exit 1
+fi
 sleep 5
 ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
 mkdir -p boot
@@ -4545,11 +4730,18 @@ other_device(){
 ./bin/img4 -i tmp1/iBSS.patch -o tmp2/Firmware/dfu/$IBSS -A -T ibss
 ./bin/img4 -i tmp1/iBEC.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 ./bin/img4 -i tmp1/Firmware/all_flash/$ALLFLASH/$DEVICETREE -o tmp1/DeviceTree.raw -k $DTRE_KEY
-perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+if [[ $sep_bridge_use == 1 ]]; then
+    # No thank you.
+    echo "Content-protection patch? Not needed!"
+else
+    perl -pi -e 's/content-protect/content-protecV/g' tmp1/DeviceTree.raw
+fi
 ./bin/img4 -i tmp1/DeviceTree.raw -o tmp2/Firmware/all_flash/$DEVICETREE -A -T rdtr
 ./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.raw -k $KRNL_KEY
 ./bin/img4 -i tmp1/$KERNEL10 -o tmp1/kernel.im4p -k $KRNL_KEY -D
-if [[ $VERSION == 7.* ]]; then
+if [[ $VERSION == 7.0 && $IDENTIFIER == iPhone6,1 ]]; then
+    ./bin/sepbridge patch restore-kernel tmp1/kernel.raw tmp1/kernel.patch
+elif [[ $VERSION == 7.* ]]; then
     ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 7 -m 7 -e 7 -f 7 -k
 elif [[ $VERSION == 8.* ]]; then
     ./bin/Kernel64Patcher2 tmp1/kernel.raw tmp1/kernel.patch -u 8 -t -p -e 8 -f 8 -a -m 8 -g -s -d
@@ -4586,7 +4778,7 @@ do_special_restore_seprmvr64(){
 
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4636,7 +4828,7 @@ fi
 APNONCE=$(./bin/irecovery -q 2>/dev/null | grep "^NONC:" | cut -d ':' -f2 | xargs)
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh --apnonce $APNONCE -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -4705,21 +4897,21 @@ if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
     exit 1
 fi
 
-echo "Here is the following things that may happen on seprmvr64 restore:"
-echo "1. Touch ID will not work"
-echo "2. Passcode will not work"
-if [[ $VERSION == 7.* ]] && [[ $JAILBREAK == 1 ]]; then
-    echo "3. Password protected Wi-Fi networks do not work by default, but since jailbreak is enabled on this restore, we will install a tweak that fixes Wi-Fi with passwords."
-    echo "Wi-Fi fix tweak used is from https://github.com/DevTweaker/Tweak (thanks to them for making the Wi-Fi fix)"
+if [[ $IDENTIFIER == iPhone6,1 && $VERSION == 7.0 ]]; then
+    echo "Everything SEP-related should work as we use SEP bridge here."
+    echo "Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
 else
+    echo "Here is the following things that may happen on seprmvr64 restore:"
+    echo "1. Touch ID will not work"
+    echo "2. Passcode will not work"
     echo "3. Password protected Wi-Fi networks will not work"
+    echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
+    echo "5. Potentially other broken features"
+    if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
+        echo "6. Baseband will not work."
+    fi
+    read -p "Press enter to continue"
 fi
-echo "4. Battery life may be affected on iOS 7/8, because we use a workaround there to make deep sleep panics not occur"
-echo "5. Potentially other broken features"
-if [[ $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPhone7* ]]; then
-    echo "6. Baseband will not work."
-fi
-read -p "Press enter to continue"
 
 restoredir="noseprestore/$IDENTIFIER/$VERSION"
 stitch_activation=0
@@ -4793,7 +4985,8 @@ rm -rf "shsh"
 mkdir -p shsh
 mkdir -p boot
 ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh
+echo "$VERSION" > boot/$ECID.txt
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
@@ -5014,6 +5207,334 @@ make_boot_files_ipados16_mini4
 
 }
 
+create_custom_ios13_ipsw(){
+
+mkdir -p work
+mkdir -p restorefiles/$IDENTIFIER/$VERSION
+restoredir="restorefiles/$IDENTIFIER/$VERSION"
+unzip "$IPSW_PATH" -d tmp2
+unzip "$IPSW_PATH_LATEST" -d tmp1
+unzip "$IPSW_PATH_DONOR" -d tmp3
+restore_ramdisk_dmg=$(find_dmg tmp2 smallest)
+rootfs_12_dmg=$(find_dmg tmp1 largest)
+rootfs_13_dmg=$(find_dmg tmp2 largest)
+rootfs_13_ipad_dmg=$(find_dmg tmp3 largest)
+rootfs_13_dmg_name=${rootfs_13_dmg##*/}
+rootfs_12_dmg_name=${rootfs_12_dmg##*/}
+if [[ $VERSION == 13.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/091-99496/DCDE77CC-D986-11E9-AC76-A120DCDBD6A3/iPhone_4.7_13.1_17A844_Restore.ipsw"
+elif [[ $VERSION == 13.1.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-18421/E8F8D60E-DED8-11E9-A685-B200DC34986D/iPhone_4.7_13.1.1_17A854_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.1.2 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-22597/37272F4C-E18B-11E9-9F72-B96496A9EC6E/iPhone_4.7_13.1.2_17A860_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.1.3 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-30582/2A093596-EB7A-11E9-9505-C810329334FA/iPhone_4.7_13.1.3_17A878_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.2 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/041-81237/FC3D299A-F4E5-11E9-8B5E-B8C134390AC5/iPhone_4.7_13.2_17B84_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.2.2 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-44764/8C70B8EE-FEB7-11E9-A907-8BA5C8948948/iPhone_4.7_13.2.2_17B102_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.2.3 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-49226/779BBAEC-0699-11EA-90BD-E7814E39EDC0/iPhone_4.7_13.2.3_17B111_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.1.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.3 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2019FallFCS/fullrestores/061-61296/1EFCEDB4-179E-11EA-B3B3-D73E73E9483A/iPhone_4.7_13.3_17C54_Restore.ipsw"
+elif [[ $VERSION == 13.3.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/061-40755/14CBA7B2-A991-4576-A35D-DC6FD20AD078/iPhone_4.7_13.3.1_17D50_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.3.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.4 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/041-42891/8A1E8275-50BE-4BE4-B6F0-B66E3B2DD32A/iPhone_4.7_13.4_17E255_Restore.ipsw"
+elif [[ $VERSION == 13.4.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020WinterFCS/fullrestores/061-91200/C441212E-ED23-4C29-8154-7CA399789F04/iPhone_4.7_13.4.1_17E262_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.5 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SpringFCS/fullrestores/061-72111/8BEB34D4-5B1E-4965-A6F2-D379C0F06807/iPhone_4.7_13.5_17F75_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.5.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SpringFCS/fullrestores/001-09206/5B63483A-A082-11EA-884D-8CEDF1CFE6E8/iPhone_4.7_13.5.1_17F80_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.6 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerSeed/fullrestores/061-93030/3DCE8FA6-CA00-4B08-958D-5F60944CB8AE/iPhone_4.7_13.6_17G68_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.6.1 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-29260/77973A75-1135-447E-A73C-87DE328279C2/iPhone_4.7_13.6.1_17G80_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 13.7 ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-42024/73041E63-F21C-4688-8BF2-3F8FD1C4A34E/iPhone_4.7_13.7_17H35_Restore.ipsw"
+    cp -v hax/DeviceTree.$BOARDID.13.4.im4p hax/DeviceTree.$BOARDID.$VERSION.im4p
+elif [[ $VERSION == 14.0 && $BUILD == 18A5319i ]]; then
+    url_13kdonor="https://updates.cdn-apple.com/2020SummerSeed/fullrestores/001-24195/0BBDF968-D415-4F92-B58B-E604A9FAACE6/iPhone_4.7_14.0_18A5319i_Restore.ipsw"
+fi
+( cd work && sudo ../bin/pzb -g kernelcache.release.n71 $url_13kdonor )
+# DeviceTree
+if [[ $VERSION == 13.1* || $VERSION == 13.2* || $VERSION == 13.3* ]]; then
+    ./bin/img4 -i hax/DeviceTree.$BOARDID.$VERSION.im4p -o work/DeviceTree.raw
+    perl -pi -e 's/content-protect/content-protecV/g' work/DeviceTree.raw # disable data volume encryption temporarily as we are using iOS 12 SEP
+    ./bin/img4 -i work/DeviceTree.raw -o tmp1/Firmware/all_flash/$DEVICETREE -A -T dtre
+else
+    cp -v hax/DeviceTree.$BOARDID.$VERSION.im4p tmp1/Firmware/all_flash/$DEVICETREE
+fi
+#
+./bin/apfs-dmg extract $rootfs_13_dmg work/rootfs13.dmg
+if [[ $VERSION == 14.* ]]; then
+    grow_to="6600000000"
+    #cp -v tmp2/Firmware/$rootfs_13_dmg_name.trustcache tmp1/Firmware/$rootfs_12_dmg_name.trustcache
+else
+    grow_to="6400000000"
+fi
+./bin/apfs-tool work/rootfs13.dmg grow $grow_to
+hdiutil attach $rootfs_12_dmg -mountpoint rootfs12
+hdiutil attach work/rootfs13.dmg -mountpoint rootfs13
+hdiutil attach $rootfs_13_ipad_dmg -mountpoint rootfs13ipad
+# Copy touch 6 specific files. Also work on trustcache fix.
+find rootfs12 -iregex '.*n102.*' -type f > work/list.txt
+find rootfs12/System/Library/Extensions/AGXMetalA8.bundle > work/list2.txt
+find rootfs12/usr/share/firmware/wifi > work/list3.txt
+find rootfs12 -iregex '.*n102.*' -type f -exec /bin/sh -c 'dirname="$(echo "{}" | sed -E '\''s|^rootfs12(/.+)/.+$|\1|'\'')"; filename="$(echo "{}" | sed -E '\''s|rootfs12/.+/(.+)$|\1|'\'')"; mkdir -p "rootfs13/${dirname}"; cp -anv "{}" "rootfs13/${dirname}/${filename}";' \;
+cp -av rootfs12/usr/share/firmware/wifi rootfs13/usr/share/firmware
+if [[ $VERSION == 14.* ]]; then
+    # PlatformConfig stuff.
+    cp -v rootfs13/usr/share/firmware/wifi/baccus-2-PlatformConfig.plist rootfs13/usr/share/firmware/wifi/bacchus-PlatformConfig.plist
+    addition="-14"
+else
+    addition=""
+fi
+# bluetoothd fixup
+cp -v rootfs12/usr/sbin/BlueTool rootfs13/usr/sbin
+./bin/bluetoothdpatcher$addition rootfs13/usr/sbin/bluetoothd work/bluetoothd.patch
+./bin/ldid -e rootfs13/usr/sbin/bluetoothd > work/ents.plist
+./bin/ldid -Swork/ents.plist work/bluetoothd.patch
+cp -v work/bluetoothd.patch rootfs13/usr/sbin/bluetoothd
+chmod 755 rootfs13/usr/sbin/bluetoothd
+# Partial camera fix. Fixes flashlight fully
+cp -av rootfs13ipad/System/Library/PrivateFrameworks/H6ISPServices.framework rootfs13/System/Library/PrivateFrameworks
+# Proper graphics acceleration fixup
+cp -av rootfs13ipad/System/Library/Extensions/AGXMetalA8.bundle rootfs13/System/Library/Extensions
+cp -v rootfs13ipad/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64 rootfs13/System/Library/Caches/com.apple.dyld
+# trustcache (doesnt work 100% yet)
+#./bin/img4 -i tmp2/Firmware/$rootfs_13_dmg_name.trustcache -o work/trustcache.raw
+#./bin/trustcache append work/trustcache.raw $(cat work/list.txt)
+#./bin/trustcache append work/trustcache.raw $(cat work/list2.txt)
+#./bin/trustcache append work/trustcache.raw $(cat work/list3.txt)
+#./bin/trustcache append work/trustcache.raw rootfs12/usr/sbin/BlueTool
+#./bin/trustcache append work/trustcache.raw rootfs13/usr/sbin/bluetoothd
+#./bin/trustcache append work/trustcache.raw rootfs13/System/Library/Caches/com.apple.dyld/dyld_shared_cache_arm64
+#./bin/img4 -i work/trustcache.raw -o tmp1/Firmware/$rootfs_12_dmg_name.trustcache -A -T trst
+# Patch kernels!
+./bin/img4 -i tmp3/kernelcache.release.ipad5 -o work/kernel.raw
+./bin/img4 -i work/kernelcache.release.n71 -o work/kernel-6s.raw
+./bin/kextport$addition work/kernel.raw work/kernel-6s.raw work/kernel-chestnut.raw
+./bin/pmuipodhax$addition work/kernel-chestnut.raw work/kernel.patch
+./bin/mthaxipod$addition work/kernel.patch work/kernel.patch2
+./bin/wifihax$addition work/kernel.patch2 work/kernel.patch3 rootfs12/usr/share/firmware/wifi
+./bin/KPlooshFinder work/kernel.patch3 work/kernel.patch4
+./bin/kerneldiff2 work/kernel.raw work/kernel.patch4 work/kernel.diff
+#./bin/kerneldiff2 work/kernel.raw work/kernel.patch3 work/kernel-boot.diff
+./bin/img4 -i tmp3/kernelcache.release.ipad5 -o tmp1/$KERNEL -T krnl -P work/kernel.diff
+./bin/img4 -i tmp3/kernelcache.release.ipad5 -o $restoredir/kernel.im4p -T rkrn -P work/kernel.diff
+# Done!
+hdiutil detach rootfs12
+hdiutil detach rootfs13
+hdiutil detach rootfs13ipad
+rm -rf "tmp3"
+rm -rf $rootfs_13_dmg
+./bin/apfs-dmg build work/rootfs13.dmg $rootfs_12_dmg
+asr imagescan --source $rootfs_12_dmg
+cd tmp1
+zip -0 -r ../custom.ipsw *
+cd ..
+rm -rf "tmp1"
+mv -v custom.ipsw $restoredir/custom.ipsw
+# rdsk prep
+./bin/img4 -i $restore_ramdisk_dmg -o work/ramdisk.raw
+./bin/hfsplus work/ramdisk.raw extract usr/sbin/asr work/asr
+./bin/asr64_patcher work/asr work/asr_patched
+./bin/ldid -e work/asr > work/ents.plist
+./bin/ldid -Swork/ents.plist work/asr_patched
+./bin/hfsplus work/ramdisk.raw rm usr/sbin/asr 
+./bin/hfsplus work/ramdisk.raw add work/asr_patched usr/sbin/asr
+./bin/hfsplus work/ramdisk.raw chmod 100755 usr/sbin/asr
+if [[ $VERSION == 14.* ]]; then 
+    ./bin/hfsplus work/ramdisk.raw extract usr/local/bin/restored_external work/restored_external
+    ./bin/skipssv work/restored_external work/restored_patch
+    ./bin/ldid -e work/restored_external > work/ents.plist
+    ./bin/ldid -Swork/ents.plist work/restored_patch
+    ./bin/hfsplus work/ramdisk.raw rm usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw add work/restored_patch usr/local/bin/restored_external
+    ./bin/hfsplus work/ramdisk.raw chmod 100755 usr/local/bin/restored_external
+fi
+# pack rdsk into im4p
+./bin/img4 -i work/ramdisk.raw -o $restoredir/ramdisk.im4p -A -T rdsk
+# Wrap up
+rm -rf "tmp2"
+rm -rf "work"
+
+}
+
+install_ios13(){
+
+if [[ -z "$IPSW_PATH" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH"
+    exit 1
+fi
+if [[ -z "$IPSW_PATH_LATEST" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH_LATEST" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH_LATEST"
+    exit 1
+fi
+if [[ -z "$IPSW_PATH_DONOR" ]]; then
+    echo "No IPSW selected. Aborting."
+    exit 1
+fi
+if [[ ! -f "$IPSW_PATH_DONOR" ]]; then
+    echo "IPSW does not exist: $IPSW_PATH_DONOR"
+    exit 1
+fi
+
+echo "What does not work:"
+echo "1. Rotation"
+echo "2. Some other issues that may not be mentioned"
+echo "3. Jailbreaking"
+if [[ $VERSION == 14.* ]]; then
+    echo "4. Camera"
+fi
+echo "What works:"
+echo "1. Native device activation via Apple's Servers"
+if [[ $VERSION == 14.* ]]; then
+    echo "2. Flashlight"
+else
+    echo "2. Flashlight, and partial camera functionality (rear camera capturing is broken, front capturing 100% works)"
+fi
+echo "3. Wi-Fi"
+echo "4. Audio"
+echo "5. Bluetooth (partially, but not confirmed to 100% work)"
+echo "6. Wallpaper, battery charge level status, maybe other things"
+echo "7. SEP functionality (not all of SEP is confirmed yet though)"
+read -p "Press enter to continue"
+
+restoredir="restorefiles/$IDENTIFIER/$VERSION"
+
+if [[ ! -f "$restoredir/custom.ipsw" ]] && [[ ! -f "$restoredir/ramdisk.im4p" ]] && [[ ! -f "$restoredir/kernel.im4p" ]]; then
+    echo "Restore files does not exist, making new ones"
+    create_custom_ios13_ipsw
+else
+    echo "Restore files already exist"
+    read -p "Would you like to make new ones? (y/n): " restorefiles_remake
+    if [[ $restorefiles_remake == Y || $restorefiles_remake == y ]]; then
+        rm -rf "$restoredir"
+        create_custom_ios13_ipsw
+    fi
+fi
+
+dfu_helper
+pwn_device
+echo "Fetching shsh blobs for iOS $LATEST_VERSION"
+rm -rf "shsh"
+mkdir -p shsh
+mkdir -p boot
+ECID=$(./bin/irecovery -q 2>/dev/null | grep "^ECID:" | cut -d ':' -f2 | xargs) || true
+echo "$VERSION" > boot/$ECID.txt
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
+
+# Find the .shsh2 file in the shsh directory
+SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
+if [[ -z "$SHSH_PATH" ]]; then
+    echo "No SHSH file found in the shsh folder. Aborting"
+    exit 1
+fi
+
+det_rsep_flag
+prepatch_ibssibec_fr
+if [[ $VERSION == 13.1* || $VERSION == 13.2* || $VERSION == 13.3* ]]; then
+    sepflag="--latest-sep"
+else
+    download_tvos13_sep
+    sepflag="--sep $sep_path --sep-manifest $manifest_path"
+fi
+while true; do
+    set +e
+    sudo FUTURERESTORE_I_SOLEMNLY_SWEAR_THAT_I_AM_UP_TO_NO_GOOD=1 \
+        ./futurerestore/futurerestore -t $SHSH_PATH --use-pwndfu --skip-blob --rdsk $restoredir/ramdisk.im4p \
+        --custom-latest $LATEST_VERSION \
+        --rkrn $restoredir/kernel.im4p $sepflag \
+        $updatebb_flag $rsep_flag $restoredir/custom.ipsw
+    EXIT_CODE=$?
+    set -e
+    if [[ $EXIT_CODE -eq 139 ]]; then
+        echo "futurerestore segfaulted (exit 139), retrying..."
+        sleep 2
+    else
+        break
+    fi
+done
+sleep 2
+prepare_boot_files
+
+}
+
+opts_menu_ipodtouch6_ios13(){
+
+if [[ $dist != 3 && $dist != 4 ]]; then
+    echo "Hax requires macOS!"
+    sleep 5
+    restore_utils
+    return
+fi
+clear
+echo "$INFO_TEXT"
+echo ""
+echo "iPod touch 6 iOS 13 is a tethered upgrade."
+echo "This will WIPE YOUR DEVICE and do a fresh iOS 13 install"
+echo "If you are looking to boot the device only, use Just Boot option."
+echo "After installing iOS 13, you must do a clean restore to head back to iOS 12 if you want to use iOS 12 again."
+echo ""
+echo "Options:"
+echo ""
+echo "1. Select Target IPSW (iPod touch 7, 13.x/14.0 beta 2)"
+echo "2. Select Base IPSW (iPod touch 6, $LATEST_VERSION)"
+echo "3. Select Donor IPSW (iPad mini 4, 13.x/14.0 beta 2)"
+echo "4. Install iOS 13 / 14.0 beta 2"
+echo "5. Back"
+read -p "Please input an option (1-4): " touch6_opts_select
+if [[ $touch6_opts_select == 1 ]]; then
+    ipsw_selector target
+    if [[ $VERSION == 14.0 && $BUILD == 18A5319i ]]; then
+        echo "iOS 14.0b2 experimental support"
+    elif [[ $VERSION != 13.* ]]; then
+        echo "Only iOS 13 or 14.0 beta 2 IPSW is allowed!"
+        exit 1
+    fi
+    opts_menu_ipodtouch6_ios13
+elif [[ $touch6_opts_select == 2 ]]; then
+    ipsw_selector base
+    opts_menu_ipodtouch6_ios13
+elif [[ $touch6_opts_select == 3 ]]; then
+    ipsw_selector donor
+    if [[ $VERSION_DONOR != $VERSION ]]; then
+        echo "Donor version must match your target version!"
+        exit 1
+    fi
+    opts_menu_ipodtouch6_ios13
+elif [[ $touch6_opts_select == 4 ]]; then
+    install_ios13
+elif [[ $touch6_opts_select == 5 ]]; then
+    reset_restore_vars
+    restore_utils
+fi
+
+}
+
 opts_menu_mini4_ipados16(){
 
 if [[ $dist != 3 && $dist != 4 ]]; then
@@ -5104,7 +5625,7 @@ elif [[ $tether_options == 3 ]]; then
                 sleep 4
                 JAILBREAK=0
             fi
-        elif [[ $VERSION == 7.* ]]; then
+        elif [[ $VERSION == 7.* && $VERSION != 7.0 ]]; then
             read -p "Would you like to jailbreak as part of this restore? (y/N): " jailbreak_opts
             if [[ $jailbreak_opts == y || $jailbreak_opts == Y ]]; then
                 JAILBREAK=1
@@ -5145,7 +5666,7 @@ pwn_device
 download_1033_ota_sep
 rm -rf "shsh"
 mkdir -p shsh
-sudo ./bin/tsschecker -d $IDENTIFIER -i 10.3.3 -e $ECID -o -m tmp/BuildManifest-SEP.plist -s --save-path shsh
+sudo ./bin/tsschecker -d $IDENTIFIER -i 10.3.3 -e $ECID -o -m tmp/BuildManifest-SEP.plist -s --save-path shsh -b
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
 if [[ -z "$SHSH_PATH" ]]; then
@@ -5248,6 +5769,11 @@ if [[ $IDENTIFIER == iPad5,1 ]]; then
     echo "5. Install iPadOS 16"
     echo "6. Back"
     read -p "Please input an option (1-6): " restore_options
+elif [[ $IDENTIFIER == iPod7,1 ]]; then
+    # add special option
+    echo "5. Install iOS 13 / 14.0 beta 2"
+    echo "6. Back"
+    read -p "Please input an option (1-6): " restore_options
 else
     echo "5. Back"
     read -p "Please input an option (1-5): " restore_options
@@ -5260,11 +5786,13 @@ elif [[ $restore_options == 3 ]]; then
     restore_a7_options
 elif [[ $restore_options == 4 ]]; then
     just_boot
-elif [[ $restore_options == 5 ]] && [[ $IDENTIFIER != iPad5,1 ]]; then
+elif [[ $restore_options == 5 ]] && [[ $IDENTIFIER != iPad5,1 && $IDENTIFIER != iPod7,1 ]]; then
     main_menu
 elif [[ $restore_options == 5 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
     opts_menu_mini4_ipados16
-elif [[ $restore_options == 6 ]] && [[ $IDENTIFIER == iPad5,1 ]]; then
+elif [[ $restore_options == 5 ]] && [[ $IDENTIFIER == iPod7,1 ]]; then
+    opts_menu_ipodtouch6_ios13
+elif [[ $restore_options == 6 ]] && [[ $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPod7,1 ]]; then
     main_menu
 else
     echo "Invalid option. Exiting."
@@ -5342,7 +5870,7 @@ rm -rf "shsh"
 mkdir -p shsh
 mkdir -p tarwork
 mkdir -p work
-sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh 
+sudo ./bin/tsschecker -d $IDENTIFIER -s -e $ECID -i $LATEST_VERSION --save-path shsh -b
 
 # Find the .shsh2 file in the shsh directory
 SHSH_PATH=$(find shsh -type f -name "*.shsh2" | head -n 1)
