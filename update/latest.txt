@@ -1,5 +1,5 @@
-v2.2.5
+v2.2.6
 
 RELEASE NOTES:
 
-Minor update.
+Fix a serious bug on iOS 13-15 custom IPSW making for A13
