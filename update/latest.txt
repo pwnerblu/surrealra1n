@@ -1,8 +1,10 @@
-v2.3 beta 8
+v2.3 beta 9
 
 RELEASE NOTES:
 
-Make iOS 14.0b4 or iOS 13 prerequisite restores before iOS 14/15 OBSOLETE on A12/A13.
-Fix activation on iOS 14.0-15.x downgrades A12/A13.
-All iOS 14/15 restores A12/A13 are ERASE installs now, not update installs.
-Re-make custom IPSWs if you want the change to take effect on your side.
+Experimental iPad 8 and iPad 9 tether downgrade support.
+
+iPad 9: 15.0 - 16.6.1
+iPad 8: 14.0 - 16.6.1
+
+Please report any issues with these devices, as this is UNTESTED!

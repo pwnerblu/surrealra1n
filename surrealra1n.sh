@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 8"
+CURRENT_VERSION="v2.3 beta 9"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -1348,15 +1348,15 @@ KEY_FILE="keys/$IDENTIFIER.txt"
 
 # BB update determine check
 
-if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,4 ]]; then
+if [[ $IDENTIFIER == iPhone* || $IDENTIFIER == iPad4,2 || $IDENTIFIER == iPad4,3 || $IDENTIFIER == iPad4,5 || $IDENTIFIER == iPad4,6 || $IDENTIFIER == iPad4,8 || $IDENTIFIER == iPad4,9 || $IDENTIFIER == iPad5,2 || $IDENTIFIER == iPad5,4 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,4 || $IDENTIFIER == iPad11,7 || $IDENTIFIER == iPad12,2 ]]; then
     updatebb_flag="--latest-baseband"
-elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,3 ]]; then
+elif [[ $IDENTIFIER == iPod* || $IDENTIFIER == iPad4,1 || $IDENTIFIER == iPad4,4 || $IDENTIFIER == iPad4,7 || $IDENTIFIER == iPad5,1 || $IDENTIFIER == iPad5,3 || $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,6 || $IDENTIFIER == iPad12,1 ]]; then
     updatebb_flag="--no-baseband"
 fi
 
 # changes to device detection stuff
 
-if [[ $IDENTIFIER == iPhone12* ]]; then
+if [[ $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad12* ]]; then
     PMP="t8030pmp.im4p"
 fi
 
@@ -1463,6 +1463,78 @@ elif [[ $IDENTIFIER == iPad11,4 ]]; then
     # ipad doesn't hav haptic firmware
     # ipad wifi version doesn't have wirelesspower firmware
     KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad11,6 ]]; then
+    REFER="ipad11b"
+    REFER2="ipad11b"
+    BOARDID="j171aap"
+    BOARDID2="j171a"
+    NAME="iPad (8th generation, Wi-Fi only) ($BOARDID)"
+    AOP14="aopfw-ipad11baop.im4p"
+    AOP="aopfw-ipad11baop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j17x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J171a_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad11,7 ]]; then
+    REFER="ipad11b"
+    REFER2="ipad11b"
+    BOARDID="j172aap"
+    BOARDID2="j172a"
+    NAME="iPad (8th generation, Cellular) ($BOARDID)"
+    AOP14="aopfw-ipad11baop.im4p"
+    AOP="aopfw-ipad11baop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g11p.im4p"
+    ISP="adc-petra-j17x.im4p"
+    ANE="h11_ane_fw_quin.im4p"
+    AVE="AppleAVE2FW_H11.im4p"
+    MTFW="J172a_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad11x"
+elif [[ $IDENTIFIER == iPad12,1 ]]; then
+    REFER="ipad12p"
+    REFER2="ipad12p"
+    BOARDID="j181ap"
+    BOARDID2="j181"
+    NAME="iPad (9th generation, Wi-Fi only) ($BOARDID)"
+    AOP14="aopfw-ipad12paop.im4p"
+    AOP="aopfw-ipad12paop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g12p.im4p"
+    ISP="adc-zelus-j18x.im4p"
+    ANE="h12_ane_fw_metis.im4p"
+    AVE="AppleAVE2FW_H12.im4p"
+    MTFW="J181_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad12x"
+elif [[ $IDENTIFIER == iPad12,2 ]]; then
+    REFER="ipad12p"
+    REFER2="ipad12p"
+    BOARDID="j182ap"
+    BOARDID2="j182"
+    NAME="iPad (9th generation, Cellular) ($BOARDID)"
+    AOP14="aopfw-ipad12paop.im4p"
+    AOP="aopfw-ipad12paop.RELEASE.im4p"
+    IOFW="SmartIOFirmware_ASCv2.im4p"
+    GFX="armfw_g12p.im4p"
+    ISP="adc-zelus-j18x.im4p"
+    ANE="h12_ane_fw_metis.im4p"
+    AVE="AppleAVE2FW_H12.im4p"
+    MTFW="J182_Multitouch.im4p"
+    # ipad wifi version doesn't have callan firmware
+    # ipad doesn't hav haptic firmware
+    # ipad wifi version doesn't have wirelesspower firmware
+    KERNEL2="kernelcache.release.ipad12x"
 elif [[ $IDENTIFIER == iPhone11,2 ]]; then
     REFER="iphone11"
     REFER2="d321"
@@ -1731,7 +1803,7 @@ elif [[ $IDENTIFIER == iPhone10* ]]; then
     LATEST_VERSION="16.7.16"
 elif [[ $IDENTIFIER == iPhone11* ]]; then
     LATEST_VERSION="18.7.12"
-elif [[ $IDENTIFIER == iPhone12* ]]; then
+elif [[ $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad12* ]]; then
     LATEST_VERSION="27.2.1"
 elif [[ $IDENTIFIER == iPad11* ]]; then
     LATEST_VERSION="26.7.3"
@@ -1935,13 +2007,13 @@ echo "Checking if this device is in pwned DFU already"
 irecovery_output=$(./bin/irecovery -q 2>/dev/null) || true
 if echo "$irecovery_output" | grep -q "PWND"; then
     echo "Device is pwned!"
-    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
         echo "Skipping gaster reset"
     else
         ./bin/gaster reset
     fi
     return
-elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+elif [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
     echo "Proceed to do the following:"
     echo "A12/A13 tether downgrades are for advanced users only. If you don't know what you're doing, DO not proceed"
     echo "Disconnect your device from the computer, then connect it to your Pi Pico"
@@ -3061,9 +3133,9 @@ cryptex_os_name=${cryptex_os##*/}
 cryptex_app_name=${cryptex_app##*/}
 cryptex_os_name_18=${cryptex_os_18##*/}
 cryptex_app_name_18=${cryptex_app_18##*/}
-if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPad11,1 ]]; then
+if [[ $IDENTIFIER == iPhone12,8 || $IDENTIFIER == iPhone12,1 || $IDENTIFIER == iPhone11,8 || $IDENTIFIER == iPhone12,3 || $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,6 || $IDENTIFIER == iPad12,1 ]]; then
     IDENTITY="0"
-elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 || $IDENTIFIER == iPad11,2 ]]; then
+elif [[ $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone12,5 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,7 || $IDENTIFIER == iPad12,2 ]]; then
     IDENTITY="1"
 elif [[ $IDENTIFIER == iPhone11,6 || $IDENTIFIER == iPad11,3 ]]; then
     IDENTITY="2"
@@ -3120,7 +3192,7 @@ if [[ ($IDENTIFIER == iPhone12*) &&
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
     cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
-if [[ $IDENTIFIER == iPhone12* ]]; then
+if [[ $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad12* ]]; then
     cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
 cp -v $fs_dmg $fs_dmg_18 # replace rootfs in the IPSW
@@ -3421,6 +3493,8 @@ if [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION ==
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22729/77571761-8A7F-4F67-BB19-12D9BC82405B/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,4 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22329/CF450435-1EDC-4212-A768-D666A1677EC5/iPad_Spring_2019_14.4.2_18D70_Restore.ipsw"
+    elif [[ $IDENTIFIER == iPad11,6 || $IDENTIFIER == iPad11,7 ]]; then
+        ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22927/FAADDFCC-5211-4389-86CD-0D67BD832EF2/iPad_Educational_2020_14.4.2_18D70_Restore.ipsw"
     fi
     ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
     ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
@@ -3501,7 +3575,7 @@ if [[ ($IDENTIFIER == iPhone12*) &&
     cp -v tmp1/Firmware/$LEAPHAPTIC tmp2/Firmware/$LEAPHAPTIC
     cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
-if [[ $IDENTIFIER == iPhone12* ]]; then
+if [[ $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad12* ]]; then
     cp -v tmp1/Firmware/pmp/$PMP tmp2/Firmware/pmp/$PMP
 fi
 cp -v $fs_dmg $fs_dmg_18 # replace rootfs in the IPSW
@@ -3618,7 +3692,7 @@ pwn_device
 sleep 5
 
 echo "Sending iBSS"
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
     curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
     if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
         python3 bin/liter8ctl boot $bootdir/iBSS.boot || true
@@ -4056,6 +4130,10 @@ elif [[ $VERSION == 16.* ]]; then
     fi
     read -p "Press enter to continue"
 elif [[ $VERSION == 17.* ]]; then
+    if [[ $IDENTIFIER == iPad11,6 || $IDENTIFIER == iPad11,7 || $IDENTIFIER == iPad12* ]]; then
+        echo "Unsupported downgrade target, 17.x downgrades are not implemented fully for iPad 8 and 9"
+        exit 1
+    fi
     echo "iOS 17.x support is really experimental."
     echo "You may experience a ton of issues (including broken baseband on certain devices), as we have to patch things to get the device booted."
     echo "Device will be unable to activate. Do not flood GitHub issues when your device cannot activate."
@@ -5562,7 +5640,7 @@ elif [[ $tether_options == 2 ]]; then
     ipsw_selector base
     restore_tethered_opts
 elif [[ $tether_options == 3 ]]; then
-    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
         do_tethered_restore_a12_a13
     elif [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* ]]; then
         if [[ $VERSION == 8.* ]]; then
