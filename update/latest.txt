@@ -1,5 +1,8 @@
-v2.3 beta 7 re-release
+v2.3 beta 8
 
 RELEASE NOTES:
 
-A13 fixups for iOS 13-15.
+Make iOS 14.0b4 or iOS 13 prerequisite restores before iOS 14/15 OBSOLETE on A12/A13.
+Fix activation on iOS 14.0-15.x downgrades A12/A13.
+All iOS 14/15 restores A12/A13 are ERASE installs now, not update installs.
+Re-make custom IPSWs if you want the change to take effect on your side.
