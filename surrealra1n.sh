@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 7 re-release"
+CURRENT_VERSION="v2.3 beta 8"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -868,6 +868,7 @@ elif [[ $dist == 3 ]]; then
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
     # compile sep-bridge by dethr1der
     gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    gcc sep-bridge/ascm-bridge-a12-a13.c -o bin/sepfix
     #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
@@ -1025,6 +1026,7 @@ elif [[ $dist == 4 ]]; then
     curl -L -o bin/Kernel64Patcher2 https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Darwin/Kernel64Patcher
     # compile sep-bridge by dethr1der
     gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    gcc sep-bridge/ascm-bridge-a12-a13.c -o bin/sepfix
     #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
@@ -1168,6 +1170,7 @@ else
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/Kernel64Patcher" "bin/Kernel64Patcher2" 1024
     # compile sep-bridge by dethr1der
     gcc sep-bridge/sep-bridge.c -o bin/sepbridge
+    gcc sep-bridge/ascm-bridge-a12-a13.c -o bin/sepfix
     curl -L -o kerneldiff.c https://gist.githubusercontent.com/pwnerblu/46021f9d633d579bf9e950f66679e37c/raw/93fc81591cfb4b04b5fab13144f68d877a42769d/kerneldiff.c
     gcc kerneldiff.c -o bin/kerneldiff2
     rm -rf kerneldiff.c
@@ -3411,21 +3414,7 @@ unzip "$IPSW_PATH" -d tmp1
 unzip "$IPSW_PATH_LATEST" -d tmp2
 mkdir -p work
 # iBSS patching of course because yes
-if [[ $VERSION == 14.0 ]] && [[ $BUILD != 18A373 ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
-    if [[ $IDENTIFIER == iPhone11,8 ]]; then
-        ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46828/6A00C15C-8AEB-490E-A468-04E28C68E7C9/iPhone11,8,iPhone12,1_14.0_18A373_Restore.ipsw"
-    elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
-        ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46850/8A4DA7D0-40E1-4079-A159-5B0983102B66/iPhone11,2,iPhone11,4,iPhone11,6,iPhone12,3,iPhone12,5_14.0_18A373_Restore.ipsw"
-    elif [[ $IDENTIFIER == iPad11,1 || $IDENTIFIER == iPad11,2 || $IDENTIFIER == iPad11,3 || $IDENTIFIER == iPad11,4 ]]; then
-        ipsw_url="https://updates.cdn-apple.com/2020SummerFCS/fullrestores/001-46551/EFCA25AF-50BE-4712-A9C2-1E760AD99B82/iPad_Spring_2019_14.0_18A373_Restore.ipsw"
-    fi
-    ( cd work && sudo ../bin/pzb -g Firmware/dfu/$IBSS $ipsw_url )
-    ./bin/img4 -i work/$IBSS -o work/iBSS.raw -k $IBSS_KEY
-    ./bin/iBoot64Patcher2 work/iBSS.raw boot/$IDENTIFIER/iBSS.patch 
-    ./bin/iBoot64Patcher2 work/iBSS.raw work/iBSS.patchboot -b "-v"
-    ./bin/iBootpatch2 work/iBSS.patchboot boot/$IDENTIFIER/$VERSION/iBSS.boot
-    ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
-elif [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
+if [[ $VERSION == 14.5* || $VERSION == 14.6* || $VERSION == 14.7* || $VERSION == 14.8* ]] && [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
     if [[ $IDENTIFIER == iPhone11,8 ]]; then
         ipsw_url="https://updates.cdn-apple.com/2021WinterFCS/fullrestores/071-22451/5C8BBEE0-8471-4801-8D85-54D33DEDA50D/iPhone11,8,iPhone12,1_14.4.2_18D70_Restore.ipsw"
     elif [[ $IDENTIFIER == iPhone11,2 || $IDENTIFIER == iPhone11,4 || $IDENTIFIER == iPhone11,6 ]]; then
@@ -3460,18 +3449,8 @@ else
     ./bin/img4 -i boot/$IDENTIFIER/iBSS.patch -o tmp2/Firmware/dfu/$IBEC -A -T ibec
 fi
 #
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]] && [[ $BUILD != 18A5342e ]]; then
-    # update rd stuff
-    restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
-    restored="restored_update"
-elif [[ $IDENTIFIER == iPhone12* ]] && [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
-    # update rd stuff
-    restore_ramdisk_dmg=$(find_dmg tmp1 largest 1073741824)
-    restored="restored_update"
-else
-    restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
-    restored="restored_external"
-fi
+restore_ramdisk_dmg=$(find_dmg tmp1 smallest)
+restored="restored_external"
 if [[ $LATEST_VERSION == 18.* ]]; then
     restore_ramdisk_dmg_18=$(find_dmg tmp2 largest 179000000)
 elif [[ $LATEST_VERSION == 27.* ]]; then
@@ -3531,10 +3510,14 @@ cp -v tmp1/Firmware/$ramdisk_dmg_name.trustcache tmp2/Firmware/$ramdisk_dmg_name
 ./bin/img4 -i tmp1/$KERNEL -o work/kernel.raw
 if [[ $VERSION == 14.* ]]; then
     ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b # use kernel64patcher3, properly patch trust evaluation check on ios 14 arm64e
+    mv -v work/kernelboot.patch work/kernelboot.patc
+    ./bin/sepfix work/kernelboot.patc work/kernelboot.patch # Required. This is to fix native activation, as latest SEP breaks CredentialManager requests that are not within iOS 16+ format.
 elif [[ $VERSION == 13.* ]]; then
     ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -b13 -n # make booting take less time (added -b13 to hopefully fix haptics issue)
 else
     ./bin/Kernel64Patcher3 work/kernel.raw work/kernelboot.patch -we
+    mv -v work/kernelboot.patch work/kernelboot.patc
+    ./bin/sepfix work/kernelboot.patc work/kernelboot.patch # Required. This is to fix native activation, as latest SEP breaks CredentialManager requests that are not within iOS 16+ format.
 fi
 ./bin/kerneldiff work/kernel.raw work/kernelboot.patch work/kernelboot.diff
 rm -rf tmp2/$KERNEL
@@ -4047,17 +4030,10 @@ fi
 
 if [[ $VERSION == 14.* || $VERSION == 15.* ]]; then
     echo "SEP is partially incompatible, read the following:"
-    echo "The device will be unable to activate after the restore."
     echo "Sideloading outside of TrollStore may or may not work, your mileage may vary."
     echo "And potentially other broken features"
     echo "You cannot set a Passcode or use Touch ID because of BPR being enforced"
-    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPad11* ]]; then
-        echo "You will need to tether restore to 14.0 beta 4 first, activate the device, then tether restore to the desired version."
-    elif [[ $IDENTIFIER == iPhone12* ]]; then
-        echo "You will need to tether restore to iOS 13.4 - 13.7 first, activate the device (may have to activate via Finder/iTunes/Legacy iOS Kit), then tether restore to the desired version."
-        echo "You may also stay on iOS 13 if desired more than iOS 14/15."
-        echo "Haptic home button will not work."
-    fi
+    echo "Haptic home button will not work if device is an SE 2."
     read -p "Press enter to continue"
 elif [[ $VERSION == 16.* ]]; then
     echo "Haptic home button will not work."
