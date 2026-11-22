@@ -3692,7 +3692,7 @@ pwn_device
 sleep 5
 
 echo "Sending iBSS"
-if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
     curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
     if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
         python3 bin/liter8ctl boot $bootdir/iBSS.boot || true
@@ -5640,7 +5640,7 @@ elif [[ $tether_options == 2 ]]; then
     ipsw_selector base
     restore_tethered_opts
 elif [[ $tether_options == 3 ]]; then
-    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* ]]; then
+    if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
         do_tethered_restore_a12_a13
     elif [[ $VERSION == 7.* || $VERSION == 8.* || $VERSION == 9.* ]]; then
         if [[ $VERSION == 8.* ]]; then
