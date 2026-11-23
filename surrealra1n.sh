@@ -1,5 +1,5 @@
 #!/bin/bash
-CURRENT_VERSION="v2.3 beta 9"
+CURRENT_VERSION="v2.3 beta 10"
 
 if [ "$EUID" -eq 0 ]; then
   echo "ERROR: Do not run this script with sudo or as root."
@@ -871,6 +871,13 @@ elif [[ $dist == 3 ]]; then
     gcc sep-bridge/ascm-bridge-a12-a13.c -o bin/sepfix
     #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
+    #
+    curl -L -o bin/primepwn https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/primepwn
+    mkdir -p bin/lib
+    curl -L -o bin/lib/libirecovery-1.0.5.dylib https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/macos/lib/libirecovery-1.0.5.dylib
+    curl -L -o bin/lib/libimobiledevice-glue-1.0.0.dylib https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/macos/lib/libimobiledevice-glue-1.0.0.dylib
+    curl -L -o bin/lib/libplist-2.0.12.dylib https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/macos/lib/libplist-2.0.12.dylib
+    #
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
     curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/05cd068ca7ec03d20e85103c1a3778634c8cf346/patch.c
@@ -1029,6 +1036,11 @@ elif [[ $dist == 4 ]]; then
     gcc sep-bridge/ascm-bridge-a12-a13.c -o bin/sepfix
     #
     curl -L -o bin/hfsplus https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/hfsplus
+    curl -L -o bin/primepwn https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/primepwn
+    mkdir -p bin/lib
+    curl -L -o bin/lib/libirecovery-1.0.5.dylib https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/macos/lib/libirecovery-1.0.5.dylib
+    curl -L -o bin/lib/libimobiledevice-glue-1.0.0.dylib https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/macos/lib/libimobiledevice-glue-1.0.0.dylib
+    curl -L -o bin/lib/libplist-2.0.12.dylib https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/macos/lib/libplist-2.0.12.dylib
     curl -L -o bin/zenity https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/main/bin/macos/zenity
     # iboot patcher oops
     curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/05cd068ca7ec03d20e85103c1a3778634c8cf346/patch.c
@@ -1176,6 +1188,7 @@ else
     rm -rf kerneldiff.c
     #
     download_with_retry "https://github.com/LukeZGD/Semaphorin/raw/refs/heads/main/Linux/hfsplus" "bin/hfsplus" 1024
+    download_with_retry "https://github.com/LukeZGD/Legacy-iOS-Kit/raw/refs/heads/test/bin/linux/x86_64/primepwn" "bin/primepwn" 1024
     # sshpass
     # iboot patcher oops
     curl -L -o ibootpatch.c https://gist.githubusercontent.com/pwnerblu/c759c0060b5167a411b3b3adfcd07572/raw/05cd068ca7ec03d20e85103c1a3778634c8cf346/patch.c
@@ -1270,22 +1283,22 @@ else
     cd ..
 fi
 
-echo "Checking for dependencies that are required for usbliter8ctl, assuming Python3 is on your system"
+#echo "Checking for dependencies that are required for usbliter8ctl, assuming Python3 is on your system"
 # Check required packages
-PACKAGES=("pyusb" "usb")
-for pkg in "${PACKAGES[@]}"; do
-    if pip3 show "$pkg" &>/dev/null; then
-        version=$(pip3 show "$pkg" | grep Version | awk '{print $2}')
-        echo "$pkg: $version"
-    else
-        echo "$pkg not installed"
-        echo "Running: pip3 install $pkg"
-        if pip3 install "$pkg" 2>&1 | grep -q "externally-managed"; then
-            echo "Externally managed environment detected, retrying with --break-system-packages"
-            pip3 install "$pkg" --break-system-packages
-        fi
-    fi
-done
+#PACKAGES=("pyusb" "usb")
+#for pkg in "${PACKAGES[@]}"; do
+#    if pip3 show "$pkg" &>/dev/null; then
+#        version=$(pip3 show "$pkg" | grep Version | awk '{print $2}')
+#        echo "$pkg: $version"
+#    else
+#        echo "$pkg not installed"
+#        echo "Running: pip3 install $pkg"
+#        if pip3 install "$pkg" 2>&1 | grep -q "externally-managed"; then
+#            echo "Externally managed environment detected, retrying with --break-system-packages"
+#            pip3 install "$pkg" --break-system-packages
+#        fi
+#    fi
+#done
 
 IDEVICE_INFO=$(ideviceinfo 2>&1) || true
 IDEVICE_STATUS=$?
@@ -3693,14 +3706,7 @@ sleep 5
 
 echo "Sending iBSS"
 if [[ $IDENTIFIER == iPhone11* || $IDENTIFIER == iPhone12* || $IDENTIFIER == iPad11* || $IDENTIFIER == iPad12* ]]; then
-    curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
-    if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
-        python3 bin/liter8ctl boot $bootdir/iBSS.boot || true
-        echo "If you see the error: No such device (it may have been disconnected)"
-        echo "This error is normal on Linux as long as the Device actually starts booting after iBSS is sent."
-    else
-        python3 bin/liter8ctl boot $bootdir/iBSS.boot
-    fi
+    LD_LIBRARY_PATH="lib" ./bin/primepwn $bootdir/iBSS.boot
     echo "Device should now boot"
     exit 0
 fi
@@ -4190,18 +4196,7 @@ else
 fi
 pwn_device
 det_rsep_flag
-curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
-if [[ $dist == 1 || $dist == 2 || $dist == 5 ]]; then
-    python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
-    echo "If you see the error: No such device (it may have been disconnected)"
-    echo "This error is normal on Linux as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
-elif [[ $macos_ver == 27.* || $macos_ver == 26.* || $macos_ver == 15.* || $macos_ver == 14.* || $macos_ver == 13.* || $macos_ver == 12.* ]]; then
-    python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch || true
-    echo "usbliter8ctl may error out."
-    echo "The error may be normal as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
-else
-    python3 bin/liter8ctl boot boot/$IDENTIFIER/iBSS.patch 
-fi
+LD_LIBRARY_PATH="lib" ./bin/primepwn boot/$IDENTIFIER/iBSS.patch 
 sleep 6
 echo "Checking if device is in Recovery mode"
 MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
@@ -6110,10 +6105,7 @@ else
     dfu_helper
 fi
 pwn_device
-curl -L -o bin/liter8ctl https://github.com/ahmadkamal09999-tech/usbliter8/raw/refs/heads/main/usbliter8ctl
-python3 bin/liter8ctl boot $sshrd_path/iBSS.patch || true
-echo "usbliter8ctl may error out."
-echo "The error may be normal as long as the Device enters iBSS recovery mode (screen Should remain blank but be detected as Recovery mode device)."
+LD_LIBRARY_PATH="lib" ./bin/primepwn $sshrd_path/iBSS.patch
 sleep 6
 echo "Checking if device is in Recovery mode"
 MODE=$(./bin/irecovery -q 2>/dev/null | grep "^MODE:" | cut -d ':' -f2 | xargs) || true
